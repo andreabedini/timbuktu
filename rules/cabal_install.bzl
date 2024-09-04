@@ -14,7 +14,6 @@ def interpret_plan(planjson : str):
   srcs = {}
 
   for unit in units:
-    pprint(unit)
     if unit["type"] == "configured" and unit["style"] == "global":
       pkg_name = unit['pkg-name']
       pkg_version = unit['pkg-version']
@@ -24,8 +23,7 @@ def interpret_plan(planjson : str):
         srcs[pkg_id] = \
           unit_src(
             name = pkg_id,
-            pkg_name = unit['pkg-name'],
-            pkg_version = unit['pkg-version'],
+            pkg_id = pkg_id,
             pkg_src = unit["pkg-src"],
             pkg_src_sha256 = unit['pkg-src-sha256'],
           )

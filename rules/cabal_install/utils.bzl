@@ -1,6 +1,5 @@
 
 def normalise_legacy_unit(unit):
-  print(unit)
   if "components" in unit:
     components = unit["components"]
 

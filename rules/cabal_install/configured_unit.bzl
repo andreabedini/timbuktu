@@ -47,6 +47,24 @@ def _configured_unit_impl(ctx : AnalysisContext) -> list[Provider]:
   haskell_toolchain = ctx.attrs._haskell_toolchain[HaskellToolchainInfo]
   setup_helper = ctx.attrs._setup_helper[RunInfo]
 
+  # something = ctx.actions.declare_output("something")
+  # src = ctx.attrs.src
+  # x = {}
+  # def f(ctx, artifacts, outputs, x=x):
+  #   pprint("hey you!")
+  #   pprint(dir(ctx))
+  #   pprint(dir(artifacts))
+  #   pprint(dir(artifacts[src]))
+  #   pprint(artifacts[src])
+  #   pprint(dir(artifacts[src].read_string))
+  #
+  #
+  # ctx.actions.dynamic_output(
+  #   dynamic = [src],
+  #   inputs = [],
+  #   outputs = [something.as_output()],
+  #   f = f)
+
   tset_children = ctx.actions.tset(
     PackageConfTSet,
     children = [dep[PackageInfo].package_conf_tset for dep in ctx.attrs.depends]
@@ -64,13 +82,14 @@ def _configured_unit_impl(ctx : AnalysisContext) -> list[Provider]:
     _dependencies(ctx),
     _flags(ctx),
     _component_name(ctx),
+    # hidden = [something]
   )
   ctx.actions.run(_in_dir(configure_cmd, work_dir=ctx.attrs.src), category = "configure")
 
-  build = ctx.actions.declare_output("builddir", "build", dir = True)
+  build_output = ctx.actions.declare_output("builddir", "build", dir = True)
   build_cmd = cmd_args(
     setup_helper, "build",
-    cmd_args(build.as_output(), format = "--builddir={}", parent=1),
+    cmd_args(build_output.as_output(), format = "--builddir={}", parent=1),
     _component_name(ctx),
     hidden = [config]
   )
@@ -79,7 +98,7 @@ def _configured_unit_impl(ctx : AnalysisContext) -> list[Provider]:
   package_conf = ctx.actions.declare_output("package.conf")
   register_cmd = cmd_args(
     setup_helper, "register",
-    cmd_args(build, format = "--builddir={}", parent=1),
+    cmd_args(build_output, format = "--builddir={}", parent=1),
     "--inplace",
     cmd_args(package_conf.as_output(), format="--gen-pkg-config={}"),
     _component_name(ctx),
@@ -94,7 +113,7 @@ def _configured_unit_impl(ctx : AnalysisContext) -> list[Provider]:
 
   return [
     DefaultInfo(
-      default_output = build
+      default_output = build_output
     ),
     PackageInfo(
       unit_id = ctx.attrs.unit_id,
