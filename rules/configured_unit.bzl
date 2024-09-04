@@ -3,7 +3,7 @@ load("@prelude//haskell:toolchain.bzl", "HaskellToolchainInfo")
 load(
   "common.bzl",
   "PackageInfo",
-  "PackageDb",
+  "PackageConfTSet",
   "basic_unit"
 )
 
@@ -20,7 +20,7 @@ def _dependencies(ctx : AnalysisContext) -> list[str]:
   return ["--dependency={}={}".format(d[PackageInfo].pkg_name, d[PackageInfo].unit_id) for d in ctx.attrs.depends]
 
 
-def _package_db(ctx : AnalysisContext, tset : PackageDb) -> cmd_args:
+def _package_db(ctx : AnalysisContext, tset : PackageConfTSet) -> cmd_args:
   cache = ctx.actions.declare_output("package_db", "package.cache")
   ctx.actions.run(
     cmd_args(
@@ -46,9 +46,6 @@ def _configure_args(ctx : AnalysisContext) -> cmd_args:
   configure_args = cmd_args()
   configure_args.add("--with-ghc", haskell_toolchain.compiler)
 
-  # flags = _flags(ctx)
-  # if flags:
-  #   configure_args.add("--flags", " ".join(flags))
   configure_args.add(_flags(ctx))
   configure_args.add("--cid={}".format(ctx.attrs.unit_id))
   configure_args.add("--exact-configuration")
@@ -63,8 +60,8 @@ def _configured_unit_impl(ctx : AnalysisContext) -> list[Provider]:
   setup_helper = ctx.attrs._setup_helper[RunInfo]
 
   tset_children = ctx.actions.tset(
-    PackageDb,
-    children = [dep[PackageInfo].package_db for dep in ctx.attrs.depends]
+    PackageConfTSet,
+    children = [dep[PackageInfo].package_conf_tset for dep in ctx.attrs.depends]
   )
 
   config = ctx.actions.declare_output("builddir", "setup-config")
@@ -74,7 +71,6 @@ def _configured_unit_impl(ctx : AnalysisContext) -> list[Provider]:
     _package_db(ctx, tset_children),
     _configure_args(ctx),
   )
-  print("configure_cmd_inputs:", configure_cmd.inputs)
   ctx.actions.run(_in_dir(configure_cmd, work_dir=ctx.attrs.src), category = "configure")
 
   build = ctx.actions.declare_output("builddir", "build", dir = True)
@@ -96,7 +92,7 @@ def _configured_unit_impl(ctx : AnalysisContext) -> list[Provider]:
   )
   ctx.actions.run(_in_dir(register_cmd, work_dir=ctx.attrs.src), category = "register")
 
-  package_db = ctx.actions.tset(PackageDb, value = package_conf, children = [tset_children])
+  package_conf_tset = ctx.actions.tset(PackageConfTSet, value = package_conf, children = [tset_children])
 
   return [
     DefaultInfo(
@@ -105,7 +101,8 @@ def _configured_unit_impl(ctx : AnalysisContext) -> list[Provider]:
     PackageInfo(
       unit_id = ctx.attrs.unit_id,
       pkg_name = ctx.attrs.pkg_name,
-      package_db = package_db,
+      package_conf = package_conf,
+      package_conf_tset = package_conf_tset,
     )
   ]
 

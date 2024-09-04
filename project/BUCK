@@ -1,10 +1,3 @@
-# load("cabal_project.bzl", "cabal_project_plan", "dynamic_plan", "stuff")
-
-# cabal_project_plan(
-#   name = "cabal_project_plan",
-#   project_file = "project/cabal.project",
-# )
-
 load("@rules//interpret_plan.bzl", "interpret_plan")
 
 

@@ -13,6 +13,7 @@ def _cabal_project_plan_impl(ctx: AnalysisContext) -> list[Provider]:
   planjson = builddir.project("cache/plan.json")
   return [DefaultInfo(default_output = planjson)]
 
+
 cabal_project_plan = rule(
   impl = _cabal_project_plan_impl,
   attrs = {

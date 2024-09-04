@@ -1,7 +1,7 @@
 load(
   "common.bzl",
+  "PackageConfTSet",
   "PackageInfo",
-  "PackageDb",
   "basic_unit",
 )
 
@@ -12,7 +12,8 @@ def _pre_existing_unit_impl(ctx : AnalysisContext) -> list[Provider]:
     PackageInfo(
       unit_id = ctx.attrs.unit_id,
       pkg_name = ctx.attrs.pkg_name,
-      package_db = ctx.actions.tset(PackageDb),
+      package_conf = None,
+      package_conf_tset = ctx.actions.tset(PackageConfTSet)
     )
   ]
 
