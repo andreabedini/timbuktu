@@ -1,0 +1,25 @@
+[cells]
+root = .
+prelude = prelude
+toolchains = toolchains
+rules = rules
+none = none
+
+[cell_aliases]
+config = prelude
+fbcode = none
+fbsource = none
+buck = none
+
+#[external_cells]
+#  prelude = bundled
+
+[external_cells]
+  prelude = git
+
+[external_cell_prelude]
+  git_origin = https://github.com/facebook/buck2-prelude
+  commit_hash = 97003286dbcbde09e5d665662df91b9349623d7f
+
+[parser]
+target_platform_detector_spec = target:root//...->prelude//platforms:default
