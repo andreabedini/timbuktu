@@ -1,5 +1,5 @@
 load("haskell.bzl", "hackage_package", "haskell_executable")
-load("@rules//:GHC.bzl", "GhcOptions")
+load("@rules//Cabal:GHC.bzl", "GhcOptions")
 load("@rules//:Cabal.bzl", "executable", "library")
 
 hackage_package(

@@ -1,10 +1,23 @@
 
 def normalise_legacy_unit(unit):
+  print(unit)
   if "components" in unit:
     components = unit["components"]
-    depends = [ c["depends"] for n, c in components.items() if n != "setup" ]
-    exe_depends = [ c["exe-depends"] for n, c in components.items() if n == "setup" ]
+
+    depends = []
+    exe_depends = []
+    for n, c in components.items():
+      if n != "setup":
+        depends += c["depends"]
+        exe_depends += c["exe-depends"]
+
     setup_depends = components["setup"]["depends"] if "setup" in components else []
-    return dict(depends = depends, exe_depends = exe_depends, setup_depends = setup_depends, **unit)
-  else:
-    return unit
+
+    unit.update({
+      "depends": depends,
+      "exe-depends": exe_depends,
+      "setup-depends": setup_depends,
+      "component-name": "lib:{}".format(unit["pkg-name"]),
+    })
+
+  return unit

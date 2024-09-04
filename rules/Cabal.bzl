@@ -1,6 +1,6 @@
 load("@prelude//decls/toolchains_common.bzl", "toolchains_common")
 load("@prelude//haskell:toolchain.bzl", "HaskellToolchainInfo")
-load("GHC.bzl", "GhcOptions", "render_ghc_options")
+load("Cabal/GHC.bzl", "GhcOptions", "render_ghc_options")
 
 
 def _executable_impl(ctx : AnalysisContext) -> list[Provider]:
