@@ -1,7 +1,7 @@
 haskell_binary(
   name = "Setup_simple",
   srcs = {
-   "Main.hs": "Setup_simple.hs"
+    "Main.hs": "helpers/Setup_simple.hs"
   },
   compiler_flags = ["-package", "Cabal"],
   linker_flags = ["-package", "Cabal"],
@@ -10,7 +10,7 @@ haskell_binary(
 
 sh_binary(
   name = "setup_helper.sh",
-  main = "setup_helper.sh",
+  main = "helpers/setup_helper.sh",
   visibility = ["PUBLIC"],
   resources = [
     ":Setup_simple"

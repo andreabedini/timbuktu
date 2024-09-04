@@ -1,6 +1,6 @@
-load("configured_unit.bzl", "configured_unit")
-load("pkg_src.bzl", "unit_src")
-load("pre_existing_unit.bzl", "pre_existing_unit")
+load("cabal_install/configured_unit.bzl", "configured_unit")
+load("cabal_install/pkg_src.bzl", "unit_src")
+load("cabal_install/pre_existing_unit.bzl", "pre_existing_unit")
 
 
 _as_source = lambda dep: ":{}".format(dep)

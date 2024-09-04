@@ -59,6 +59,8 @@ def _configure_args(ctx : AnalysisContext) -> cmd_args:
 def _configured_unit_impl(ctx : AnalysisContext) -> list[Provider]:
   setup_helper = ctx.attrs._setup_helper[RunInfo]
 
+  # pprint(ctx.files)
+
   tset_children = ctx.actions.tset(
     PackageConfTSet,
     children = [dep[PackageInfo].package_conf_tset for dep in ctx.attrs.depends]
@@ -106,6 +108,7 @@ def _configured_unit_impl(ctx : AnalysisContext) -> list[Provider]:
     )
   ]
 
+
 configured_unit = rule(
   impl = _configured_unit_impl,
   attrs = {
@@ -113,7 +116,7 @@ configured_unit = rule(
     "src": attrs.source(),
     "component_name": attrs.string(),
     "exe_depends": attrs.list(attrs.dep(), default = []),
-    "_setup_helper": attrs.default_only(attrs.dep(default = "rules//helpers:setup_helper.sh")),
+    "_setup_helper": attrs.default_only(attrs.dep(default = "//cabal_install:setup_helper.sh")),
     "_haskell_toolchain": toolchains_common.haskell(),
   } | basic_unit,
 )

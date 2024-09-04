@@ -1,4 +1,4 @@
-load("@rules//interpret_plan.bzl", "interpret_plan")
+load("@rules//cabal_install.bzl", "interpret_plan")
 
 
 interpret_plan("""
