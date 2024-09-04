@@ -59,8 +59,6 @@ def _configure_args(ctx : AnalysisContext) -> cmd_args:
 def _configured_unit_impl(ctx : AnalysisContext) -> list[Provider]:
   setup_helper = ctx.attrs._setup_helper[RunInfo]
 
-  # pprint(ctx.files)
-
   tset_children = ctx.actions.tset(
     PackageConfTSet,
     children = [dep[PackageInfo].package_conf_tset for dep in ctx.attrs.depends]

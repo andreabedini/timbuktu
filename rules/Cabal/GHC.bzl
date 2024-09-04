@@ -181,7 +181,7 @@ def render_ghc_options(options : GhcOptions) -> cmd_args:
   args.add(cmd_args(options.cppIncludePath, format = "-I{}"))
   args.add(cmd_args(options.cppOptions, format = "-optP{}"))
 
-  for inc in options.cppIncludes:
+  if options.cppIncludes:
     args.add("-optP-include", cmd_args(options.cppIncludes, format = "-optP{}"))
 
   args.add(cmd_args(options.ccOptions, format = "-optc{}"))
