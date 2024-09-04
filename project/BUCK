@@ -1,5 +1,11 @@
-load("@rules//cabal_install.bzl", "interpret_plan")
+load("@rules//cabal_install.bzl", "cabal_project", "interpret_plan")
 
+
+cabal_project(
+  name = "plan",
+  project_file = "cabal.project",
+  targets = ["comonad"]
+)
 
 interpret_plan("""
 {

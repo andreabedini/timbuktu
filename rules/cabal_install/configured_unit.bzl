@@ -1,5 +1,8 @@
-load("@prelude//decls/toolchains_common.bzl", "toolchains_common")
-load("@prelude//haskell:toolchain.bzl", "HaskellToolchainInfo")
+load(
+  "@prelude//haskell:toolchain.bzl",
+  "HaskellToolchainInfo",
+  "HaskellPlatformInfo"
+)
 load(
   "common.bzl",
   "PackageInfo",
@@ -40,23 +43,8 @@ def _package_db(ctx : AnalysisContext, tset : PackageConfTSet) -> cmd_args:
   )
 
 
-def _configure_args(ctx : AnalysisContext) -> cmd_args:
-  haskell_toolchain = ctx.attrs._haskell_toolchain[HaskellToolchainInfo]
-
-  configure_args = cmd_args()
-  configure_args.add("--with-ghc", haskell_toolchain.compiler)
-
-  configure_args.add(_flags(ctx))
-  configure_args.add("--cid={}".format(ctx.attrs.unit_id))
-  configure_args.add("--exact-configuration")
-  configure_args.add("--ghc-option=-hide-all-packages")
-  configure_args.add(_dependencies(ctx))
-  configure_args.add(_component_name(ctx))
-
-  return configure_args
-
-
 def _configured_unit_impl(ctx : AnalysisContext) -> list[Provider]:
+  haskell_toolchain = ctx.attrs._haskell_toolchain[HaskellToolchainInfo]
   setup_helper = ctx.attrs._setup_helper[RunInfo]
 
   tset_children = ctx.actions.tset(
@@ -68,8 +56,14 @@ def _configured_unit_impl(ctx : AnalysisContext) -> list[Provider]:
   configure_cmd = cmd_args(
     setup_helper, "configure",
     cmd_args(config.as_output(), format = "--builddir={}", parent=1),
+    "--with-ghc", haskell_toolchain.compiler,
+    "--cid={}".format(ctx.attrs.unit_id),
+    "--exact-configuration",
+    "--ghc-option=-hide-all-packages",
     _package_db(ctx, tset_children),
-    _configure_args(ctx),
+    _dependencies(ctx),
+    _flags(ctx),
+    _component_name(ctx),
   )
   ctx.actions.run(_in_dir(configure_cmd, work_dir=ctx.attrs.src), category = "configure")
 
@@ -92,7 +86,11 @@ def _configured_unit_impl(ctx : AnalysisContext) -> list[Provider]:
   )
   ctx.actions.run(_in_dir(register_cmd, work_dir=ctx.attrs.src), category = "register")
 
-  package_conf_tset = ctx.actions.tset(PackageConfTSet, value = package_conf, children = [tset_children])
+  package_conf_tset = ctx.actions.tset(
+    PackageConfTSet,
+    value = package_conf,
+    children = [tset_children]
+  )
 
   return [
     DefaultInfo(
@@ -110,12 +108,12 @@ def _configured_unit_impl(ctx : AnalysisContext) -> list[Provider]:
 configured_unit = rule(
   impl = _configured_unit_impl,
   attrs = {
-    "flags": attrs.dict(attrs.string(), attrs.bool()),
     "src": attrs.source(),
+    "flags": attrs.dict(attrs.string(), attrs.bool()),
     "component_name": attrs.string(),
     "exe_depends": attrs.list(attrs.dep(), default = []),
     "_setup_helper": attrs.default_only(attrs.dep(default = "//cabal_install:setup_helper.sh")),
-    "_haskell_toolchain": toolchains_common.haskell(),
+    "_haskell_toolchain": attrs.toolchain_dep(default = "toolchains//:haskell", providers = [HaskellToolchainInfo, HaskellPlatformInfo])
   } | basic_unit,
 )
 

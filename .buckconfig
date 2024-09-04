@@ -22,4 +22,4 @@ buck = none
   commit_hash = 97003286dbcbde09e5d665662df91b9349623d7f
 
 [parser]
-target_platform_detector_spec = target:root//...->prelude//platforms:default
+  target_platform_detector_spec = target:root//...->prelude//platforms:default

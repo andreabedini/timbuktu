@@ -5,6 +5,7 @@ load("cabal_install/pre_existing_unit.bzl", "pre_existing_unit")
 
 _as_source = lambda dep: ":{}".format(dep)
 
+
 def interpret_plan(planjson : str):
   plan = json.decode(planjson)
 
@@ -44,3 +45,27 @@ def interpret_plan(planjson : str):
         depends = map(_as_source, unit["depends"]),
       )
 
+
+def _cabal_project_impl(ctx: AnalysisContext) -> list[Provider]:
+  builddir = ctx.actions.declare_output("dist-newstyle", dir = True)
+  ctx.actions.run(
+    [
+      "cabal", "build", "--dry-run",
+      "--project-file", ctx.attrs.project_file,
+      "--builddir", builddir.as_output(),
+      ctx.attrs.targets,
+    ],
+    category = "cabal_install"
+  )
+  return [
+    DefaultInfo(default_output = builddir.project("cache/plan.json"))
+  ]
+
+
+cabal_project = rule(
+  impl = _cabal_project_impl,
+  attrs = {
+    "project_file": attrs.source(),
+    "targets": attrs.list(attrs.string(), default = ["all"]),
+  },
+)
