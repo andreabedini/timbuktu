@@ -23,9 +23,11 @@ def interpret_plan(planjson : str):
         srcs[pkg_id] = \
           unit_src(
             name = pkg_id,
-            pkg_id = pkg_id,
+            pkg_name = unit['pkg-name'],
+            pkg_version = unit['pkg-version'],
             pkg_src = unit["pkg-src"],
             pkg_src_sha256 = unit['pkg-src-sha256'],
+            pkg_cabal_sha256 = unit.get('pkg-cabal-sha256'),
           )
 
       configured_unit(
