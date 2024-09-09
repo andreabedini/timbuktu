@@ -22,13 +22,13 @@ def _download_secure_repo_impl(ctx: AnalysisContext) -> list[Provider]:
   srcdir = ctx.actions.declare_output(pkg_id, dir=True)
   filelist = ctx.actions.declare_output("filelist")
 
-
   script = [
     "#!/usr/bin/env bash",
     cmd_args(
       "tar", "--extract",
       "--file", sdist,
       "--directory", cmd_args(srcdir.as_output(), parent=1),
+      "--verbose",
       "--index-file", filelist.as_output(),
       delimiter=" "
     )
