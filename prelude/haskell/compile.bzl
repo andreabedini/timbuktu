@@ -82,7 +82,9 @@ def get_packages_info(
     # base is special and gets exposed by default
     package_flag = _package_flag(haskell_toolchain)
     # exposed_package_args = cmd_args([package_flag, "base"])
-    exposed_package_args = cmd_args()
+    exposed_package_args = cmd_args(
+      "-hide-all-packages",
+    )
 
     packagedb_args = cmd_args()
     packagedb_set = {}
@@ -104,8 +106,7 @@ def get_packages_info(
     # These we need to add for all the packages/dependencies, i.e.
     # direct and transitive (e.g. `fbcode-common-hs-util-hs-array`)
     packagedb_args.add(
-      "-hide-all-packages",
-      "-no-user-package-db",
+      "-clear-package-db",
       [cmd_args("-package-db", x) for x in packagedb_set]
     )
 
