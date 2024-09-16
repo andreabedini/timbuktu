@@ -1,0 +1,14 @@
+git_fetch(
+  name = "Cabal-syntax-json.git",
+  repo = "https://github.com/andreabedini/Cabal-syntax-json.git",
+  rev = "aa4d3132ac0f217c2ced7c9894b3f6efb97203ca",
+)
+
+genrule(
+  name = "cabal2json",
+  srcs = [":Cabal-syntax-json.git"],
+  out = "Cabal-syntax-json",
+  cmd = "ghc -o ${OUT} -i${SRCDIR}/Cabal-syntax-json ${SRCDIR}/Cabal-syntax-json/Main.hs",
+  executable = True,
+  visibility = ["PUBLIC"],
+)

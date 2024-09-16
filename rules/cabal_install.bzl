@@ -1,4 +1,6 @@
+load("@prelude//haskell:toolchain.bzl", "HaskellPlatformInfo", "HaskellToolchainInfo")
 load("cabal_install/configured_unit.bzl", "configured_unit")
+load("cabal_install/setup.bzl", "setup")
 load("cabal_install/pkg_src.bzl", "unit_src")
 load("cabal_install/pre_existing_unit.bzl", "pre_existing_unit")
 load("cabal_install/utils.bzl", "normalise_legacy_unit")
@@ -7,11 +9,41 @@ load("cabal_install/utils.bzl", "normalise_legacy_unit")
 _as_source = lambda dep: ":{}".format(dep)
 
 
+def _haskell_toolchain(ctx: AnalysisContext) -> list[Provider]:
+    return [
+        DefaultInfo(),
+        HaskellToolchainInfo(
+            compiler = ctx.attrs.compiler,
+            packager = ctx.attrs.compiler.replace("ghc", "ghc-pkg"),
+            linker = ctx.attrs.compiler,
+            haddock = ctx.attrs.compiler.replace("ghc", "haddock"),
+            compiler_flags = [],
+            linker_flags = [],
+        ),
+        HaskellPlatformInfo(
+            name = host_info().arch,
+        ),
+    ]
+
+haskell_toolchain = rule(
+    impl = _haskell_toolchain,
+    attrs = {
+      "compiler": attrs.string(),
+    },
+    is_toolchain_rule = True,
+)
+
+
 def interpret_plan(planjson : str):
   plan = json.decode(planjson)
   units = map(normalise_legacy_unit, plan["install-plan"])
 
   srcs = {}
+
+  haskell_toolchain(
+    name = "haskell_toolchain",
+    compiler = plan["compiler-id"],
+  )
 
   for unit in units:
     if unit["type"] == "configured" and unit["style"] == "global":
@@ -19,6 +51,8 @@ def interpret_plan(planjson : str):
       pkg_version = unit['pkg-version']
       pkg_id = "{}-{}".format(pkg_name, pkg_version)
 
+      normalise_legacy_unit(unit)
+      
       if pkg_id not in srcs:
         srcs[pkg_id] = \
           unit_src(
@@ -30,16 +64,25 @@ def interpret_plan(planjson : str):
             pkg_cabal_sha256 = unit.get('pkg-cabal-sha256'),
           )
 
+        setup(
+          name = pkg_id + "-setup",
+          src = _as_source(pkg_id),
+          depends = map(_as_source, unit.get("setup-depends", [])),
+          _haskell_toolchain = ":haskell_toolchain",
+        )
+
       configured_unit(
         name = unit['id'],
         unit_id = unit['id'],
         pkg_name = unit['pkg-name'],
         pkg_version = unit['pkg-version'],
         flags = unit['flags'],
-        depends = map(_as_source, unit["depends"]),
-        exe_depends = map(_as_source, unit["exe-depends"]),
+        depends = map(_as_source, unit.get("depends", [])),
+        exe_depends = map(_as_source, unit.get("exe-depends", [])),
         src = _as_source(pkg_id),
         component_name = unit['component-name'],
+        setup = _as_source(pkg_id + "-setup"),
+        _haskell_toolchain = ":haskell_toolchain",
       )
 
     elif unit["type"] == "pre-existing":
@@ -49,6 +92,7 @@ def interpret_plan(planjson : str):
         pkg_name = unit['pkg-name'],
         pkg_version = unit['pkg-version'],
         depends = map(_as_source, unit["depends"]),
+        _haskell_toolchain = ":haskell_toolchain",
       )
 
 

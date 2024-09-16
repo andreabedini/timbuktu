@@ -1,8 +1,11 @@
-sh_binary(
-  name = "setup_helper.sh",
-  main = "helpers/setup_helper.sh",
-  visibility = ["PUBLIC"],
-  resources = [
-    "helpers/Simple.hs",
-  ],
+
+
+export_file(
+  name = "setup_simple.hs",
+  visibility = ["PUBLIC"]
+)
+
+export_file(
+  name = "setup_configure.hs",
+  visibility = ["PUBLIC"]
 )

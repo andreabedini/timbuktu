@@ -1,4 +1,10 @@
 load(
+  "@prelude//haskell:toolchain.bzl",
+  "HaskellToolchainInfo",
+  "HaskellPlatformInfo"
+)
+
+load(
   "common.bzl",
   "PackageConfTSet",
   "PackageInfo",
@@ -19,5 +25,7 @@ def _pre_existing_unit_impl(ctx : AnalysisContext) -> list[Provider]:
 
 pre_existing_unit = rule(
   impl = _pre_existing_unit_impl,
-  attrs = basic_unit
+  attrs = {
+    "_haskell_toolchain": attrs.toolchain_dep(default = "toolchains//:haskell", providers = [HaskellToolchainInfo, HaskellPlatformInfo])
+  } | basic_unit
 )

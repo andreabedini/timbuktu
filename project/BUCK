@@ -1,4 +1,4 @@
-load("@rules//cabal_install.bzl", "cabal_project")
+load("//rules/cabal_install.bzl", "cabal_project")
 
 cabal_project(
   name = "comonad-plan",
