@@ -1,5 +1,5 @@
 haskell_prebuilt_library(
-  name = "time",
+  name = "time-1.12.2-6fe1",
   version = "1.12.2",
   id = "time-1.12.2-6fe1",
   db = "lib/package.conf.d",
@@ -16,13 +16,13 @@ haskell_prebuilt_library(
 )
 
 alias(
-  name = "time-1.12.2-6fe1",
-  actual = ":time",
+  name = "time",
+  actual = ":time-1.12.2-6fe1",
   visibility = [ "PUBLIC" ]
 )
 
 haskell_prebuilt_library(
-  name = "ghc-internal",
+  name = "ghc-internal-9.1001.0-e45b",
   version = "9.1001.0",
   id = "ghc-internal-9.1001.0-e45b",
   db = "lib/package.conf.d",
@@ -43,13 +43,13 @@ haskell_prebuilt_library(
 )
 
 alias(
-  name = "ghc-internal-9.1001.0-e45b",
-  actual = ":ghc-internal",
+  name = "ghc-internal",
+  actual = ":ghc-internal-9.1001.0-e45b",
   visibility = [ "PUBLIC" ]
 )
 
 haskell_prebuilt_library(
-  name = "ghc",
+  name = "ghc-9.10.1-803c",
   version = "9.10.1",
   id = "ghc-9.10.1-803c",
   db = "lib/package.conf.d",
@@ -85,13 +85,13 @@ haskell_prebuilt_library(
 )
 
 alias(
-  name = "ghc-9.10.1-803c",
-  actual = ":ghc",
+  name = "ghc",
+  actual = ":ghc-9.10.1-803c",
   visibility = [ "PUBLIC" ]
 )
 
 haskell_prebuilt_library(
-  name = "terminfo",
+  name = "terminfo-0.4.1.6-9c0b",
   version = "0.4.1.6",
   id = "terminfo-0.4.1.6-9c0b",
   db = "lib/package.conf.d",
@@ -108,13 +108,13 @@ haskell_prebuilt_library(
 )
 
 alias(
-  name = "terminfo-0.4.1.6-9c0b",
-  actual = ":terminfo",
+  name = "terminfo",
+  actual = ":terminfo-0.4.1.6-9c0b",
   visibility = [ "PUBLIC" ]
 )
 
 haskell_prebuilt_library(
-  name = "ghci",
+  name = "ghci-9.10.1-ad13",
   version = "9.10.1",
   id = "ghci-9.10.1-ad13",
   db = "lib/package.conf.d",
@@ -144,13 +144,13 @@ haskell_prebuilt_library(
 )
 
 alias(
-  name = "ghci-9.10.1-ad13",
-  actual = ":ghci",
+  name = "ghci",
+  actual = ":ghci-9.10.1-ad13",
   visibility = [ "PUBLIC" ]
 )
 
 haskell_prebuilt_library(
-  name = "ghc-boot-th",
+  name = "ghc-boot-th-9.10.1-4aea",
   version = "9.10.1",
   id = "ghc-boot-th-9.10.1-4aea",
   db = "lib/package.conf.d",
@@ -167,13 +167,13 @@ haskell_prebuilt_library(
 )
 
 alias(
-  name = "ghc-boot-th-9.10.1-4aea",
-  actual = ":ghc-boot-th",
+  name = "ghc-boot-th",
+  actual = ":ghc-boot-th-9.10.1-4aea",
   visibility = [ "PUBLIC" ]
 )
 
 haskell_prebuilt_library(
-  name = "filepath",
+  name = "filepath-1.5.2.0-2df5",
   version = "1.5.2.0",
   id = "filepath-1.5.2.0-2df5",
   db = "lib/package.conf.d",
@@ -196,13 +196,13 @@ haskell_prebuilt_library(
 )
 
 alias(
-  name = "filepath-1.5.2.0-2df5",
-  actual = ":filepath",
+  name = "filepath",
+  actual = ":filepath-1.5.2.0-2df5",
   visibility = [ "PUBLIC" ]
 )
 
 haskell_prebuilt_library(
-  name = "binary",
+  name = "binary-0.8.9.2-5f17",
   version = "0.8.9.2",
   id = "binary-0.8.9.2-5f17",
   db = "lib/package.conf.d",
@@ -223,13 +223,13 @@ haskell_prebuilt_library(
 )
 
 alias(
-  name = "binary-0.8.9.2-5f17",
-  actual = ":binary",
+  name = "binary",
+  actual = ":binary-0.8.9.2-5f17",
   visibility = [ "PUBLIC" ]
 )
 
 haskell_prebuilt_library(
-  name = "os-string",
+  name = "os-string-2.0.2-3c7f",
   version = "2.0.2",
   id = "os-string-2.0.2-3c7f",
   db = "lib/package.conf.d",
@@ -251,13 +251,13 @@ haskell_prebuilt_library(
 )
 
 alias(
-  name = "os-string-2.0.2-3c7f",
-  actual = ":os-string",
+  name = "os-string",
+  actual = ":os-string-2.0.2-3c7f",
   visibility = [ "PUBLIC" ]
 )
 
 haskell_prebuilt_library(
-  name = "ghc-experimental",
+  name = "ghc-experimental-0.1.0.0-c9c2",
   version = "0.1.0.0",
   id = "ghc-experimental-0.1.0.0-c9c2",
   db = "lib/package.conf.d",
@@ -277,13 +277,13 @@ haskell_prebuilt_library(
 )
 
 alias(
-  name = "ghc-experimental-0.1.0.0-c9c2",
-  actual = ":ghc-experimental",
+  name = "ghc-experimental",
+  actual = ":ghc-experimental-0.1.0.0-c9c2",
   visibility = [ "PUBLIC" ]
 )
 
 haskell_prebuilt_library(
-  name = "system-cxx-std-lib",
+  name = "system-cxx-std-lib-1.0",
   version = "1.0",
   id = "system-cxx-std-lib-1.0",
   db = "lib/package.conf.d",
@@ -297,13 +297,13 @@ haskell_prebuilt_library(
 )
 
 alias(
-  name = "system-cxx-std-lib-1.0",
-  actual = ":system-cxx-std-lib",
+  name = "system-cxx-std-lib",
+  actual = ":system-cxx-std-lib-1.0",
   visibility = [ "PUBLIC" ]
 )
 
 haskell_prebuilt_library(
-  name = "directory",
+  name = "directory-1.3.8.3-5cf8",
   version = "1.3.8.3",
   id = "directory-1.3.8.3-5cf8",
   db = "lib/package.conf.d",
@@ -326,13 +326,13 @@ haskell_prebuilt_library(
 )
 
 alias(
-  name = "directory-1.3.8.3-5cf8",
-  actual = ":directory",
+  name = "directory",
+  actual = ":directory-1.3.8.3-5cf8",
   visibility = [ "PUBLIC" ]
 )
 
 haskell_prebuilt_library(
-  name = "transformers",
+  name = "transformers-0.6.1.1-0f5f",
   version = "0.6.1.1",
   id = "transformers-0.6.1.1-0f5f",
   db = "lib/package.conf.d",
@@ -349,13 +349,13 @@ haskell_prebuilt_library(
 )
 
 alias(
-  name = "transformers-0.6.1.1-0f5f",
-  actual = ":transformers",
+  name = "transformers",
+  actual = ":transformers-0.6.1.1-0f5f",
   visibility = [ "PUBLIC" ]
 )
 
 haskell_prebuilt_library(
-  name = "base",
+  name = "base-4.20.0.0-8212",
   version = "4.20.0.0",
   id = "base-4.20.0.0-8212",
   db = "lib/package.conf.d",
@@ -371,13 +371,13 @@ haskell_prebuilt_library(
 )
 
 alias(
-  name = "base-4.20.0.0-8212",
-  actual = ":base",
+  name = "base",
+  actual = ":base-4.20.0.0-8212",
   visibility = [ "PUBLIC" ]
 )
 
 haskell_prebuilt_library(
-  name = "ghc-compact",
+  name = "ghc-compact-0.1.0.0-de34",
   version = "0.1.0.0",
   id = "ghc-compact-0.1.0.0-de34",
   db = "lib/package.conf.d",
@@ -397,13 +397,13 @@ haskell_prebuilt_library(
 )
 
 alias(
-  name = "ghc-compact-0.1.0.0-de34",
-  actual = ":ghc-compact",
+  name = "ghc-compact",
+  actual = ":ghc-compact-0.1.0.0-de34",
   visibility = [ "PUBLIC" ]
 )
 
 haskell_prebuilt_library(
-  name = "stm",
+  name = "stm-2.5.3.1-a511",
   version = "2.5.3.1",
   id = "stm-2.5.3.1-a511",
   db = "lib/package.conf.d",
@@ -419,13 +419,13 @@ haskell_prebuilt_library(
 )
 
 alias(
-  name = "stm-2.5.3.1-a511",
-  actual = ":stm",
+  name = "stm",
+  actual = ":stm-2.5.3.1-a511",
   visibility = [ "PUBLIC" ]
 )
 
 haskell_prebuilt_library(
-  name = "integer-gmp",
+  name = "integer-gmp-1.1-875e",
   version = "1.1",
   id = "integer-gmp-1.1-875e",
   db = "lib/package.conf.d",
@@ -446,13 +446,13 @@ haskell_prebuilt_library(
 )
 
 alias(
-  name = "integer-gmp-1.1-875e",
-  actual = ":integer-gmp",
+  name = "integer-gmp",
+  actual = ":integer-gmp-1.1-875e",
   visibility = [ "PUBLIC" ]
 )
 
 haskell_prebuilt_library(
-  name = "template-haskell",
+  name = "template-haskell-2.22.0.0-05e1",
   version = "2.22.0.0",
   id = "template-haskell-2.22.0.0-05e1",
   db = "lib/package.conf.d",
@@ -473,13 +473,13 @@ haskell_prebuilt_library(
 )
 
 alias(
-  name = "template-haskell-2.22.0.0-05e1",
-  actual = ":template-haskell",
+  name = "template-haskell",
+  actual = ":template-haskell-2.22.0.0-05e1",
   visibility = [ "PUBLIC" ]
 )
 
 haskell_prebuilt_library(
-  name = "xhtml",
+  name = "xhtml-3000.2.2.1-218d",
   version = "3000.2.2.1",
   id = "xhtml-3000.2.2.1-218d",
   db = "lib/package.conf.d",
@@ -496,13 +496,13 @@ haskell_prebuilt_library(
 )
 
 alias(
-  name = "xhtml-3000.2.2.1-218d",
-  actual = ":xhtml",
+  name = "xhtml",
+  actual = ":xhtml-3000.2.2.1-218d",
   visibility = [ "PUBLIC" ]
 )
 
 haskell_prebuilt_library(
-  name = "Cabal",
+  name = "Cabal-3.12.0.0-7126",
   version = "3.12.0.0",
   id = "Cabal-3.12.0.0-7126",
   db = "lib/package.conf.d",
@@ -534,13 +534,13 @@ haskell_prebuilt_library(
 )
 
 alias(
-  name = "Cabal-3.12.0.0-7126",
-  actual = ":Cabal",
+  name = "Cabal",
+  actual = ":Cabal-3.12.0.0-7126",
   visibility = [ "PUBLIC" ]
 )
 
 haskell_prebuilt_library(
-  name = "exceptions",
+  name = "exceptions-0.10.7-7317",
   version = "0.10.7",
   id = "exceptions-0.10.7-7317",
   db = "lib/package.conf.d",
@@ -562,13 +562,13 @@ haskell_prebuilt_library(
 )
 
 alias(
-  name = "exceptions-0.10.7-7317",
-  actual = ":exceptions",
+  name = "exceptions",
+  actual = ":exceptions-0.10.7-7317",
   visibility = [ "PUBLIC" ]
 )
 
 haskell_prebuilt_library(
-  name = "array",
+  name = "array-0.5.7.0-a226",
   version = "0.5.7.0",
   id = "array-0.5.7.0-a226",
   db = "lib/package.conf.d",
@@ -584,13 +584,13 @@ haskell_prebuilt_library(
 )
 
 alias(
-  name = "array-0.5.7.0-a226",
-  actual = ":array",
+  name = "array",
+  actual = ":array-0.5.7.0-a226",
   visibility = [ "PUBLIC" ]
 )
 
 haskell_prebuilt_library(
-  name = "ghc-bignum",
+  name = "ghc-bignum-1.3-477c",
   version = "1.3",
   id = "ghc-bignum-1.3-477c",
   db = "lib/package.conf.d",
@@ -608,13 +608,13 @@ haskell_prebuilt_library(
 )
 
 alias(
-  name = "ghc-bignum-1.3-477c",
-  actual = ":ghc-bignum",
+  name = "ghc-bignum",
+  actual = ":ghc-bignum-1.3-477c",
   visibility = [ "PUBLIC" ]
 )
 
 haskell_prebuilt_library(
-  name = "unix",
+  name = "unix-2.8.5.1-f1fb",
   version = "2.8.5.1",
   id = "unix-2.8.5.1-f1fb",
   db = "lib/package.conf.d",
@@ -636,13 +636,13 @@ haskell_prebuilt_library(
 )
 
 alias(
-  name = "unix-2.8.5.1-f1fb",
-  actual = ":unix",
+  name = "unix",
+  actual = ":unix-2.8.5.1-f1fb",
   visibility = [ "PUBLIC" ]
 )
 
 haskell_prebuilt_library(
-  name = "ghc-toolchain",
+  name = "ghc-toolchain-0.1.0.0-a058",
   version = "0.1.0.0",
   id = "ghc-toolchain-0.1.0.0-a058",
   db = "lib/package.conf.d",
@@ -666,13 +666,13 @@ haskell_prebuilt_library(
 )
 
 alias(
-  name = "ghc-toolchain-0.1.0.0-a058",
-  actual = ":ghc-toolchain",
+  name = "ghc-toolchain",
+  actual = ":ghc-toolchain-0.1.0.0-a058",
   visibility = [ "PUBLIC" ]
 )
 
 haskell_prebuilt_library(
-  name = "parsec",
+  name = "parsec-3.1.17.0-5290",
   version = "3.1.17.0",
   id = "parsec-3.1.17.0-5290",
   db = "lib/package.conf.d",
@@ -693,13 +693,13 @@ haskell_prebuilt_library(
 )
 
 alias(
-  name = "parsec-3.1.17.0-5290",
-  actual = ":parsec",
+  name = "parsec",
+  actual = ":parsec-3.1.17.0-5290",
   visibility = [ "PUBLIC" ]
 )
 
 haskell_prebuilt_library(
-  name = "ghc-prim",
+  name = "ghc-prim-0.11.0-001d",
   version = "0.11.0",
   id = "ghc-prim-0.11.0-001d",
   db = "lib/package.conf.d",
@@ -716,13 +716,13 @@ haskell_prebuilt_library(
 )
 
 alias(
-  name = "ghc-prim-0.11.0-001d",
-  actual = ":ghc-prim",
+  name = "ghc-prim",
+  actual = ":ghc-prim-0.11.0-001d",
   visibility = [ "PUBLIC" ]
 )
 
 haskell_prebuilt_library(
-  name = "Cabal-syntax",
+  name = "Cabal-syntax-3.12.0.0-6c8a",
   version = "3.12.0.0",
   id = "Cabal-syntax-3.12.0.0-6c8a",
   db = "lib/package.conf.d",
@@ -753,13 +753,13 @@ haskell_prebuilt_library(
 )
 
 alias(
-  name = "Cabal-syntax-3.12.0.0-6c8a",
-  actual = ":Cabal-syntax",
+  name = "Cabal-syntax",
+  actual = ":Cabal-syntax-3.12.0.0-6c8a",
   visibility = [ "PUBLIC" ]
 )
 
 haskell_prebuilt_library(
-  name = "pretty",
+  name = "pretty-1.1.3.6-104a",
   version = "1.1.3.6",
   id = "pretty-1.1.3.6-104a",
   db = "lib/package.conf.d",
@@ -779,13 +779,13 @@ haskell_prebuilt_library(
 )
 
 alias(
-  name = "pretty-1.1.3.6-104a",
-  actual = ":pretty",
+  name = "pretty",
+  actual = ":pretty-1.1.3.6-104a",
   visibility = [ "PUBLIC" ]
 )
 
 haskell_prebuilt_library(
-  name = "hpc",
+  name = "hpc-0.7.0.1-3fe8",
   version = "0.7.0.1",
   id = "hpc-0.7.0.1-3fe8",
   db = "lib/package.conf.d",
@@ -807,13 +807,13 @@ haskell_prebuilt_library(
 )
 
 alias(
-  name = "hpc-0.7.0.1-3fe8",
-  actual = ":hpc",
+  name = "hpc",
+  actual = ":hpc-0.7.0.1-3fe8",
   visibility = [ "PUBLIC" ]
 )
 
 haskell_prebuilt_library(
-  name = "containers",
+  name = "containers-0.7-94b0",
   version = "0.7",
   id = "containers-0.7-94b0",
   db = "lib/package.conf.d",
@@ -834,13 +834,13 @@ haskell_prebuilt_library(
 )
 
 alias(
-  name = "containers-0.7-94b0",
-  actual = ":containers",
+  name = "containers",
+  actual = ":containers-0.7-94b0",
   visibility = [ "PUBLIC" ]
 )
 
 haskell_prebuilt_library(
-  name = "bytestring",
+  name = "bytestring-0.12.1.0-6739",
   version = "0.12.1.0",
   id = "bytestring-0.12.1.0-6739",
   db = "lib/package.conf.d",
@@ -862,13 +862,13 @@ haskell_prebuilt_library(
 )
 
 alias(
-  name = "bytestring-0.12.1.0-6739",
-  actual = ":bytestring",
+  name = "bytestring",
+  actual = ":bytestring-0.12.1.0-6739",
   visibility = [ "PUBLIC" ]
 )
 
 haskell_prebuilt_library(
-  name = "semaphore-compat",
+  name = "semaphore-compat-1.0.0-ed2d",
   version = "1.0.0",
   id = "semaphore-compat-1.0.0-ed2d",
   db = "lib/package.conf.d",
@@ -888,13 +888,13 @@ haskell_prebuilt_library(
 )
 
 alias(
-  name = "semaphore-compat-1.0.0-ed2d",
-  actual = ":semaphore-compat",
+  name = "semaphore-compat",
+  actual = ":semaphore-compat-1.0.0-ed2d",
   visibility = [ "PUBLIC" ]
 )
 
 haskell_prebuilt_library(
-  name = "text",
+  name = "text-2.1.1-e965",
   version = "2.1.1",
   id = "text-2.1.1-e965",
   db = "lib/package.conf.d",
@@ -917,13 +917,13 @@ haskell_prebuilt_library(
 )
 
 alias(
-  name = "text-2.1.1-e965",
-  actual = ":text",
+  name = "text",
+  actual = ":text-2.1.1-e965",
   visibility = [ "PUBLIC" ]
 )
 
 haskell_prebuilt_library(
-  name = "ghc-heap",
+  name = "ghc-heap-9.10.1-bbed",
   version = "9.10.1",
   id = "ghc-heap-9.10.1-bbed",
   db = "lib/package.conf.d",
@@ -945,13 +945,13 @@ haskell_prebuilt_library(
 )
 
 alias(
-  name = "ghc-heap-9.10.1-bbed",
-  actual = ":ghc-heap",
+  name = "ghc-heap",
+  actual = ":ghc-heap-9.10.1-bbed",
   visibility = [ "PUBLIC" ]
 )
 
 haskell_prebuilt_library(
-  name = "deepseq",
+  name = "deepseq-1.5.0.0-cd1e",
   version = "1.5.0.0",
   id = "deepseq-1.5.0.0-cd1e",
   db = "lib/package.conf.d",
@@ -971,13 +971,13 @@ haskell_prebuilt_library(
 )
 
 alias(
-  name = "deepseq-1.5.0.0-cd1e",
-  actual = ":deepseq",
+  name = "deepseq",
+  actual = ":deepseq-1.5.0.0-cd1e",
   visibility = [ "PUBLIC" ]
 )
 
 haskell_prebuilt_library(
-  name = "process",
+  name = "process-1.6.19.0-6397",
   version = "1.6.19.0",
   id = "process-1.6.19.0-6397",
   db = "lib/package.conf.d",
@@ -1000,13 +1000,13 @@ haskell_prebuilt_library(
 )
 
 alias(
-  name = "process-1.6.19.0-6397",
-  actual = ":process",
+  name = "process",
+  actual = ":process-1.6.19.0-6397",
   visibility = [ "PUBLIC" ]
 )
 
 haskell_prebuilt_library(
-  name = "haskeline",
+  name = "haskeline-0.8.2.1-420d",
   version = "0.8.2.1",
   id = "haskeline-0.8.2.1-420d",
   db = "lib/package.conf.d",
@@ -1034,13 +1034,13 @@ haskell_prebuilt_library(
 )
 
 alias(
-  name = "haskeline-0.8.2.1-420d",
-  actual = ":haskeline",
+  name = "haskeline",
+  actual = ":haskeline-0.8.2.1-420d",
   visibility = [ "PUBLIC" ]
 )
 
 haskell_prebuilt_library(
-  name = "rts",
+  name = "rts-1.0.2",
   version = "1.0.2",
   id = "rts-1.0.2",
   db = "lib/package.conf.d",
@@ -1142,13 +1142,13 @@ haskell_prebuilt_library(
 )
 
 alias(
-  name = "rts-1.0.2",
-  actual = ":rts",
+  name = "rts",
+  actual = ":rts-1.0.2",
   visibility = [ "PUBLIC" ]
 )
 
 haskell_prebuilt_library(
-  name = "ghc-platform",
+  name = "ghc-platform-0.1.0.0-4523",
   version = "0.1.0.0",
   id = "ghc-platform-0.1.0.0-4523",
   db = "lib/package.conf.d",
@@ -1165,13 +1165,13 @@ haskell_prebuilt_library(
 )
 
 alias(
-  name = "ghc-platform-0.1.0.0-4523",
-  actual = ":ghc-platform",
+  name = "ghc-platform",
+  actual = ":ghc-platform-0.1.0.0-4523",
   visibility = [ "PUBLIC" ]
 )
 
 haskell_prebuilt_library(
-  name = "ghc-boot",
+  name = "ghc-boot-9.10.1-548d",
   version = "9.10.1",
   id = "ghc-boot-9.10.1-548d",
   db = "lib/package.conf.d",
@@ -1198,13 +1198,13 @@ haskell_prebuilt_library(
 )
 
 alias(
-  name = "ghc-boot-9.10.1-548d",
-  actual = ":ghc-boot",
+  name = "ghc-boot",
+  actual = ":ghc-boot-9.10.1-548d",
   visibility = [ "PUBLIC" ]
 )
 
 haskell_prebuilt_library(
-  name = "mtl",
+  name = "mtl-2.3.1-c495",
   version = "2.3.1",
   id = "mtl-2.3.1-c495",
   db = "lib/package.conf.d",
@@ -1220,8 +1220,8 @@ haskell_prebuilt_library(
 )
 
 alias(
-  name = "mtl-2.3.1-c495",
-  actual = ":mtl",
+  name = "mtl",
+  actual = ":mtl-2.3.1-c495",
   visibility = [ "PUBLIC" ]
 )
 

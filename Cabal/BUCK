@@ -1,34 +1,34 @@
-load("//rules/hackage.bzl", "hackage_package")
+load("//rules/hackage.bzl", "hackage_package", "module_path")
 # load("//rules/Cabal:GHC.bzl", "GhcOptions")
 load("//rules:Cabal.bzl", "executable", "library")
 
+modules = [
+  "Main",
+  "AbsSyn",
+  "CharSet",
+  "DFA",
+  "DFAMin",
+  "DFS",
+  "Info",
+  "NFA",
+  "Output",
+  "Parser",
+  "ParseMonad",
+  "Scan",
+  "Util",
+  "UTF8",
+  "Data.Ranged",
+  "Data.Ranged.Boundaries",
+  "Data.Ranged.RangedSet",
+  "Data.Ranged.Ranges"
+]
+
 hackage_package(
-  name = "alex",
-  version = "3.5.1.0",
+  name = "alex-3.5.1.0",
   sha256 = "c92efe86f8eb959ee03be6c04ee57ebc7e4abc75a6c4b26551215d7443e92a07",
   sub_targets = [
     "data",
-    "src",
-    "src/Main.hs",
-    "src/AbsSyn.hs",
-    "src/CharSet.hs",
-    "src/DFA.hs",
-    "src/DFAMin.hs",
-    "src/DFS.hs",
-    "src/Info.hs",
-    "src/NFA.hs",
-    "src/Output.hs",
-    "src/Paths_alex.hs",
-    "src/Parser.hs",
-    "src/ParseMonad.hs",
-    "src/Scan.hs",
-    "src/Util.hs",
-    "src/UTF8.hs",
-    "src/Data/Ranged.hs",
-    "src/Data/Ranged/Boundaries.hs",
-    "src/Data/Ranged/RangedSet.hs",
-    "src/Data/Ranged/Ranges.hs",
-  ],
+  ] + [ module_path(m, dir="src") for m in modules ]
 )
 
 cxx_library(
@@ -42,25 +42,9 @@ cxx_library(
 haskell_binary(
   name = "alex",
   srcs = {
+    module_path(m): ":alex-3.5.1.0[" + module_path(m, dir="src") + "]" for m in modules
+  } | {
     "Paths_alex.hs": "alex-autogen/Paths_alex.hs",
-    "Main.hs": ":src-alex-3.5.1.0[src/Main.hs]",
-    "AbsSyn.hs": ":src-alex-3.5.1.0[src/AbsSyn.hs]",
-    "CharSet.hs": ":src-alex-3.5.1.0[src/CharSet.hs]",
-    "DFA.hs": ":src-alex-3.5.1.0[src/DFA.hs]",
-    "DFAMin.hs": ":src-alex-3.5.1.0[src/DFAMin.hs]",
-    "DFS.hs": ":src-alex-3.5.1.0[src/DFS.hs]",
-    "Info.hs": ":src-alex-3.5.1.0[src/Info.hs]",
-    "NFA.hs": ":src-alex-3.5.1.0[src/NFA.hs]",
-    "Output.hs": ":src-alex-3.5.1.0[src/Output.hs]",
-    "Parser.hs": ":src-alex-3.5.1.0[src/Parser.hs]",
-    "ParseMonad.hs": ":src-alex-3.5.1.0[src/ParseMonad.hs]",
-    "Scan.hs": ":src-alex-3.5.1.0[src/Scan.hs]",
-    "Util.hs": ":src-alex-3.5.1.0[src/Util.hs]",
-    "UTF8.hs": ":src-alex-3.5.1.0[src/UTF8.hs]",
-    "Data/Ranged.hs": ":src-alex-3.5.1.0[src/Data/Ranged.hs]",
-    "Data/Ranged/Boundaries.hs": ":src-alex-3.5.1.0[src/Data/Ranged/Boundaries.hs]",
-    "Data/Ranged/RangedSet.hs": ":src-alex-3.5.1.0[src/Data/Ranged/RangedSet.hs]",
-    "Data/Ranged/Ranges.hs": ":src-alex-3.5.1.0[src/Data/Ranged/Ranges.hs]",
   },
   compiler_flags = [
     "-XHaskell2010",
@@ -79,8 +63,7 @@ haskell_binary(
 )
 
 hackage_package(
-  name = "Cabal-syntax",
-  version = "3.12.1.0",
+  name = "Cabal-syntax-3.12.1.0",
   sha256 = "e5f2d31ec4bf36a7fd5b478f339edde18a6d9a4928a156fe52d37b70082c04b4",
   sub_targets = [
     "src",
@@ -251,8 +234,7 @@ haskell_library(
 )
 
 hackage_package(
-  name = "Cabal",
-  version = "3.12.1.0",
+  name = "Cabal-3.12.1.0",
   sha256 = "7642f4bfb4eb88ed82b4022940ad53206012ab116a19a367579ca6a7c2adb6d2",
 )
 

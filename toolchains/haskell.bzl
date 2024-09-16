@@ -10,7 +10,6 @@ def _haskell_toolchain(_ctx: AnalysisContext) -> list[Provider]:
             haddock = _ctx.attrs.haddock,
             compiler_flags = _ctx.attrs.compiler_flags,
             linker_flags = _ctx.attrs.linker_flags,
-            use_argsfile = _ctx.attrs.use_argsfile
         ),
         HaskellPlatformInfo(
             name = host_info().arch,
@@ -26,7 +25,6 @@ haskell_toolchain = rule(
       "haddock": attrs.string(default = "haddock"),
       "compiler_flags": attrs.list(attrs.string(), default = []),
       "linker_flags": attrs.list(attrs.string(), default = []),
-      "use_argsfile": attrs.bool(),
     },
     is_toolchain_rule = True,
 )

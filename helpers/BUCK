@@ -1,3 +1,32 @@
+
+haskell_binary(
+  name = "show-packages",
+  srcs = {
+    "Main.hs": "show-packages.hs"
+  },
+  deps = [
+    "//ghc:Cabal",
+    "//ghc:base",
+    "//ghc:bytestring",
+    "//ghc:filepath",
+    "//ghc:directory",
+    "//ghc:pretty",
+    "//ghc:process",
+  ],
+)
+
+haskell_binary(
+  name = "parse-cabal-fields",
+  srcs = {
+    "Main.hs": "parse-cabal-fields.hs"
+  },
+  deps = [
+    "//ghc:Cabal",
+    "//ghc:base",
+    "//ghc:bytestring",
+  ],
+)
+
 git_fetch(
   name = "Cabal-syntax-json.git",
   repo = "https://github.com/andreabedini/Cabal-syntax-json.git",

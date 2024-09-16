@@ -1,4 +1,4 @@
-load("@prelude//haskell:toolchain.bzl", "HaskellPlatformInfo", "HaskellToolchainInfo")
+load("@toolchains//haskell.bzl", "haskell_toolchain")
 load("cabal_install/configured_unit.bzl", "configured_unit")
 load("cabal_install/setup.bzl", "setup")
 load("cabal_install/pkg_src.bzl", "unit_src")
@@ -7,31 +7,6 @@ load("cabal_install/utils.bzl", "normalise_legacy_unit")
 
 
 _as_source = lambda dep: ":{}".format(dep)
-
-
-def _haskell_toolchain(ctx: AnalysisContext) -> list[Provider]:
-    return [
-        DefaultInfo(),
-        HaskellToolchainInfo(
-            compiler = ctx.attrs.compiler,
-            packager = ctx.attrs.compiler.replace("ghc", "ghc-pkg"),
-            linker = ctx.attrs.compiler,
-            haddock = ctx.attrs.compiler.replace("ghc", "haddock"),
-            compiler_flags = [],
-            linker_flags = [],
-        ),
-        HaskellPlatformInfo(
-            name = host_info().arch,
-        ),
-    ]
-
-haskell_toolchain = rule(
-    impl = _haskell_toolchain,
-    attrs = {
-      "compiler": attrs.string(),
-    },
-    is_toolchain_rule = True,
-)
 
 
 def interpret_plan(planjson : str):
@@ -43,6 +18,8 @@ def interpret_plan(planjson : str):
   haskell_toolchain(
     name = "haskell_toolchain",
     compiler = plan["compiler-id"],
+    linker = plan["compiler-id"],
+    packager = plan["compiler-id"].replace("ghc", "ghc-pkg"),
   )
 
   for unit in units:
