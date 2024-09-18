@@ -1,0 +1,255 @@
+load("//rules/haskell/hackage.bzl", "hackage_package", "module_path")
+
+toolchain = "toolchains//haskell:ghc-9.10.1"
+
+alex_modules = [
+  "Main",
+  "AbsSyn",
+  "CharSet",
+  "DFA",
+  "DFAMin",
+  "DFS",
+  "Info",
+  "NFA",
+  "Output",
+  "Parser",
+  "ParseMonad",
+  "Scan",
+  "Util",
+  "UTF8",
+  "Data.Ranged",
+  "Data.Ranged.Boundaries",
+  "Data.Ranged.RangedSet",
+  "Data.Ranged.Ranges"
+]
+
+hackage_package(
+  name = "alex-3.5.1.0",
+  sha256 = "c92efe86f8eb959ee03be6c04ee57ebc7e4abc75a6c4b26551215d7443e92a07",
+  sub_targets = [ "data", ] + [ module_path(m, dir="src") for m in alex_modules ]
+)
+
+cxx_library(
+  name = "alex-cabal-macros",
+  header_namespace = "alex",
+  exported_headers = {
+    "cabal_macros.h": "alex-autogen/cabal_macros.h"
+  },
+)
+
+haskell_binary(
+  name = "alex",
+  srcs = {
+    module_path(m): ":alex-3.5.1.0[" + module_path(m, dir="src") + "]" for m in alex_modules
+  } | {
+    "Paths_alex.hs": "alex-autogen/Paths_alex.hs",
+  },
+  compiler_flags = [
+    "-XHaskell2010",
+    "-XPatternSynonyms",
+    "-XScopedTypeVariables",
+    "-XTupleSections",
+    "-optP-include", "-optPalex/cabal_macros.h"
+  ],
+  deps = [
+    "toolchains//haskell/ghc-9.10.1:base",
+    "toolchains//haskell/ghc-9.10.1:array",
+    "toolchains//haskell/ghc-9.10.1:containers",
+    "toolchains//haskell/ghc-9.10.1:directory",
+    ":alex-cabal-macros"
+  ],
+  _haskell_toolchain = toolchain,
+)
+
+Cabal_syntax_modules = [
+  "Distribution.Backpack",
+  "Distribution.CabalSpecVersion",
+  "Distribution.Compat.Binary",
+  "Distribution.Compat.CharParsing",
+  "Distribution.Compat.DList",
+  "Distribution.Compat.Exception",
+  "Distribution.Compat.Graph",
+  "Distribution.Compat.Lens",
+  "Distribution.Compat.MonadFail",
+  "Distribution.Compat.Newtype",
+  "Distribution.Compat.NonEmptySet",
+  "Distribution.Compat.Parsing",
+  "Distribution.Compat.Prelude",
+  "Distribution.Compat.Semigroup",
+  "Distribution.Compat.Typeable",
+  "Distribution.Compiler",
+  "Distribution.FieldGrammar",
+  "Distribution.FieldGrammar.Class",
+  "Distribution.FieldGrammar.FieldDescrs",
+  "Distribution.FieldGrammar.Newtypes",
+  "Distribution.FieldGrammar.Parsec",
+  "Distribution.FieldGrammar.Pretty",
+  "Distribution.Fields",
+  "Distribution.Fields.ConfVar",
+  "Distribution.Fields.Field",
+  "Distribution.Fields.Lexer",
+  "Distribution.Fields.LexerMonad",
+  "Distribution.Fields.ParseResult",
+  "Distribution.Fields.Parser",
+  "Distribution.Fields.Pretty",
+  "Distribution.InstalledPackageInfo",
+  "Distribution.License",
+  "Distribution.ModuleName",
+  "Distribution.Package",
+  "Distribution.PackageDescription",
+  "Distribution.PackageDescription.Configuration",
+  "Distribution.PackageDescription.FieldGrammar",
+  "Distribution.PackageDescription.Parsec",
+  "Distribution.PackageDescription.PrettyPrint",
+  "Distribution.PackageDescription.Quirks",
+  "Distribution.PackageDescription.Utils",
+  "Distribution.Parsec",
+  "Distribution.Parsec.Error",
+  "Distribution.Parsec.FieldLineStream",
+  "Distribution.Parsec.Position",
+  "Distribution.Parsec.Warning",
+  "Distribution.Pretty",
+  "Distribution.SPDX",
+  "Distribution.SPDX.License",
+  "Distribution.SPDX.LicenseExceptionId",
+  "Distribution.SPDX.LicenseExpression",
+  "Distribution.SPDX.LicenseId",
+  "Distribution.SPDX.LicenseListVersion",
+  "Distribution.SPDX.LicenseReference",
+  "Distribution.System",
+  "Distribution.Text",
+  "Distribution.Types.AbiDependency",
+  "Distribution.Types.AbiHash",
+  "Distribution.Types.Benchmark",
+  "Distribution.Types.Benchmark.Lens",
+  "Distribution.Types.BenchmarkInterface",
+  "Distribution.Types.BenchmarkType",
+  "Distribution.Types.BuildInfo",
+  "Distribution.Types.BuildInfo.Lens",
+  "Distribution.Types.BuildType",
+  "Distribution.Types.Component",
+  "Distribution.Types.ComponentId",
+  "Distribution.Types.ComponentName",
+  "Distribution.Types.ComponentRequestedSpec",
+  "Distribution.Types.CondTree",
+  "Distribution.Types.Condition",
+  "Distribution.Types.ConfVar",
+  "Distribution.Types.Dependency",
+  "Distribution.Types.DependencyMap",
+  "Distribution.Types.ExeDependency",
+  "Distribution.Types.Executable",
+  "Distribution.Types.Executable.Lens",
+  "Distribution.Types.ExecutableScope",
+  "Distribution.Types.ExposedModule",
+  "Distribution.Types.Flag",
+  "Distribution.Types.ForeignLib",
+  "Distribution.Types.ForeignLib.Lens",
+  "Distribution.Types.ForeignLibOption",
+  "Distribution.Types.ForeignLibType",
+  "Distribution.Types.GenericPackageDescription",
+  "Distribution.Types.GenericPackageDescription.Lens",
+  "Distribution.Types.HookedBuildInfo",
+  "Distribution.Types.IncludeRenaming",
+  "Distribution.Types.InstalledPackageInfo",
+  "Distribution.Types.InstalledPackageInfo.Lens",
+  "Distribution.Types.InstalledPackageInfo.FieldGrammar",
+  "Distribution.Types.LegacyExeDependency",
+  "Distribution.Types.Lens",
+  "Distribution.Types.Library",
+  "Distribution.Types.Library.Lens",
+  "Distribution.Types.LibraryName",
+  "Distribution.Types.LibraryVisibility",
+  "Distribution.Types.Mixin",
+  "Distribution.Types.Module",
+  "Distribution.Types.ModuleReexport",
+  "Distribution.Types.ModuleRenaming",
+  "Distribution.Types.MungedPackageId",
+  "Distribution.Types.MungedPackageName",
+  "Distribution.Types.PackageDescription",
+  "Distribution.Types.PackageDescription.Lens",
+  "Distribution.Types.PackageId",
+  "Distribution.Types.PackageId.Lens",
+  "Distribution.Types.PackageName",
+  "Distribution.Types.PackageVersionConstraint",
+  "Distribution.Types.PkgconfigDependency",
+  "Distribution.Types.PkgconfigName",
+  "Distribution.Types.PkgconfigVersion",
+  "Distribution.Types.PkgconfigVersionRange",
+  "Distribution.Types.SetupBuildInfo",
+  "Distribution.Types.SetupBuildInfo.Lens",
+  "Distribution.Types.SourceRepo",
+  "Distribution.Types.SourceRepo.Lens",
+  "Distribution.Types.TestSuite",
+  "Distribution.Types.TestSuite.Lens",
+  "Distribution.Types.TestSuiteInterface",
+  "Distribution.Types.TestType",
+  "Distribution.Types.UnitId",
+  "Distribution.Types.UnqualComponentName",
+  "Distribution.Types.Version",
+  "Distribution.Types.VersionInterval",
+  "Distribution.Types.VersionInterval.Legacy",
+  "Distribution.Types.VersionRange",
+  "Distribution.Types.VersionRange.Internal",
+  "Distribution.Utils.Base62",
+  "Distribution.Utils.Generic",
+  "Distribution.Utils.MD5",
+  "Distribution.Utils.Path",
+  "Distribution.Utils.ShortText",
+  "Distribution.Utils.String",
+  "Distribution.Utils.Structured",
+  "Distribution.Version",
+  "Language.Haskell.Extension",
+]
+
+hackage_package(
+  name = "Cabal-syntax-3.12.1.0",
+  sha256 = "e5f2d31ec4bf36a7fd5b478f339edde18a6d9a4928a156fe52d37b70082c04b4",
+  sub_targets = [ module_path(m, dir="src") for m in Cabal_syntax_modules ]
+    + [ "src/Distribution/Fields/Lexer.x" ]
+)
+
+genrule(
+  name = "Distribution_Fields_Lexer",
+  out = "Lexer.hs",
+  srcs = [
+    ":Cabal-syntax-3.12.1.0[src/Distribution/Fields/Lexer.x]"
+  ],
+  cmd = "$(location :alex) --template=$(location :alex-3.5.1.0[data]) --outfile ${OUT} ${SRCS}",
+)
+
+haskell_library(
+  name = "Cabal-syntax",
+  compiler_flags = [ "-XHaskell2010" ],
+  _haskell_toolchain = toolchain,
+  srcs = {
+    module_path(m): ":Cabal-syntax-3.12.1.0[" + module_path(m, dir="src") + "]" for m in Cabal_syntax_modules
+  } | { module_path("Distribution.Fields.Lexer"): ":Distribution_Fields_Lexer" },
+  deps = [
+    "toolchains//haskell/ghc-9.10.1:array",
+    "toolchains//haskell/ghc-9.10.1:base",
+    "toolchains//haskell/ghc-9.10.1:binary",
+    "toolchains//haskell/ghc-9.10.1:bytestring",
+    "toolchains//haskell/ghc-9.10.1:containers",
+    "toolchains//haskell/ghc-9.10.1:deepseq",
+    "toolchains//haskell/ghc-9.10.1:directory",
+    "toolchains//haskell/ghc-9.10.1:filepath",
+    "toolchains//haskell/ghc-9.10.1:mtl",
+    "toolchains//haskell/ghc-9.10.1:parsec",
+    "toolchains//haskell/ghc-9.10.1:pretty",
+    "toolchains//haskell/ghc-9.10.1:text",
+    "toolchains//haskell/ghc-9.10.1:time",
+    "toolchains//haskell/ghc-9.10.1:transformers"
+  ]
+)
+
+hackage_package(
+  name = "Cabal-3.12.1.0",
+  sha256 = "7642f4bfb4eb88ed82b4022940ad53206012ab116a19a367579ca6a7c2adb6d2",
+)
+
+# haskell_library(
+#   name = "Cabal",
+#   compiler_flags = [ "-XHaskell2010" ],
+#   srcs = [ ],
+#   _haskell_toolchain = toolchain,
+# )

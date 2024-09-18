@@ -1,7 +1,0 @@
-load("//rules/cabal_install.bzl", "cabal_project")
-
-cabal_project(
-  name = "comonad-plan",
-  project_file = "//comonad:cabal.project",
-  targets = ["comonad"]
-)

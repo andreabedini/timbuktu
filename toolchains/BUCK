@@ -1,8 +1,6 @@
 load("@prelude//toolchains:cxx.bzl", "system_cxx_toolchain")
 load("@prelude//toolchains:genrule.bzl", "system_genrule_toolchain")
 load("@prelude//toolchains:python.bzl", "system_python_bootstrap_toolchain", "system_python_toolchain")
-# load("@prelude//toolchains:remote_test_execution.bzl", "remote_test_execution_toolchain")
-load("haskell.bzl", "haskell_toolchain")
 
 system_cxx_toolchain(
   name = "cxx",
@@ -11,15 +9,6 @@ system_cxx_toolchain(
 
 system_genrule_toolchain(
   name = "genrule",
-  visibility = ["PUBLIC"],
-)
-
-haskell_toolchain(
-  name = "haskell",
-  compiler = "ghc-9.10.1",
-  packager = "ghc-pkg-9.10.1",
-  linker = "ghc-9.10.1",
-  haddock = "haddoc-9.10.1",
   visibility = ["PUBLIC"],
 )
 
@@ -32,8 +21,3 @@ system_python_bootstrap_toolchain(
   name = "python_bootstrap",
   visibility = ["PUBLIC"],
 )
-
-# remote_test_execution_toolchain(
-#   name = "remote_test_execution",
-#   visibility = ["PUBLIC"],
-# )
