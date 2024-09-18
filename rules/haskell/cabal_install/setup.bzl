@@ -64,9 +64,15 @@ def _setup_custom(ctx : AnalysisContext, setup: Artifact):
 
 
 def _setup_impl(ctx : AnalysisContext) -> list[Provider]:
-  cabaljson = ctx.attrs.src[CabalPackageInfo].cabaljson
+  cabalfile = ctx.attrs.src[CabalPackageInfo].cabalfile
 
   setup = ctx.actions.declare_output("Setup")
+
+  cabaljson = ctx.actions.declare_output("cabal.json")
+  ctx.actions.run(
+    cmd_args(ctx.attrs._cabal2json[RunInfo], cabalfile, cabaljson.as_output()),
+    category = "cabal2json"
+  )
 
   def f(ctx, artifacts, outputs):
     gpd = artifacts[cabaljson].read_json()
@@ -98,6 +104,7 @@ setup = rule(
     "src": attrs.dep(providers = [CabalPackageInfo]),
     "depends": attrs.list(attrs.dep(), default = []),
     "_haskell_toolchain": attrs.toolchain_dep(providers = [HaskellToolchainInfo, HaskellPlatformInfo]),
+    "_cabal2json": attrs.dep(provider = [RunInfo], default = "//helpers:cabal2json"),
   }
 )
 

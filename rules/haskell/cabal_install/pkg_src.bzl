@@ -46,13 +46,7 @@ def _secure_repo_package_impl(ctx: AnalysisContext) -> list[Provider]:
 
   unpack = ctx.actions.write("unpack.sh", script, with_inputs=True, is_executable=True)
   ctx.actions.run(cmd_args(unpack, hidden=[filelist.as_output(), srcdir.as_output()]), category="tar_extract")
-
   cabalfile = srcdir.project(ctx.attrs.pkg_name + ".cabal")
-  cabaljson = ctx.actions.declare_output("cabal.json")
-  ctx.actions.run(
-    cmd_args(ctx.attrs._cabal2json[RunInfo], cabalfile, cabaljson.as_output()),
-    category = "cabal2json"
-  )
 
   return [
     DefaultInfo(
@@ -64,8 +58,7 @@ def _secure_repo_package_impl(ctx: AnalysisContext) -> list[Provider]:
       pkg_version = ctx.attrs.pkg_version,
       pkg_id = pkg_id,
       srcdir = srcdir,
-      cabalfile = cabalfile,
-      cabaljson = cabaljson,
+      cabalfile = cabalfile
     )
   ]
 
@@ -77,6 +70,5 @@ secure_repo_package = rule(
     "pkg_version": attrs.string(),
     "pkg_src_sha256": attrs.string(),
     "pkg_cabal_sha256": attrs.option(attrs.string(), default = None),
-    "_cabal2json": attrs.dep(default = "//helpers:cabal2json", providers=[RunInfo]),
   }
 )

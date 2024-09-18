@@ -8,7 +8,6 @@ CabalPackageInfo = provider(
     "pkg_id": provider_field(str),
     "srcdir": provider_field(Artifact),
     "cabalfile": provider_field(Artifact),
-    "cabaljson": provider_field(Artifact),
   }
 )
 
