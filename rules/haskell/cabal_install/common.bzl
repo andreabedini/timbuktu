@@ -1,3 +1,4 @@
+load("@prelude//haskell:toolchain.bzl", "HaskellPlatformInfo", "HaskellToolchainInfo")
 load("@prelude//haskell:util.bzl", "get_artifact_suffix")
 load("@prelude//linking:link_info.bzl", "LinkStyle")
 
@@ -20,10 +21,12 @@ PackageConfTSet = transitive_set(
     },
 )
 
-PackageInfo = provider(
+UnitInfo = provider(
     fields = {
-        "unit_id": provider_field(str),
-        "pkg_name": provider_field(str),
+        "id": provider_field(str),
+        "name": provider_field(str),
+        "version": provider_field(str),
+        "lib_name": provider_field(str | None, default = None),
         "package_conf": provider_field(Artifact | None, default = None),
         "package_conf_tset": provider_field(PackageConfTSet),
     },
@@ -34,6 +37,14 @@ common_unit_attrs = {
     "pkg_name": attrs.string(),
     "pkg_version": attrs.string(),
     "depends": attrs.list(attrs.dep(), default = []),
+}
+
+source_unit_attrs = {
+    "exe_depends": attrs.list(attrs.exec_dep(providers = [RunInfo]), default = []),
+    "flags": attrs.dict(attrs.string(), attrs.bool()),
+    "setup": attrs.exec_dep(providers = [RunInfo]),
+    "src": attrs.dep(providers = [CabalPackageInfo]),
+    "_haskell_toolchain": attrs.toolchain_dep(providers = [HaskellToolchainInfo, HaskellPlatformInfo], default = "toolchains//:haskell"),
 }
 
 def package_db(ctx: AnalysisContext, tset: PackageConfTSet) -> cmd_args:

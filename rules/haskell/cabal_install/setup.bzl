@@ -1,5 +1,20 @@
 load("@prelude//haskell:toolchain.bzl", "HaskellPlatformInfo", "HaskellToolchainInfo")
-load("common.bzl", "CabalPackageInfo", "PackageConfTSet", "PackageInfo", "output_args", "package_db")
+load("common.bzl", "CabalPackageInfo", "PackageConfTSet", "UnitInfo", "output_args", "package_db")
+
+def Setup(build_type: str, **kwargs):
+    if build_type == "Simple":
+        return native.haskell_binary(
+            name = "Setup_simple",
+            srcs = {"Setup.hs": "Setup_simple.hs"},
+            **kwargs
+        )
+    elif build_type == "Configure":
+        return native.haskell_binary(
+            name = "Setup_configure",
+            srcs = {"Setup.hs": "Setup_configure.hs"},
+        )
+    else:
+        fail("Unsupported build-type: {}".format(build_type))
 
 def _setup_simple(ctx: AnalysisContext, setup: Artifact):
     haskell_toolchain = ctx.attrs._haskell_toolchain[HaskellToolchainInfo]
@@ -35,10 +50,10 @@ def _setup_custom(ctx: AnalysisContext, setup: Artifact):
 
     tset = ctx.actions.tset(
         PackageConfTSet,
-        children = [dep[PackageInfo].package_conf_tset for dep in ctx.attrs.depends],
+        children = [dep[UnitInfo].package_conf_tset for dep in ctx.attrs.depends],
     )
 
-    dependencies = cmd_args([dep[PackageInfo].unit_id for dep in ctx.attrs.depends], prepend = "-package-id")
+    dependencies = cmd_args([dep[UnitInfo].id for dep in ctx.attrs.depends], prepend = "-package-id")
 
     compile_cmd = cmd_args(
         haskell_toolchain.compiler,

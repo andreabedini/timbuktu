@@ -1,4 +1,10 @@
-load("//rules/cabal_install.bzl", "cabal_project", "interpret_plan")
+load("//rules/haskell/cabal_install.bzl", "cabal_project", "interpret_plan")
+
+cabal_project(
+    name = "plan",
+    project_file = "cabal.project",
+    targets = ["free"],
+)
 
 interpret_plan("""
 {

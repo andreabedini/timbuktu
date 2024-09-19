@@ -3,9 +3,10 @@ load(
     "common.bzl",
     "CabalPackageInfo",
     "PackageConfTSet",
-    "PackageInfo",
+    "UnitInfo",
     "common_unit_attrs",
     "package_db",
+    "source_unit_attrs",
 )
 
 def _component_name(ctx: AnalysisContext) -> str:
@@ -14,14 +15,20 @@ def _component_name(ctx: AnalysisContext) -> str:
 def _flags(ctx: AnalysisContext) -> cmd_args:
     return cmd_args([("+" if value else "-") + name for name, value in ctx.attrs.flags.items()], format = "--flags={}")
 
+def _dependency(unitInfo: UnitInfo) -> str:
+    if unitInfo.lib_name:
+        return "--dependency={}:{}={}".format(unitInfo.name, unitInfo.lib_name, unitInfo.id)
+    else:
+        return "--dependency={}={}".format(unitInfo.name, unitInfo.id)
+
 def _dependencies(ctx: AnalysisContext) -> list[str]:
-    return ["--dependency={}={}".format(d[PackageInfo].pkg_name, d[PackageInfo].unit_id) for d in ctx.attrs.depends]
+    return [_dependency(d[UnitInfo]) for d in ctx.attrs.depends]
 
 def _configure_args(ctx: AnalysisContext) -> cmd_args:
     haskell_toolchain = ctx.attrs._haskell_toolchain[HaskellToolchainInfo]
     tset_depends = ctx.actions.tset(
         PackageConfTSet,
-        children = [dep[PackageInfo].package_conf_tset for dep in ctx.attrs.depends],
+        children = [dep[UnitInfo].package_conf_tset for dep in ctx.attrs.depends],
     )
     return cmd_args(
         cmd_args(haskell_toolchain.compiler, format = "--with-compiler={}"),
@@ -123,7 +130,7 @@ def _configured_unit_impl(ctx: AnalysisContext) -> list[Provider]:
 
     tset_depends = ctx.actions.tset(
         PackageConfTSet,
-        children = [dep[PackageInfo].package_conf_tset for dep in ctx.attrs.depends],
+        children = [dep[UnitInfo].package_conf_tset for dep in ctx.attrs.depends],
     )
 
     setup_config = _step_configure(ctx)
@@ -136,38 +143,60 @@ def _configured_unit_impl(ctx: AnalysisContext) -> list[Provider]:
         children = [tset_depends],
     )
 
-    return [
-        DefaultInfo(
-            default_output = builddir,
-        ),
-        PackageInfo(
-            unit_id = ctx.attrs.unit_id,
-            pkg_name = ctx.attrs.pkg_name,
-            package_conf = package_conf,
-            package_conf_tset = package_conf_tset,
-        ),
-    ]
+    providers = [DefaultInfo(default_output = builddir)]
+
+    if ctx.attrs.component_name == "lib":
+        providers.append(
+            UnitInfo(
+                id = ctx.attrs.unit_id,
+                name = ctx.attrs.pkg_name,
+                version = ctx.attrs.pkg_version,
+                #
+                package_conf = package_conf,
+                package_conf_tset = package_conf_tset,
+            ),
+        )
+    elif ctx.attrs.component_name.startswith("lib:"):
+        lib_name = ctx.attrs.component_name[4:]
+        providers.append(
+            UnitInfo(
+                id = ctx.attrs.unit_id,
+                name = ctx.attrs.pkg_name,
+                version = ctx.attrs.pkg_version,
+                lib_name = lib_name,
+                #
+                package_conf = package_conf,
+                package_conf_tset = package_conf_tset,
+            ),
+        )
+
+    if ctx.attrs.component_name.startswith("exe:"):
+        exe_name = ctx.attrs.component_name[4:]
+        providers.append(RunInfo(args = [exe_name]))
+
+    return providers
 
 configured_unit = rule(
     impl = _configured_unit_impl,
-    attrs = {
-        "src": attrs.dep(providers = [CabalPackageInfo]),
-        "flags": attrs.dict(attrs.string(), attrs.bool()),
-        "component_name": attrs.string(),
-        "exe_depends": attrs.list(attrs.dep(), default = []),
-        "setup": attrs.exec_dep(providers = [RunInfo]),
-        "_haskell_toolchain": attrs.toolchain_dep(providers = [HaskellToolchainInfo, HaskellPlatformInfo], default = "toolchains//:haskell"),
-    } | common_unit_attrs,
+    attrs =
+        common_unit_attrs |
+        source_unit_attrs |
+        {"component_name": attrs.string()},
 )
 
 def _configured_legacy_unit_impl(ctx: AnalysisContext) -> list[Provider]:
+    """
+    For legacy packages (i.e. anything other than the simple build-type) we
+    have to configure and build in a single step, since we do not really know
+    what is gong to be written where.
+    """
     haskell_toolchain = ctx.attrs._haskell_toolchain[HaskellToolchainInfo]
     srcdir = ctx.attrs.src[CabalPackageInfo].srcdir
     setup = ctx.attrs.setup[RunInfo]
 
     tset_depends = ctx.actions.tset(
         PackageConfTSet,
-        children = [dep[PackageInfo].package_conf_tset for dep in ctx.attrs.depends],
+        children = [dep[UnitInfo].package_conf_tset for dep in ctx.attrs.depends],
     )
 
     builddir = ctx.actions.declare_output("builddir")
@@ -177,12 +206,15 @@ def _configured_legacy_unit_impl(ctx: AnalysisContext) -> list[Provider]:
         "script.sh",
         [
             "#!/usr/bin/env bash",
+            "pwd",
+            cmd_args(builddir.as_output(), format = "PREFIX=$(realpath {})"),
             "set -euo pipefail",
             cmd_args(srcdir, format = "cd {}"),
             cmd_args(
                 setup,
                 "configure",
                 cmd_args(builddir.as_output(), format = "--builddir={}"),
+                "--prefix=$PREFIX",
                 _configure_args(ctx),
                 "--ipi={}".format(ctx.attrs.unit_id),
                 delimiter = " ",
@@ -223,9 +255,10 @@ def _configured_legacy_unit_impl(ctx: AnalysisContext) -> list[Provider]:
         DefaultInfo(
             default_output = builddir,
         ),
-        PackageInfo(
-            unit_id = ctx.attrs.unit_id,
-            pkg_name = ctx.attrs.pkg_name,
+        UnitInfo(
+            id = ctx.attrs.unit_id,
+            name = ctx.attrs.pkg_name,
+            version = ctx.attrs.pkg_version,
             package_conf = package_conf,
             package_conf_tset = package_conf_tset,
         ),
@@ -233,13 +266,7 @@ def _configured_legacy_unit_impl(ctx: AnalysisContext) -> list[Provider]:
 
 configured_legacy_unit = rule(
     impl = _configured_legacy_unit_impl,
-    attrs = {
-        "src": attrs.dep(providers = [CabalPackageInfo]),
-        "flags": attrs.dict(attrs.string(), attrs.bool()),
-        "exe_depends": attrs.list(attrs.dep(), default = []),
-        "setup": attrs.exec_dep(providers = [RunInfo]),
-        "_haskell_toolchain": attrs.toolchain_dep(providers = [HaskellToolchainInfo, HaskellPlatformInfo], default = "toolchains//:haskell"),
-    } | common_unit_attrs,
+    attrs = common_unit_attrs | source_unit_attrs,
 )
 
 def _in_dir(*script, work_dir):

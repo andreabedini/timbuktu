@@ -1,7 +1,7 @@
 load("//rules/haskell/cabal_install.bzl", "cabal_project", "interpret_plan")
 
 cabal_project(
-    name = "aeson-diff-plan",
+    name = "plan",
     project_file = "cabal.project",
     targets = ["aeson-diff"],
 )
