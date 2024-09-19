@@ -1,20 +1,5 @@
 load("@prelude//haskell:toolchain.bzl", "HaskellPlatformInfo", "HaskellToolchainInfo")
-load("common.bzl", "CabalPackageInfo", "PackageConfTSet", "UnitInfo", "output_args", "package_db")
-
-def Setup(build_type: str, **kwargs):
-    if build_type == "Simple":
-        return native.haskell_binary(
-            name = "Setup_simple",
-            srcs = {"Setup.hs": "Setup_simple.hs"},
-            **kwargs
-        )
-    elif build_type == "Configure":
-        return native.haskell_binary(
-            name = "Setup_configure",
-            srcs = {"Setup.hs": "Setup_configure.hs"},
-        )
-    else:
-        fail("Unsupported build-type: {}".format(build_type))
+load("//rules/haskell/cabal_install:common.bzl", "CabalPackageInfo", "PackageConfTSet", "UnitInfo", "output_args", "package_db")
 
 def _setup_simple(ctx: AnalysisContext, setup: Artifact):
     haskell_toolchain = ctx.attrs._haskell_toolchain[HaskellToolchainInfo]
@@ -41,6 +26,43 @@ def _setup_configure(ctx: AnalysisContext, setup: Artifact):
         setup_hs,
     )
     ctx.actions.run(compile_cmd, category = "setup")
+
+def _setup_make(ctx: AnalysisContext, setup: Artifact):
+    haskell_toolchain = ctx.attrs._haskell_toolchain[HaskellToolchainInfo]
+    setup_hs = ctx.actions.write("Setup.hs", "import Distribution.Make; main = defaultMain")
+    compile_cmd = cmd_args(
+        haskell_toolchain.compiler,
+        haskell_toolchain.compiler_flags,
+        output_args(ctx),
+        "-o",
+        setup.as_output(),
+        setup_hs,
+    )
+    ctx.actions.run(compile_cmd, category = "setup")
+
+def _setup_impl(ctx: AnalysisContext) -> list[Provider]:
+    setup = ctx.actions.declare_output("Setup")
+    if ctx.attrs.build_type == "simple":
+        _setup_simple(ctx, setup)
+    elif ctx.attrs.build_type == "configure":
+        _setup_configure(ctx, setup)
+    elif ctx.attrs.build_type == "make":
+        _setup_make(ctx, setup)
+    else:
+        fail("Unsupported build type: {}".format(ctx.attrs.build_type))
+
+    return [
+        DefaultInfo(default_output = setup),
+        RunInfo(args = setup),
+    ]
+
+setup = rule(
+    impl = _setup_impl,
+    attrs = {
+        "build_type": attrs.enum(["simple", "configure", "make"]),
+        "_haskell_toolchain": attrs.toolchain_dep(providers = [HaskellToolchainInfo, HaskellPlatformInfo], default = "toolchains//:haskell"),
+    },
+)
 
 def _setup_custom(ctx: AnalysisContext, setup: Artifact):
     haskell_toolchain = ctx.attrs._haskell_toolchain[HaskellToolchainInfo]
@@ -73,51 +95,6 @@ def _setup_custom(ctx: AnalysisContext, setup: Artifact):
     )
 
     ctx.actions.run(compile_cmd, category = "setup")
-
-def _setup_impl(ctx: AnalysisContext) -> list[Provider]:
-    cabalfile = ctx.attrs.src[CabalPackageInfo].cabalfile
-
-    setup = ctx.actions.declare_output("Setup")
-
-    cabaljson = ctx.actions.declare_output("cabal.json")
-    ctx.actions.run(
-        cmd_args(ctx.attrs._cabal2json[RunInfo], cabalfile, cabaljson.as_output()),
-        category = "cabal2json",
-    )
-
-    def f(ctx, artifacts, outputs):
-        gpd = artifacts[cabaljson].read_json()
-        if gpd["build-type"] == "Simple":
-            _setup_simple(ctx, outputs[setup])
-        elif gpd["build-type"] == "Configure":
-            _setup_configure(ctx, outputs[setup])
-        elif gpd["build-type"] == "Custom":
-            _setup_custom(ctx, outputs[setup])
-        else:
-            fail("Unsupported build-type: {}".format(gpd["build-type"]))
-
-    ctx.actions.dynamic_output(
-        dynamic = [cabaljson],
-        inputs = [],
-        outputs = [setup.as_output()],
-        f = f,
-    )
-
-    # TODO exe depends and data dirs
-
-    return [
-        DefaultInfo(default_output = setup),
-        RunInfo(args = setup),
-    ]
-
-setup = rule(
-    impl = _setup_impl,
-    attrs = {
-        "src": attrs.dep(providers = [CabalPackageInfo]),
-        "_haskell_toolchain": attrs.toolchain_dep(providers = [HaskellToolchainInfo, HaskellPlatformInfo]),
-        "_cabal2json": attrs.dep(providers = [RunInfo], default = "//helpers:cabal2json"),
-    },
-)
 
 def _custom_setup_impl(ctx: AnalysisContext) -> list[Provider]:
     cabalfile = ctx.attrs.src[CabalPackageInfo].cabalfile
@@ -160,7 +137,7 @@ custom_setup = rule(
     attrs = {
         "src": attrs.dep(providers = [CabalPackageInfo]),
         "depends": attrs.list(attrs.dep(), default = []),
-        "_haskell_toolchain": attrs.toolchain_dep(providers = [HaskellToolchainInfo, HaskellPlatformInfo]),
+        "_haskell_toolchain": attrs.toolchain_dep(providers = [HaskellToolchainInfo, HaskellPlatformInfo], default = "toolchains//:haskell"),
         "_cabal2json": attrs.dep(providers = [RunInfo], default = "//helpers:cabal2json"),
     },
 )

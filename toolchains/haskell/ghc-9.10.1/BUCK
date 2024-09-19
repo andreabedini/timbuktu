@@ -1,3 +1,14 @@
+load("@root//rules/haskell:toolchain.bzl", "haskell_toolchain")
+
+haskell_toolchain(
+    name = "haskell_toolchain",
+    compiler = "/home/andrea/.ghcup/ghc/9.10.1/bin/ghc-9.10.1",
+    packager = "/home/andrea/.ghcup/ghc/9.10.1/bin/ghc-pkg-9.10.1",
+    linker = "/home/andrea/.ghcup/ghc/9.10.1/bin/ghc-9.10.1",
+    haddock = "/home/andrea/.ghcup/ghc/9.8.2/bin/haddock-9.10.1",
+    visibility = ["PUBLIC"],
+)
+
 haskell_prebuilt_library(
     name = "time-1.12.2-6fe1",
     version = "1.12.2",

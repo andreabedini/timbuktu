@@ -1,0 +1,30 @@
+load("setup.bzl", "setup")
+
+setup(
+    name = "simple",
+    build_type = "simple",
+    visibility = ["PUBLIC"],
+)
+
+haskell_binary(
+    name = "simple_hb",
+    srcs = {"Main.hs": "simple.hs"},
+    deps = [
+        # how to pick these from the toolchain?
+        "toolchains//haskell/ghc-9.10.1:base",
+        "toolchains//haskell/ghc-9.10.1:Cabal",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+setup(
+    name = "configure",
+    build_type = "configure",
+    visibility = ["PUBLIC"],
+)
+
+setup(
+    name = "make",
+    build_type = "make",
+    visibility = ["PUBLIC"],
+)

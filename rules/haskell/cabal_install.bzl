@@ -2,7 +2,7 @@ load("@prelude//haskell:toolchain.bzl", "HaskellPlatformInfo", "HaskellToolchain
 load("cabal_install/configured_unit.bzl", "configured_legacy_unit", "configured_unit")
 load("cabal_install/pkg_src.bzl", "unit_src")
 load("cabal_install/pre_existing_unit.bzl", "pre_existing_unit")
-load("cabal_install/setup.bzl", "custom_setup", "setup")
+load("cabal_install/setup/setup.bzl", "custom_setup", "setup")
 load("cabal_install/utils.bzl", "normalise_legacy_unit")
 
 _as_source = lambda dep: ":{}".format(dep)
@@ -60,11 +60,6 @@ def interpret_plan(planjson: str):
             else:
                 if pkg_id not in setups:
                     setups[pkg_id] = pkg_id
-                    setup(
-                        name = pkg_id + "-setup",
-                        src = _as_source(pkg_id),
-                        _haskell_toolchain = haskell_toolchain,
-                    )
 
                 configured_unit(
                     name = unit["id"],
@@ -74,7 +69,7 @@ def interpret_plan(planjson: str):
                     flags = unit["flags"],
                     depends = map(_as_source, unit.get("depends", [])),
                     exe_depends = map(_as_source, unit.get("exe-depends", [])),
-                    setup = _as_source(pkg_id + "-setup"),
+                    setup = "//rules/haskell/cabal_install/setup:simple",
                     src = _as_source(pkg_id),
                     component_name = unit.get("component-name"),
                     _haskell_toolchain = haskell_toolchain,
