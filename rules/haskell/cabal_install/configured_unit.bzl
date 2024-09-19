@@ -17,22 +17,14 @@ def _flags(ctx: AnalysisContext) -> cmd_args:
 def _dependencies(ctx: AnalysisContext) -> list[str]:
     return ["--dependency={}={}".format(d[PackageInfo].pkg_name, d[PackageInfo].unit_id) for d in ctx.attrs.depends]
 
-def _step_configure(ctx: AnalysisContext):
+def _configure_args(ctx: AnalysisContext) -> cmd_args:
     haskell_toolchain = ctx.attrs._haskell_toolchain[HaskellToolchainInfo]
-    srcdir = ctx.attrs.src[CabalPackageInfo].srcdir
-    setup = ctx.attrs.setup[RunInfo]
-
     tset_depends = ctx.actions.tset(
         PackageConfTSet,
         children = [dep[PackageInfo].package_conf_tset for dep in ctx.attrs.depends],
     )
-
-    setup_config = ctx.actions.declare_output("builddir", "setup-config")
-
-    config_args = cmd_args(
-        cmd_args(setup_config.as_output(), format = "--builddir={}", parent = 1),
-        "--with-ghc",
-        haskell_toolchain.compiler,
+    return cmd_args(
+        cmd_args(haskell_toolchain.compiler, format = "--with-compiler={}"),
         "--exact-configuration",
         "--ghc-option=-hide-all-packages",
         "--exact-configuration",
@@ -43,9 +35,19 @@ def _step_configure(ctx: AnalysisContext):
         _flags(ctx),
     )
 
-    if ctx.attrs.component_name:
-        config_args.add("--cid={}".format(ctx.attrs.unit_id))
-        config_args.add(_component_name(ctx))
+def _step_configure(ctx: AnalysisContext):
+    srcdir = ctx.attrs.src[CabalPackageInfo].srcdir
+    setup = ctx.attrs.setup[RunInfo]
+
+    setup_config = ctx.actions.declare_output("builddir", "setup-config")
+
+    config_args = cmd_args(
+        cmd_args(setup_config.as_output(), format = "--builddir={}", parent = 1),
+        _configure_args(ctx),
+    )
+
+    config_args.add("--cid={}".format(ctx.attrs.unit_id))
+    config_args.add(_component_name(ctx))
 
     configure_script, _ = ctx.actions.write(
         "configure.sh",
@@ -151,12 +153,97 @@ configured_unit = rule(
     attrs = {
         "src": attrs.dep(providers = [CabalPackageInfo]),
         "flags": attrs.dict(attrs.string(), attrs.bool()),
-        "component_name": attrs.option(attrs.string(), default = None),
+        "component_name": attrs.string(),
         "exe_depends": attrs.list(attrs.dep(), default = []),
         "setup": attrs.exec_dep(providers = [RunInfo]),
         "_haskell_toolchain": attrs.toolchain_dep(providers = [HaskellToolchainInfo, HaskellPlatformInfo], default = "toolchains//:haskell"),
     } | common_unit_attrs,
 )
+
+def _configured_legacy_unit_impl(ctx: AnalysisContext) -> list[Provider]:
+    haskell_toolchain = ctx.attrs._haskell_toolchain[HaskellToolchainInfo]
+    srcdir = ctx.attrs.src[CabalPackageInfo].srcdir
+    setup = ctx.attrs.setup[RunInfo]
+
+    tset_depends = ctx.actions.tset(
+        PackageConfTSet,
+        children = [dep[PackageInfo].package_conf_tset for dep in ctx.attrs.depends],
+    )
+
+    builddir = ctx.actions.declare_output("builddir")
+    package_conf = ctx.actions.declare_output("{}.conf".format(ctx.attrs.unit_id))
+
+    script = ctx.actions.write(
+        "script.sh",
+        [
+            "#!/usr/bin/env bash",
+            "set -euo pipefail",
+            cmd_args(srcdir, format = "cd {}"),
+            cmd_args(
+                setup,
+                "configure",
+                cmd_args(builddir.as_output(), format = "--builddir={}"),
+                _configure_args(ctx),
+                "--ipi={}".format(ctx.attrs.unit_id),
+                delimiter = " ",
+                relative_to = srcdir,
+            ),
+            cmd_args(
+                setup,
+                "build",
+                cmd_args(builddir.as_output(), format = "--builddir={}"),
+                delimiter = " ",
+                relative_to = srcdir,
+            ),
+            cmd_args(
+                setup,
+                "register",
+                cmd_args(builddir.as_output(), format = "--builddir={}"),
+                cmd_args(package_conf.as_output(), format = "--gen-pkg-config={}"),
+                "--inplace",
+                delimiter = " ",
+                relative_to = srcdir,
+            ),
+        ],
+        is_executable = True,
+        with_inputs = True,
+    )
+    ctx.actions.run(
+        cmd_args(script, hidden = [builddir.as_output(), package_conf.as_output()]),
+        category = "build_legacy",
+    )
+
+    package_conf_tset = ctx.actions.tset(
+        PackageConfTSet,
+        value = package_conf,
+        children = [tset_depends],
+    )
+
+    return [
+        DefaultInfo(
+            default_output = builddir,
+        ),
+        PackageInfo(
+            unit_id = ctx.attrs.unit_id,
+            pkg_name = ctx.attrs.pkg_name,
+            package_conf = package_conf,
+            package_conf_tset = package_conf_tset,
+        ),
+    ]
+
+configured_legacy_unit = rule(
+    impl = _configured_legacy_unit_impl,
+    attrs = {
+        "src": attrs.dep(providers = [CabalPackageInfo]),
+        "flags": attrs.dict(attrs.string(), attrs.bool()),
+        "exe_depends": attrs.list(attrs.dep(), default = []),
+        "setup": attrs.exec_dep(providers = [RunInfo]),
+        "_haskell_toolchain": attrs.toolchain_dep(providers = [HaskellToolchainInfo, HaskellPlatformInfo], default = "toolchains//:haskell"),
+    } | common_unit_attrs,
+)
+
+def _in_dir(*script, work_dir):
+    return cmd_args("env", "-C", work_dir, cmd_args(*script).relative_to(work_dir))
 
 def _in_dir(*script, work_dir):
     return cmd_args("env", "-C", work_dir, cmd_args(*script).relative_to(work_dir))

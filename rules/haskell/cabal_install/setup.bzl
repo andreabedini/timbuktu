@@ -99,8 +99,53 @@ setup = rule(
     impl = _setup_impl,
     attrs = {
         "src": attrs.dep(providers = [CabalPackageInfo]),
+        "_haskell_toolchain": attrs.toolchain_dep(providers = [HaskellToolchainInfo, HaskellPlatformInfo]),
+        "_cabal2json": attrs.dep(providers = [RunInfo], default = "//helpers:cabal2json"),
+    },
+)
+
+def _custom_setup_impl(ctx: AnalysisContext) -> list[Provider]:
+    cabalfile = ctx.attrs.src[CabalPackageInfo].cabalfile
+
+    setup = ctx.actions.declare_output("Setup")
+
+    cabaljson = ctx.actions.declare_output("cabal.json")
+    ctx.actions.run(
+        cmd_args(ctx.attrs._cabal2json[RunInfo], cabalfile, cabaljson.as_output()),
+        category = "cabal2json",
+    )
+
+    def f(ctx, artifacts, outputs):
+        gpd = artifacts[cabaljson].read_json()
+        if gpd["build-type"] == "Simple":
+            _setup_simple(ctx, outputs[setup])
+        elif gpd["build-type"] == "Configure":
+            _setup_configure(ctx, outputs[setup])
+        elif gpd["build-type"] == "Custom":
+            _setup_custom(ctx, outputs[setup])
+        else:
+            fail("Unsupported build-type: {}".format(gpd["build-type"]))
+
+    ctx.actions.dynamic_output(
+        dynamic = [cabaljson],
+        inputs = [],
+        outputs = [setup.as_output()],
+        f = f,
+    )
+
+    # TODO exe depends and data dirs
+
+    return [
+        DefaultInfo(default_output = setup),
+        RunInfo(args = setup),
+    ]
+
+custom_setup = rule(
+    impl = _setup_impl,
+    attrs = {
+        "src": attrs.dep(providers = [CabalPackageInfo]),
         "depends": attrs.list(attrs.dep(), default = []),
         "_haskell_toolchain": attrs.toolchain_dep(providers = [HaskellToolchainInfo, HaskellPlatformInfo]),
-        "_cabal2json": attrs.dep(provider = [RunInfo], default = "//helpers:cabal2json"),
+        "_cabal2json": attrs.dep(providers = [RunInfo], default = "//helpers:cabal2json"),
     },
 )

@@ -37,14 +37,14 @@ common_unit_attrs = {
 }
 
 def package_db(ctx: AnalysisContext, tset: PackageConfTSet) -> cmd_args:
-    cache = ctx.actions.declare_output("package_db", "package.cache")
+    cache = ctx.actions.declare_output("package.conf.d", "package.cache")
     ctx.actions.run(
         cmd_args(
             "ghc-pkg",
             "recache",
             cmd_args(cache.as_output(), format = "--package-db={}", parent = 1),
             hidden = [
-                ctx.actions.symlink_file("package_db/{}.conf".format(package_conf.owner.name), package_conf)
+                ctx.actions.symlink_file("package.conf.d/{}.conf".format(package_conf.owner.name), package_conf)
                 for package_conf in tset.traverse()
             ],
         ),
