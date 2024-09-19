@@ -19,12 +19,12 @@ def _haskell_toolchain(_ctx: AnalysisContext) -> list[Provider]:
 haskell_toolchain = rule(
     impl = _haskell_toolchain,
     attrs = {
-      "compiler": attrs.string(default = "ghc"),
-      "packager": attrs.string(default = "ghc-pkg"),
-      "linker": attrs.string(default = "ghc"),
-      "haddock": attrs.string(default = "haddock"),
-      "compiler_flags": attrs.list(attrs.string(), default = []),
-      "linker_flags": attrs.list(attrs.string(), default = []),
+        "compiler": attrs.string(default = "ghc"),
+        "packager": attrs.string(default = "ghc-pkg"),
+        "linker": attrs.string(default = "ghc"),
+        "haddock": attrs.string(default = "haddock"),
+        "compiler_flags": attrs.list(attrs.string(), default = []),
+        "linker_flags": attrs.list(attrs.string(), default = []),
     },
     is_toolchain_rule = True,
 )

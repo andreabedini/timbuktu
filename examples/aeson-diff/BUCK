@@ -1,9 +1,9 @@
-load("//rules/haskell/cabal_install.bzl", "interpret_plan", "cabal_project")
+load("//rules/haskell/cabal_install.bzl", "cabal_project", "interpret_plan")
 
 cabal_project(
-  name = "comonad-plan",
-  project_file = "cabal.project",
-  targets = [ "aeson-diff" ],
+    name = "comonad-plan",
+    project_file = "cabal.project",
+    targets = ["aeson-diff"],
 )
 
 interpret_plan("""

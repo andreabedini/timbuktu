@@ -1,26 +1,26 @@
 haskell_binary(
-  name = "parse-cabal-fields",
-  srcs = {
-    "Main.hs": "parse-cabal-fields.hs"
-  },
-  deps = [
-    "//ghc:Cabal",
-    "//ghc:base",
-    "//ghc:bytestring",
-  ],
+    name = "parse-cabal-fields",
+    srcs = {
+        "Main.hs": "parse-cabal-fields.hs",
+    },
+    deps = [
+        "//ghc:Cabal",
+        "//ghc:base",
+        "//ghc:bytestring",
+    ],
 )
 
 git_fetch(
-  name = "Cabal-syntax-json.git",
-  repo = "https://github.com/andreabedini/Cabal-syntax-json.git",
-  rev = "aa4d3132ac0f217c2ced7c9894b3f6efb97203ca",
+    name = "Cabal-syntax-json.git",
+    repo = "https://github.com/andreabedini/Cabal-syntax-json.git",
+    rev = "aa4d3132ac0f217c2ced7c9894b3f6efb97203ca",
 )
 
 genrule(
-  name = "cabal2json",
-  srcs = [":Cabal-syntax-json.git"],
-  out = "Cabal-syntax-json",
-  cmd = "ghc -o ${OUT} -i${SRCDIR}/Cabal-syntax-json ${SRCDIR}/Cabal-syntax-json/Main.hs",
-  executable = True,
-  visibility = ["PUBLIC"],
+    name = "cabal2json",
+    srcs = [":Cabal-syntax-json.git"],
+    out = "Cabal-syntax-json",
+    cmd = "ghc -o ${OUT} -i${SRCDIR}/Cabal-syntax-json ${SRCDIR}/Cabal-syntax-json/Main.hs",
+    executable = True,
+    visibility = ["PUBLIC"],
 )
