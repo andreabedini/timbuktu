@@ -20,7 +20,11 @@ def interpret_plan(planjson: str):
 
     setup_simple(
         name = "setup_simple",
-        deps = setup_default_deps,
+        deps = setup_default_deps + [
+            # NOTE: these are for my postConf hack
+            "toolchains//haskell/{}:bytestring".format(plan["compiler-id"]),
+            "toolchains//haskell/{}:directory".format(plan["compiler-id"]),
+        ],
         # NOTE: We sepecify the same toolchain, so we can use the same compiler
         # and the dependencies in setup_default_deps.
         _haskell_toolchain = haskell_toolchain,
