@@ -2,7 +2,7 @@ load("@prelude//haskell:toolchain.bzl", "HaskellPlatformInfo", "HaskellToolchain
 load("cabal_install/configured_unit.bzl", "configured_legacy_unit", "configured_unit")
 load("cabal_install/pkg_src.bzl", "unit_src")
 load("cabal_install/pre_existing_unit.bzl", "pre_existing_unit")
-load("cabal_install/setup/setup.bzl", "custom_setup", "setup")
+load("cabal_install/setup.bzl", "setup_custom", "setup_simple")
 load("cabal_install/utils.bzl", "normalise_legacy_unit")
 
 _as_source = lambda dep: ":{}".format(dep)
@@ -11,10 +11,22 @@ def interpret_plan(planjson: str):
     plan = json.decode(planjson)
     units = map(normalise_legacy_unit, plan["install-plan"])
 
-    srcs = {}
-    setups = {}
-
+    # TODO: this feels hacky
     haskell_toolchain = "toolchains//haskell:" + plan["compiler-id"]
+    setup_default_deps = [
+        "toolchains//haskell/{}:base".format(plan["compiler-id"]),
+        "toolchains//haskell/{}:Cabal".format(plan["compiler-id"]),
+    ]
+
+    setup_simple(
+        name = "setup_simple",
+        deps = setup_default_deps,
+        # NOTE: We sepecify the same toolchain, so we can use the same compiler
+        # and the dependencies in setup_default_deps.
+        _haskell_toolchain = haskell_toolchain,
+    )
+
+    srcs = {}
 
     for unit in units:
         if unit["type"] == "configured" and unit["style"] == "global":
@@ -38,40 +50,43 @@ def interpret_plan(planjson: str):
             is_legacy_build = "components" in unit
 
             if is_legacy_build:
-                custom_setup(
-                    name = pkg_id + "-setup",
+                setup_custom(
+                    name = "{}-setup".format(pkg_id),
                     src = _as_source(pkg_id),
-                    depends = map(_as_source, unit.get("setup-depends", [])),
+                    # We do no have enough information in plan.json to figure
+                    # out the dependencies correctly, since cannot distinguish
+                    # between configure and custom build-types. We assume that
+                    # setup-depends are either complete or empty, in which case
+                    # we use the dependencies of Cabal.
+                    deps = map(_as_source, unit["setup-depends"]) or setup_default_deps,
+                    # NOTE: We sepecify the same toolchain, so we can use the same compiler
+                    # and the dependencies in setup_default_deps.
                     _haskell_toolchain = haskell_toolchain,
                 )
-
                 configured_legacy_unit(
                     name = unit["id"],
                     unit_id = unit["id"],
                     pkg_name = unit["pkg-name"],
                     pkg_version = unit["pkg-version"],
                     flags = unit["flags"],
-                    depends = map(_as_source, unit.get("depends", [])),
-                    exe_depends = map(_as_source, unit.get("exe-depends", [])),
-                    setup = _as_source(pkg_id + "-setup"),
+                    deps = map(_as_source, unit.get("depends", [])),
+                    exec_deps = map(_as_source, unit.get("exe-depends", [])),
+                    setup = _as_source("{}-setup".format(pkg_id)),
                     src = _as_source(pkg_id),
                     _haskell_toolchain = haskell_toolchain,
                 )
             else:
-                if pkg_id not in setups:
-                    setups[pkg_id] = pkg_id
-
                 configured_unit(
                     name = unit["id"],
                     unit_id = unit["id"],
                     pkg_name = unit["pkg-name"],
                     pkg_version = unit["pkg-version"],
-                    flags = unit["flags"],
-                    depends = map(_as_source, unit.get("depends", [])),
-                    exe_depends = map(_as_source, unit.get("exe-depends", [])),
-                    setup = "//rules/haskell/cabal_install/setup:simple",
-                    src = _as_source(pkg_id),
                     component_name = unit.get("component-name"),
+                    src = _as_source(pkg_id),
+                    flags = unit["flags"],
+                    deps = map(_as_source, unit.get("depends", [])),
+                    exec_deps = map(_as_source, unit.get("exe-depends", [])),
+                    setup = ":setup_simple",
                     _haskell_toolchain = haskell_toolchain,
                 )
 
@@ -81,7 +96,7 @@ def interpret_plan(planjson: str):
                 unit_id = unit["id"],
                 pkg_name = unit["pkg-name"],
                 pkg_version = unit["pkg-version"],
-                depends = map(_as_source, unit["depends"]),
+                deps = map(_as_source, unit["depends"]),
                 _haskell_toolchain = haskell_toolchain,
             )
 

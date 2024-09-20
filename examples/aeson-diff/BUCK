@@ -6,6 +6,11 @@ cabal_project(
     targets = ["aeson-diff"],
 )
 
+alias(
+    name = "aeson-diff",
+    actual = ":aeson-diff-1.1.0.13-3e0e2e3379ee00b179c7a56b1cd7ca115142c5a6967ac6675107d17467b30a0f",
+)
+
 interpret_plan("""
 {
   "cabal-version": "3.12.1.0",

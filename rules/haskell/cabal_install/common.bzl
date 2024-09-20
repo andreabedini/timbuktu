@@ -32,20 +32,28 @@ UnitInfo = provider(
     },
 )
 
+ExeDependInfo = provider(
+    fields = ["mangledPkgName", "exe", "datadir"],
+)
+
 common_unit_attrs = {
     "unit_id": attrs.string(),
     "pkg_name": attrs.string(),
     "pkg_version": attrs.string(),
-    "depends": attrs.list(attrs.dep(), default = []),
+    "deps": attrs.list(attrs.dep(), default = []),
 }
 
 source_unit_attrs = {
-    "exe_depends": attrs.list(attrs.exec_dep(providers = [RunInfo]), default = []),
+    "exec_deps": attrs.list(attrs.exec_dep(providers = [ExeDependInfo]), default = []),
     "flags": attrs.dict(attrs.string(), attrs.bool()),
-    "setup": attrs.exec_dep(providers = [RunInfo]),
     "src": attrs.dep(providers = [CabalPackageInfo]),
+    "setup": attrs.exec_dep(),
     "_haskell_toolchain": attrs.toolchain_dep(providers = [HaskellToolchainInfo, HaskellPlatformInfo], default = "toolchains//:haskell"),
 }
+
+def manglePkgName(name: str) -> str:
+    # NOTE: taken from build-env, check with Cabal
+    return name.replace("-", "_")
 
 def package_db(ctx: AnalysisContext, tset: PackageConfTSet) -> cmd_args:
     cache = ctx.actions.declare_output("package.conf.d", "package.cache")
