@@ -151,6 +151,7 @@ def _setup_custom_impl(ctx: AnalysisContext) -> list[Provider]:
 setup_custom = rule(
     impl = _setup_custom_impl,
     attrs = {
+        # FIXME: this should be attrs.source?
         "src": attrs.dep(providers = [CabalPackageInfo]),
         "deps": attrs.list(attrs.dep()),
         "_haskell_toolchain": attrs.toolchain_dep(providers = [HaskellToolchainInfo, HaskellPlatformInfo], default = "toolchains//:haskell"),

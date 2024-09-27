@@ -12,7 +12,7 @@ def interpret_plan(planjson: str):
     units = map(normalise_legacy_unit, plan["install-plan"])
 
     # TODO: this feels hacky
-    haskell_toolchain = "toolchains//haskell:" + plan["compiler-id"]
+    haskell_toolchain = "toolchains//haskell/{0}:{0}".format(plan["compiler-id"])
     setup_default_deps = [
         "toolchains//haskell/{}:base".format(plan["compiler-id"]),
         "toolchains//haskell/{}:Cabal".format(plan["compiler-id"]),

@@ -27,20 +27,20 @@ import Text.PrettyPrint
 import Prelude hiding ((<>))
 
 data Opts = Opts
-  { outPath :: FilePath,
+  { outPath :: Maybe FilePath,
     ghcPath :: FilePath
   }
 
 options :: [OptDescr (Opts -> Opts)]
 options =
   [ Option ['w'] ["ghc"] (ReqArg (\v opts -> opts {ghcPath = v}) "GHC") "use this GHC",
-    Option ['o'] ["outdir"] (ReqArg (\v opts -> opts {outPath = v}) "FILE") "output FILE"
+    Option ['o'] ["outdir"] (ReqArg (\v opts -> opts {outPath = Just v}) "FILE") "output FILE"
   ]
 
 defaultOpts :: Opts
 defaultOpts =
   Opts
-    { outPath = "toolchains/haskell",
+    { outPath = Nothing,
       ghcPath = "ghc"
     }
 
@@ -51,16 +51,17 @@ main = do
     hPutStrLn stderr err
   let opts = appEndo (foldMap Endo opts') defaultOpts
 
-  ghcPathFull <-
+  ghcFullPath <-
     findExecutable (ghcPath opts) >>= \case
       Nothing -> error "ghc not found"
       Just p -> canonicalizePath p
 
-  info <- readSettings <$> readCreateProcess (proc ghcPathFull ["--info"]) ""
+  info <- readSettings <$> readCreateProcess (proc ghcFullPath ["--info"]) ""
   let ghcVersion = fromMaybe (error "Missing \"Project version\"") $ lookup "Project version" info
       libDir = fromMaybe (error "Missing \"LibDir\"") $ lookup "LibDir" info
+      compilerId = "ghc-" ++ ghcVersion
 
-  outdir <- canonicalizePath $ outPath opts
+  outdir <- canonicalizePath $ fromMaybe ("toolchains/haskell/" ++ compilerId) $ outPath opts
   createDirectoryIfMissing True outdir
   putStrLn $ "Output directory: " ++ outdir
 
@@ -71,8 +72,9 @@ main = do
   let globalPackageDb = libDir </> "package.conf.d"
   entries <- map (\ipi -> ipi {IPI.pkgRoot = Just libDir}) <$> readPackageDbEntries globalPackageDb
   output <- traverse (renderPackageInfo ghcVersion) entries
-  writeFile (outPath opts </> "BUCK") $ render $ vcat output
-  putStrLn $ "Generated BUCK file: " ++ outPath opts </> "BUCK"
+
+  writeFile (outdir </> "BUCK") $ render $ renderToolchain compilerId ghcFullPath $$ vcat output
+  putStrLn $ "Generated BUCK file: " ++ outdir </> "BUCK"
 
 readSettings :: String -> [(String, String)]
 readSettings = read
@@ -103,19 +105,20 @@ readPackageDbEntries packagedb = do
 
   return ipis
 
--- renderToolchain :: String -> Doc
--- renderToolchain compiler =
---   vcat
---     [ load "toolchain.bzl" ["haskell_toolchain"],
---       rule
---         "haskell_toolchain"
---         [ ("name", quoted "haskell"),
---           ("compiler", quoted compiler),
---           ("packager", quoted compiler <> ".replace(\"ghc\", \"ghc-pkg\")"),
---           ("linker", quoted compiler),
---           ("visibility", list [quoted "PUBLIC"])
---         ]
---     ]
+renderToolchain :: String -> FilePath -> Doc
+renderToolchain compilerId path =
+  vcat
+    [ load "@root//rules/haskell:toolchain.bzl" ["haskell_toolchain"],
+      rule
+        "haskell_toolchain"
+        [ ("name", quoted compilerId),
+          ("compiler", quoted path),
+          ("linker", quoted path),
+          ("packager", quoted path <> ".replace(\"ghc\", \"ghc-pkg\")"),
+          ("haddock", quoted path <> ".replace(\"ghc\", \"haddock\")"),
+          ("visibility", list [quoted "PUBLIC"])
+        ]
+    ]
 
 renderPackageInfo :: String -> IPI.InstalledPackageInfo -> IO Doc
 renderPackageInfo ghcVersion IPI.InstalledPackageInfo {..} = do
@@ -184,7 +187,7 @@ list :: [Doc] -> Doc
 list m =
   sep
     [ lbrack,
-      nest 2 $ sep $ punctuate comma $ m,
+      nest 4 $ sep $ punctuate comma $ m,
       rbrack
     ]
 
@@ -192,7 +195,7 @@ dict :: [(String, Doc)] -> Doc
 dict kvs =
   sep
     [ lbrace,
-      nest 2 $ sep $ punctuate comma $ [quoted k <> ":" <+> v | (k, v) <- kvs],
+      nest 4 $ sep $ punctuate comma $ [quoted k <> ":" <+> v | (k, v) <- kvs],
       rbrace
     ]
 
@@ -200,13 +203,13 @@ rule :: String -> [(String, Doc)] -> Doc
 rule n args =
   vcat
     [ text n <> "(",
-      nest 2 $ vcat $ punctuate comma [text k <+> "=" <+> v | (k, v) <- args],
+      nest 4 $ vcat $ punctuate comma [text k <+> "=" <+> v | (k, v) <- args],
       ")",
       ""
     ]
 
--- load :: String -> [String] -> Doc
--- load m f = "load(" <> quoted m <> "," <+> (hsep $ punctuate comma $ map quoted f) <> ")" <> "\n"
+load :: String -> [String] -> Doc
+load m f = "load(" <> quoted m <> "," <+> (hsep $ punctuate comma $ map quoted f) <> ")" <> "\n"
 
 quoted :: String -> Doc
 quoted = text . show

@@ -1,6 +1,6 @@
 load("//rules/haskell/hackage.bzl", "hackage_package", "module_path")
 
-toolchain = "toolchains//haskell:ghc-9.10.1"
+toolchain = "toolchains//haskell/ghc-9.10.1:ghc-9.10.1"
 
 alex_modules = [
     "Main",
