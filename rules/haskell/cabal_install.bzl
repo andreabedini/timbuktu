@@ -12,18 +12,18 @@ def interpret_plan(planjson: str):
     units = map(normalise_legacy_unit, plan["install-plan"])
 
     # TODO: this feels hacky
-    haskell_toolchain = "toolchains//haskell/{0}:{0}".format(plan["compiler-id"])
+    haskell_toolchain = "toolchains//{}:haskell".format(plan["compiler-id"])
     setup_default_deps = [
-        "toolchains//haskell/{}:base".format(plan["compiler-id"]),
-        "toolchains//haskell/{}:Cabal".format(plan["compiler-id"]),
+        "toolchains//{}:base".format(plan["compiler-id"]),
+        "toolchains//{}:Cabal".format(plan["compiler-id"]),
     ]
 
     setup_simple(
         name = "setup_simple",
         deps = setup_default_deps + [
             # NOTE: these are for my postConf hack
-            "toolchains//haskell/{}:bytestring".format(plan["compiler-id"]),
-            "toolchains//haskell/{}:directory".format(plan["compiler-id"]),
+            "toolchains//{}:bytestring".format(plan["compiler-id"]),
+            "toolchains//{}:directory".format(plan["compiler-id"]),
         ],
         # NOTE: We sepecify the same toolchain, so we can use the same compiler
         # and the dependencies in setup_default_deps.

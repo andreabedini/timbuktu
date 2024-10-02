@@ -13,11 +13,6 @@ system_genrule_toolchain(
     visibility = ["PUBLIC"],
 )
 
-system_haskell_toolchain(
-    name = "haskell",
-    visibility = ["PUBLIC"],
-)
-
 system_python_toolchain(
     name = "python",
     visibility = ["PUBLIC"],
@@ -25,5 +20,11 @@ system_python_toolchain(
 
 system_python_bootstrap_toolchain(
     name = "python_bootstrap",
+    visibility = ["PUBLIC"],
+)
+
+toolchain_alias(
+    name = "haskell",
+    actual = "@toolchains//ghc-9.10.1:haskell",
     visibility = ["PUBLIC"],
 )

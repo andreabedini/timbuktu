@@ -3,10 +3,7 @@
 import Data.ByteString.Lazy qualified as LBS
 import Data.Foldable (for_)
 import Distribution.PackageDescription (PackageDescription (..))
-import Distribution.Simple (defaultMainWithHooks, simpleUserHooks)
--- import Distribution.Simple.Build
---   ( initialBuildSteps,
---   )
+import Distribution.Simple (simpleUserHooks, defaultMainWithHooksArgs)
 import Distribution.Simple.Compiler (CompilerFlavor (..), compilerFlavor)
 import Distribution.Simple.Program (Program (..), requireProgram)
 import Distribution.Simple.Program.Builtin (ghcProgram, ghcjsProgram, haskellSuiteProgram, jhcProgram, uhcProgram)
@@ -17,9 +14,13 @@ import Distribution.Types.LocalBuildInfo (LocalBuildInfo (..), allTargetsInBuild
 import Distribution.Utils.Json (renderJson)
 import Distribution.Verbosity qualified as Verbosity
 import System.Directory (getCurrentDirectory)
+import System.Environment (getArgs)
 
 main :: IO ()
-main = defaultMainWithHooks simpleUserHooks {postConf = postConf'}
+main = do
+  args <- getArgs
+  defaultMainWithHooksArgs simpleUserHooks {postConf = postConf'} $ "configure" : args
+
 
 -- TODO: try to load the setup-config instead. In this way we can make many smaller utilities.
 -- See Distribution.Simple.Configure.getConfigStateFile

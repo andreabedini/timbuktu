@@ -1,6 +1,6 @@
 load("//rules/haskell/hackage.bzl", "hackage_package", "module_path")
-
-toolchain = "toolchains//haskell/ghc-9.10.1:ghc-9.10.1"
+load("cabal/macros.bzl", "cabal_macros")
+load("cabal/paths.bzl", "cabal_paths_module")
 
 alex_modules = [
     "Main",
@@ -29,12 +29,28 @@ hackage_package(
     sub_targets = ["data"] + [module_path(m, dir = "src") for m in alex_modules],
 )
 
-cxx_library(
+cabal_macros(
     name = "alex-cabal-macros",
-    header_namespace = "alex",
-    exported_headers = {
-        "cabal_macros.h": "alex-autogen/cabal_macros.h",
-    },
+    package_name = "alex",
+    package_version = "3.5.1",
+    deps = [
+        "toolchains//ghc-9.10.1:base",
+        "toolchains//ghc-9.10.1:array",
+        "toolchains//ghc-9.10.1:containers",
+        "toolchains//ghc-9.10.1:directory",
+    ],
+)
+
+cabal_paths_module(
+    name = "alex-paths",
+    package_name = "alex",
+    package_version = "3.5.1",
+    bindir = "bin",
+    libdir = "lib",
+    dynlibdir = "dynlib",
+    datadir = "data",
+    libexecdir = "libexec",
+    sysconfdir = "sysconf",
 )
 
 haskell_binary(
@@ -50,17 +66,14 @@ haskell_binary(
         "-XPatternSynonyms",
         "-XScopedTypeVariables",
         "-XTupleSections",
-        "-optP-include",
-        "-optPalex/cabal_macros.h",
     ],
     deps = [
-        "toolchains//haskell/ghc-9.10.1:base",
-        "toolchains//haskell/ghc-9.10.1:array",
-        "toolchains//haskell/ghc-9.10.1:containers",
-        "toolchains//haskell/ghc-9.10.1:directory",
+        "toolchains//ghc-9.10.1:base",
+        "toolchains//ghc-9.10.1:array",
+        "toolchains//ghc-9.10.1:containers",
+        "toolchains//ghc-9.10.1:directory",
         ":alex-cabal-macros",
     ],
-    _haskell_toolchain = toolchain,
 )
 
 Cabal_syntax_modules = [
@@ -222,26 +235,25 @@ genrule(
 haskell_library(
     name = "Cabal-syntax",
     compiler_flags = ["-XHaskell2010"],
-    _haskell_toolchain = toolchain,
     srcs = {
         module_path(m): ":Cabal-syntax-3.12.1.0[" + module_path(m, dir = "src") + "]"
         for m in Cabal_syntax_modules
     } | {module_path("Distribution.Fields.Lexer"): ":Distribution_Fields_Lexer"},
     deps = [
-        "toolchains//haskell/ghc-9.10.1:array",
-        "toolchains//haskell/ghc-9.10.1:base",
-        "toolchains//haskell/ghc-9.10.1:binary",
-        "toolchains//haskell/ghc-9.10.1:bytestring",
-        "toolchains//haskell/ghc-9.10.1:containers",
-        "toolchains//haskell/ghc-9.10.1:deepseq",
-        "toolchains//haskell/ghc-9.10.1:directory",
-        "toolchains//haskell/ghc-9.10.1:filepath",
-        "toolchains//haskell/ghc-9.10.1:mtl",
-        "toolchains//haskell/ghc-9.10.1:parsec",
-        "toolchains//haskell/ghc-9.10.1:pretty",
-        "toolchains//haskell/ghc-9.10.1:text",
-        "toolchains//haskell/ghc-9.10.1:time",
-        "toolchains//haskell/ghc-9.10.1:transformers",
+        "toolchains//ghc-9.10.1:array",
+        "toolchains//ghc-9.10.1:base",
+        "toolchains//ghc-9.10.1:binary",
+        "toolchains//ghc-9.10.1:bytestring",
+        "toolchains//ghc-9.10.1:containers",
+        "toolchains//ghc-9.10.1:deepseq",
+        "toolchains//ghc-9.10.1:directory",
+        "toolchains//ghc-9.10.1:filepath",
+        "toolchains//ghc-9.10.1:mtl",
+        "toolchains//ghc-9.10.1:parsec",
+        "toolchains//ghc-9.10.1:pretty",
+        "toolchains//ghc-9.10.1:text",
+        "toolchains//ghc-9.10.1:time",
+        "toolchains//ghc-9.10.1:transformers",
     ],
 )
 
