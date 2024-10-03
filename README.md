@@ -1,4 +1,4 @@
-# Experiments with Buck2
+# Experiments building Haskell with Buck2
 
 This repository contains some experiments with the Buck2 build system. I am
 interested in how it can be used to build Haskell projects that use cabal.
