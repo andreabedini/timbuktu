@@ -28,3 +28,12 @@ toolchain_alias(
     actual = "@toolchains//ghc-9.10.1:haskell",
     visibility = ["PUBLIC"],
 )
+
+# versioned_alias(
+#     name = "haskell",
+#     versions = {
+#         "9.10.1": "@toolchains//ghc-9.10.1:haskell",
+#         "9.8.2": "@toolchains//ghc-9.8.2:haskell",
+#     },
+#     visibility = ["PUBLIC"],
+# )

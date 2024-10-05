@@ -7,6 +7,9 @@ haskell_toolchain(
     packager = "ghc-pkg-9.10.1",
     haddock = "haddock-9.10.1",
     visibility = ["PUBLIC"],
+    packages = {
+        "time": ":time-1.12.2-6fe1",
+    },
 )
 
 haskell_prebuilt_library(

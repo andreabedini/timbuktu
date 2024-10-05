@@ -27,6 +27,7 @@ def interpret_plan(planjson: str):
         ],
         # NOTE: We sepecify the same toolchain, so we can use the same compiler
         # and the dependencies in setup_default_deps.
+        # ??
         _haskell_toolchain = haskell_toolchain,
     )
 

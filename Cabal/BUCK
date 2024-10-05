@@ -1,3 +1,4 @@
+load("@toolchains//haskell.bzl", "haskell_toolchain_library")
 load("//rules/haskell/hackage.bzl", "hackage_package", "module_path")
 load("cabal/macros.bzl", "cabal_macros")
 load("cabal/paths.bzl", "cabal_paths_module")
@@ -34,10 +35,10 @@ cabal_macros(
     package_name = "alex",
     package_version = "3.5.1",
     deps = [
-        "toolchains//ghc-9.10.1:base",
-        "toolchains//ghc-9.10.1:array",
-        "toolchains//ghc-9.10.1:containers",
-        "toolchains//ghc-9.10.1:directory",
+        ":base",
+        ":array",
+        ":containers",
+        ":directory",
     ],
 )
 
@@ -52,6 +53,23 @@ cabal_paths_module(
     libexecdir = "libexec",
     sysconfdir = "sysconf",
 )
+
+genrule(
+    name = "test",
+    cmd = """
+    OUT=\\$(realpath $OUT)
+    cd $SRCS
+    $(exe //rules/haskell/cabal_install:setup_simple) configure --builddir $TMP
+    mv $TMP/buildinfo.json $OUT
+    """,
+    out = "buildinfo.json",
+    srcs = [":alex-3.5.1.0"],
+)
+
+haskell_toolchain_library(name = "base")
+haskell_toolchain_library(name = "array")
+haskell_toolchain_library(name = "containers")
+haskell_toolchain_library(name = "directory")
 
 haskell_binary(
     name = "alex",
@@ -68,10 +86,10 @@ haskell_binary(
         "-XTupleSections",
     ],
     deps = [
-        "toolchains//ghc-9.10.1:base",
-        "toolchains//ghc-9.10.1:array",
-        "toolchains//ghc-9.10.1:containers",
-        "toolchains//ghc-9.10.1:directory",
+        ":base",
+        ":array",
+        ":containers",
+        ":directory",
         ":alex-cabal-macros",
     ],
 )

@@ -8,13 +8,15 @@ haskell_binary(
     deps = [
         "toolchains//ghc-9.10.1:base",
         "toolchains//ghc-9.10.1:bytestring",
-        "toolchains//ghc-9.10.1:directory",
+        "toolchains//ghc-9.10.1:containers",
+        "toolchains//ghc-9.10.1:filepath",
         "toolchains//ghc-9.10.1:Cabal",
     ],
     srcs = {
         "Main.hs": "setup_simple.hs",
     },
-    _haskell_toolchain = "toolchains//ghc-9.10.1:haskell"
+    _haskell_toolchain = "toolchains//ghc-9.10.1:haskell",
+    visibility = ["PUBLIC"],
 )
 
 export_file(
