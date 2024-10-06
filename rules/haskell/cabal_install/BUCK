@@ -1,21 +1,28 @@
+load("//rules/haskell:toolchain.bzl", "haskell_toolchain_library")
+
 export_file(
     name = "setup_simple.hs",
     visibility = ["PUBLIC"],
 )
 
+[
+    haskell_toolchain_library(name = name)
+    for name in ["base", "bytestring", "containers", "filepath", "Cabal"]
+]
+
 haskell_binary(
     name = "setup_simple",
     deps = [
-        "toolchains//ghc-9.10.1:base",
-        "toolchains//ghc-9.10.1:bytestring",
-        "toolchains//ghc-9.10.1:containers",
-        "toolchains//ghc-9.10.1:filepath",
-        "toolchains//ghc-9.10.1:Cabal",
+        ":base",
+        ":bytestring",
+        ":containers",
+        ":filepath",
+        ":Cabal",
     ],
     srcs = {
         "Main.hs": "setup_simple.hs",
     },
-    _haskell_toolchain = "toolchains//ghc-9.10.1:haskell",
+    # _haskell_toolchain = "toolchains//ghc-9.10.1:haskell",
     visibility = ["PUBLIC"],
 )
 

@@ -109,7 +109,7 @@ readPackageDbEntries packagedb = do
 
 renderToolchain :: String -> [IPI.InstalledPackageInfo] -> [Doc]
 renderToolchain compilerId entries =
-  [ load "@toolchains//:haskell.bzl" ["haskell_toolchain"],
+  [ load "//rules/haskell:toolchains.bzl" ["haskell_toolchain"],
     rule
       "haskell_toolchain"
       [ ("name", "haskell"),

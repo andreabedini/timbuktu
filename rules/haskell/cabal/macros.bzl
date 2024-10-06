@@ -9,6 +9,10 @@ load(
 load("@prelude//haskell:library_info.bzl", "HaskellLibraryProvider")
 load("@prelude//linking:link_info.bzl", "LinkStyle")
 
+###
+### NOTE: GHC already defines these macros!
+###
+
 Version = record(x = int, y = int, z = int)
 
 def version_to_string(v: Version) -> str:

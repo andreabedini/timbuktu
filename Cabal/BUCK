@@ -1,7 +1,6 @@
-load("@toolchains//haskell.bzl", "haskell_toolchain_library")
+load("//rules/haskell:toolchain.bzl", "haskell_toolchain_library")
+load("//rules/haskell/cabal/paths.bzl", "cabal_paths_module")
 load("//rules/haskell/hackage.bzl", "hackage_package", "module_path")
-load("cabal/macros.bzl", "cabal_macros")
-load("cabal/paths.bzl", "cabal_paths_module")
 
 alex_modules = [
     "Main",
@@ -28,18 +27,6 @@ hackage_package(
     name = "alex-3.5.1.0",
     sha256 = "c92efe86f8eb959ee03be6c04ee57ebc7e4abc75a6c4b26551215d7443e92a07",
     sub_targets = ["data"] + [module_path(m, dir = "src") for m in alex_modules],
-)
-
-cabal_macros(
-    name = "alex-cabal-macros",
-    package_name = "alex",
-    package_version = "3.5.1",
-    deps = [
-        ":base",
-        ":array",
-        ":containers",
-        ":directory",
-    ],
 )
 
 cabal_paths_module(
@@ -77,20 +64,20 @@ haskell_binary(
         module_path(m): ":alex-3.5.1.0[" + module_path(m, dir = "src") + "]"
         for m in alex_modules
     } | {
-        "Paths_alex.hs": "alex-autogen/Paths_alex.hs",
+        "Paths_alex.hs": ":alex-paths",
     },
     compiler_flags = [
         "-XHaskell2010",
         "-XPatternSynonyms",
         "-XScopedTypeVariables",
         "-XTupleSections",
+        "-Werror",
     ],
     deps = [
         ":base",
         ":array",
         ":containers",
         ":directory",
-        ":alex-cabal-macros",
     ],
 )
 

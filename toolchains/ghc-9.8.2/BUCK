@@ -1,1038 +1,1040 @@
-load("@toolchains//:haskell.bzl", "haskell_toolchain")
+load("@root//rules/haskell:toolchain.bzl", "haskell_toolchain")
 
 haskell_toolchain(
-  name = "haskell",
-  compiler = "ghc-9.8.2",
-  linker = "ghc-9.8.2",
-  packager = "ghc-pkg-9.8.2",
-  haddock = "haddock-9.8.2",
-  packages = {
-    "Cabal": ":Cabal-3.10.2.0-4b29",
-    "Cabal-syntax": ":Cabal-syntax-3.10.2.0-136f",
-    "array": ":array-0.5.6.0-20c0",
-    "base": ":base-4.19.1.0-cbb2",
-    "binary": ":binary-0.8.9.1-5151",
-    "bytestring": ":bytestring-0.12.1.0-c563",
-    "containers": ":containers-0.6.8-7acc",
-    "deepseq": ":deepseq-1.5.0.0-d161",
-    "directory": ":directory-1.3.8.1-3db4",
-    "exceptions": ":exceptions-0.10.7-6306",
-    "filepath": ":filepath-1.4.200.1-c404",
-    "ghc": ":ghc-9.8.2-2c96",
-    "ghc-bignum": ":ghc-bignum-1.3-c030",
-    "ghc-boot": ":ghc-boot-9.8.2-5e59",
-    "ghc-boot-th": ":ghc-boot-th-9.8.2-5f69",
-    "ghc-compact": ":ghc-compact-0.1.0.0-a497",
-    "ghc-heap": ":ghc-heap-9.8.2-dac3",
-    "ghc-prim": ":ghc-prim-0.11.0-8a73",
-    "ghci": ":ghci-9.8.2-f176",
-    "haskeline": ":haskeline-0.8.2.1-edf0",
-    "hpc": ":hpc-0.7.0.0-0481",
-    "integer-gmp": ":integer-gmp-1.1-8ef4",
-    "mtl": ":mtl-2.3.1-4ed7",
-    "parsec": ":parsec-3.1.17.0-5705",
-    "pretty": ":pretty-1.1.3.6-a699",
-    "process": ":process-1.6.18.0-1a33",
-    "rts": ":rts-1.0.2",
-    "semaphore-compat": ":semaphore-compat-1.0.0-cf4a",
-    "stm": ":stm-2.5.2.1-4277",
-    "system-cxx-std-lib": ":system-cxx-std-lib-1.0",
-    "template-haskell": ":template-haskell-2.21.0.0-2542",
-    "terminfo": ":terminfo-0.4.1.6-bee1",
-    "text": ":text-2.1.1-cd34",
-    "time": ":time-1.12.2-5921",
-    "transformers": ":transformers-0.6.1.0-d712",
-    "unix": ":unix-2.8.4.0-d7dc",
-    "xhtml": ":xhtml-3000.2.2.1-38ba"
-  },
-  visibility = [ "PUBLIC" ]
+    name = "haskell",
+    compiler = "ghc-9.8.2",
+    linker = "ghc-9.8.2",
+    packager = "ghc-pkg-9.8.2",
+    haddock = "haddock-9.8.2",
+    packages = {
+        "Cabal": ":Cabal-3.10.2.0-4b29",
+        "Cabal-syntax": ":Cabal-syntax-3.10.2.0-136f",
+        "array": ":array-0.5.6.0-20c0",
+        "base": ":base-4.19.1.0-cbb2",
+        "binary": ":binary-0.8.9.1-5151",
+        "bytestring": ":bytestring-0.12.1.0-c563",
+        "containers": ":containers-0.6.8-7acc",
+        "deepseq": ":deepseq-1.5.0.0-d161",
+        "directory": ":directory-1.3.8.1-3db4",
+        "exceptions": ":exceptions-0.10.7-6306",
+        "filepath": ":filepath-1.4.200.1-c404",
+        "ghc": ":ghc-9.8.2-2c96",
+        "ghc-bignum": ":ghc-bignum-1.3-c030",
+        "ghc-boot": ":ghc-boot-9.8.2-5e59",
+        "ghc-boot-th": ":ghc-boot-th-9.8.2-5f69",
+        "ghc-compact": ":ghc-compact-0.1.0.0-a497",
+        "ghc-heap": ":ghc-heap-9.8.2-dac3",
+        "ghc-prim": ":ghc-prim-0.11.0-8a73",
+        "ghci": ":ghci-9.8.2-f176",
+        "haskeline": ":haskeline-0.8.2.1-edf0",
+        "hpc": ":hpc-0.7.0.0-0481",
+        "integer-gmp": ":integer-gmp-1.1-8ef4",
+        "mtl": ":mtl-2.3.1-4ed7",
+        "parsec": ":parsec-3.1.17.0-5705",
+        "pretty": ":pretty-1.1.3.6-a699",
+        "process": ":process-1.6.18.0-1a33",
+        "rts": ":rts-1.0.2",
+        "semaphore-compat": ":semaphore-compat-1.0.0-cf4a",
+        "stm": ":stm-2.5.2.1-4277",
+        "system-cxx-std-lib": ":system-cxx-std-lib-1.0",
+        "template-haskell": ":template-haskell-2.21.0.0-2542",
+        "terminfo": ":terminfo-0.4.1.6-bee1",
+        "text": ":text-2.1.1-cd34",
+        "time": ":time-1.12.2-5921",
+        "transformers": ":transformers-0.6.1.0-d712",
+        "unix": ":unix-2.8.4.0-d7dc",
+        "xhtml": ":xhtml-3000.2.2.1-38ba",
+    },
+    visibility = ["PUBLIC"],
 )
- 
+
 haskell_prebuilt_library(
-  name = "Cabal-3.10.2.0-4b29",
-  version = "3.10.2.0",
-  id = "Cabal-3.10.2.0-4b29",
-  db = "lib/package.conf.d",
-  deps = [
-    ":Cabal-syntax-3.10.2.0-136f",
-    ":array-0.5.6.0-20c0",
-    ":base-4.19.1.0-cbb2",
-    ":bytestring-0.12.1.0-c563",
-    ":containers-0.6.8-7acc",
-    ":deepseq-1.5.0.0-d161",
-    ":directory-1.3.8.1-3db4",
-    ":filepath-1.4.200.1-c404",
-    ":mtl-2.3.1-4ed7",
-    ":parsec-3.1.17.0-5705",
-    ":pretty-1.1.3.6-a699",
-    ":process-1.6.18.0-1a33",
-    ":text-2.1.1-cd34",
-    ":time-1.12.2-5921",
-    ":transformers-0.6.1.0-d712",
-    ":unix-2.8.4.0-d7dc"
-  ],
-  import_dirs = [ "lib/x86_64-linux-ghc-9.8.2/Cabal-3.10.2.0-4b29" ],
-  shared_libs = {
-    "libHSCabal-3.10.2.0-4b29-ghc9.8.2.so": "lib/x86_64-linux-ghc-9.8.2/libHSCabal-3.10.2.0-4b29-ghc9.8.2.so"
-  },
-  static_libs = [
-    "lib/x86_64-linux-ghc-9.8.2/Cabal-3.10.2.0-4b29/libHSCabal-3.10.2.0-4b29.a"
-  ],
-  cxx_header_dirs = [ ],
-  exported_linker_flags = [ ],
-  visibility = [ "PUBLIC" ]
+    name = "Cabal-3.10.2.0-4b29",
+    version = "3.10.2.0",
+    id = "Cabal-3.10.2.0-4b29",
+    db = "lib/package.conf.d",
+    deps = [
+        ":Cabal-syntax-3.10.2.0-136f",
+        ":array-0.5.6.0-20c0",
+        ":base-4.19.1.0-cbb2",
+        ":bytestring-0.12.1.0-c563",
+        ":containers-0.6.8-7acc",
+        ":deepseq-1.5.0.0-d161",
+        ":directory-1.3.8.1-3db4",
+        ":filepath-1.4.200.1-c404",
+        ":mtl-2.3.1-4ed7",
+        ":parsec-3.1.17.0-5705",
+        ":pretty-1.1.3.6-a699",
+        ":process-1.6.18.0-1a33",
+        ":text-2.1.1-cd34",
+        ":time-1.12.2-5921",
+        ":transformers-0.6.1.0-d712",
+        ":unix-2.8.4.0-d7dc",
+    ],
+    import_dirs = ["lib/x86_64-linux-ghc-9.8.2/Cabal-3.10.2.0-4b29"],
+    shared_libs = {
+        "libHSCabal-3.10.2.0-4b29-ghc9.8.2.so": "lib/x86_64-linux-ghc-9.8.2/libHSCabal-3.10.2.0-4b29-ghc9.8.2.so",
+    },
+    static_libs = [
+        "lib/x86_64-linux-ghc-9.8.2/Cabal-3.10.2.0-4b29/libHSCabal-3.10.2.0-4b29.a",
+    ],
+    cxx_header_dirs = [],
+    exported_linker_flags = [],
+    visibility = ["PUBLIC"],
 )
- 
+
 haskell_prebuilt_library(
-  name = "Cabal-syntax-3.10.2.0-136f",
-  version = "3.10.2.0",
-  id = "Cabal-syntax-3.10.2.0-136f",
-  db = "lib/package.conf.d",
-  deps = [
-    ":array-0.5.6.0-20c0",
-    ":base-4.19.1.0-cbb2",
-    ":binary-0.8.9.1-5151",
-    ":bytestring-0.12.1.0-c563",
-    ":containers-0.6.8-7acc",
-    ":deepseq-1.5.0.0-d161",
-    ":directory-1.3.8.1-3db4",
-    ":filepath-1.4.200.1-c404",
-    ":mtl-2.3.1-4ed7",
-    ":parsec-3.1.17.0-5705",
-    ":pretty-1.1.3.6-a699",
-    ":text-2.1.1-cd34",
-    ":time-1.12.2-5921",
-    ":transformers-0.6.1.0-d712",
-    ":unix-2.8.4.0-d7dc"
-  ],
-  import_dirs = [
-    "lib/x86_64-linux-ghc-9.8.2/Cabal-syntax-3.10.2.0-136f"
-  ],
-  shared_libs = {
-    "libHSCabal-syntax-3.10.2.0-136f-ghc9.8.2.so": "lib/x86_64-linux-ghc-9.8.2/libHSCabal-syntax-3.10.2.0-136f-ghc9.8.2.so"
-  },
-  static_libs = [
-    "lib/x86_64-linux-ghc-9.8.2/Cabal-syntax-3.10.2.0-136f/libHSCabal-syntax-3.10.2.0-136f.a"
-  ],
-  cxx_header_dirs = [ ],
-  exported_linker_flags = [ ],
-  visibility = [ "PUBLIC" ]
+    name = "Cabal-syntax-3.10.2.0-136f",
+    version = "3.10.2.0",
+    id = "Cabal-syntax-3.10.2.0-136f",
+    db = "lib/package.conf.d",
+    deps = [
+        ":array-0.5.6.0-20c0",
+        ":base-4.19.1.0-cbb2",
+        ":binary-0.8.9.1-5151",
+        ":bytestring-0.12.1.0-c563",
+        ":containers-0.6.8-7acc",
+        ":deepseq-1.5.0.0-d161",
+        ":directory-1.3.8.1-3db4",
+        ":filepath-1.4.200.1-c404",
+        ":mtl-2.3.1-4ed7",
+        ":parsec-3.1.17.0-5705",
+        ":pretty-1.1.3.6-a699",
+        ":text-2.1.1-cd34",
+        ":time-1.12.2-5921",
+        ":transformers-0.6.1.0-d712",
+        ":unix-2.8.4.0-d7dc",
+    ],
+    import_dirs = [
+        "lib/x86_64-linux-ghc-9.8.2/Cabal-syntax-3.10.2.0-136f",
+    ],
+    shared_libs = {
+        "libHSCabal-syntax-3.10.2.0-136f-ghc9.8.2.so": "lib/x86_64-linux-ghc-9.8.2/libHSCabal-syntax-3.10.2.0-136f-ghc9.8.2.so",
+    },
+    static_libs = [
+        "lib/x86_64-linux-ghc-9.8.2/Cabal-syntax-3.10.2.0-136f/libHSCabal-syntax-3.10.2.0-136f.a",
+    ],
+    cxx_header_dirs = [],
+    exported_linker_flags = [],
+    visibility = ["PUBLIC"],
 )
- 
+
 haskell_prebuilt_library(
-  name = "array-0.5.6.0-20c0",
-  version = "0.5.6.0",
-  id = "array-0.5.6.0-20c0",
-  db = "lib/package.conf.d",
-  deps = [ ":base-4.19.1.0-cbb2" ],
-  import_dirs = [ "lib/x86_64-linux-ghc-9.8.2/array-0.5.6.0-20c0" ],
-  shared_libs = {
-    "libHSarray-0.5.6.0-20c0-ghc9.8.2.so": "lib/x86_64-linux-ghc-9.8.2/libHSarray-0.5.6.0-20c0-ghc9.8.2.so"
-  },
-  static_libs = [
-    "lib/x86_64-linux-ghc-9.8.2/array-0.5.6.0-20c0/libHSarray-0.5.6.0-20c0.a"
-  ],
-  cxx_header_dirs = [ ],
-  exported_linker_flags = [ ],
-  visibility = [ "PUBLIC" ]
+    name = "array-0.5.6.0-20c0",
+    version = "0.5.6.0",
+    id = "array-0.5.6.0-20c0",
+    db = "lib/package.conf.d",
+    deps = [":base-4.19.1.0-cbb2"],
+    import_dirs = ["lib/x86_64-linux-ghc-9.8.2/array-0.5.6.0-20c0"],
+    shared_libs = {
+        "libHSarray-0.5.6.0-20c0-ghc9.8.2.so": "lib/x86_64-linux-ghc-9.8.2/libHSarray-0.5.6.0-20c0-ghc9.8.2.so",
+    },
+    static_libs = [
+        "lib/x86_64-linux-ghc-9.8.2/array-0.5.6.0-20c0/libHSarray-0.5.6.0-20c0.a",
+    ],
+    cxx_header_dirs = [],
+    exported_linker_flags = [],
+    visibility = ["PUBLIC"],
 )
- 
+
 haskell_prebuilt_library(
-  name = "base-4.19.1.0-cbb2",
-  version = "4.19.1.0",
-  id = "base-4.19.1.0-cbb2",
-  db = "lib/package.conf.d",
-  deps = [
-    ":ghc-bignum-1.3-c030", ":ghc-prim-0.11.0-8a73", ":rts-1.0.2"
-  ],
-  import_dirs = [ "lib/x86_64-linux-ghc-9.8.2/base-4.19.1.0-cbb2" ],
-  shared_libs = {
-    "libHSbase-4.19.1.0-cbb2-ghc9.8.2.so": "lib/x86_64-linux-ghc-9.8.2/libHSbase-4.19.1.0-cbb2-ghc9.8.2.so"
-  },
-  static_libs = [
-    "lib/x86_64-linux-ghc-9.8.2/base-4.19.1.0-cbb2/libHSbase-4.19.1.0-cbb2.a"
-  ],
-  cxx_header_dirs = [
-    "lib/x86_64-linux-ghc-9.8.2/base-4.19.1.0-cbb2/include"
-  ],
-  exported_linker_flags = [ ],
-  visibility = [ "PUBLIC" ]
+    name = "base-4.19.1.0-cbb2",
+    version = "4.19.1.0",
+    id = "base-4.19.1.0-cbb2",
+    db = "lib/package.conf.d",
+    deps = [
+        ":ghc-bignum-1.3-c030",
+        ":ghc-prim-0.11.0-8a73",
+        ":rts-1.0.2",
+    ],
+    import_dirs = ["lib/x86_64-linux-ghc-9.8.2/base-4.19.1.0-cbb2"],
+    shared_libs = {
+        "libHSbase-4.19.1.0-cbb2-ghc9.8.2.so": "lib/x86_64-linux-ghc-9.8.2/libHSbase-4.19.1.0-cbb2-ghc9.8.2.so",
+    },
+    static_libs = [
+        "lib/x86_64-linux-ghc-9.8.2/base-4.19.1.0-cbb2/libHSbase-4.19.1.0-cbb2.a",
+    ],
+    cxx_header_dirs = [
+        "lib/x86_64-linux-ghc-9.8.2/base-4.19.1.0-cbb2/include",
+    ],
+    exported_linker_flags = [],
+    visibility = ["PUBLIC"],
 )
- 
+
 haskell_prebuilt_library(
-  name = "binary-0.8.9.1-5151",
-  version = "0.8.9.1",
-  id = "binary-0.8.9.1-5151",
-  db = "lib/package.conf.d",
-  deps = [
-    ":array-0.5.6.0-20c0",
-    ":base-4.19.1.0-cbb2",
-    ":bytestring-0.12.1.0-c563",
-    ":containers-0.6.8-7acc"
-  ],
-  import_dirs = [ "lib/x86_64-linux-ghc-9.8.2/binary-0.8.9.1-5151" ],
-  shared_libs = {
-    "libHSbinary-0.8.9.1-5151-ghc9.8.2.so": "lib/x86_64-linux-ghc-9.8.2/libHSbinary-0.8.9.1-5151-ghc9.8.2.so"
-  },
-  static_libs = [
-    "lib/x86_64-linux-ghc-9.8.2/binary-0.8.9.1-5151/libHSbinary-0.8.9.1-5151.a"
-  ],
-  cxx_header_dirs = [ ],
-  exported_linker_flags = [ ],
-  visibility = [ "PUBLIC" ]
+    name = "binary-0.8.9.1-5151",
+    version = "0.8.9.1",
+    id = "binary-0.8.9.1-5151",
+    db = "lib/package.conf.d",
+    deps = [
+        ":array-0.5.6.0-20c0",
+        ":base-4.19.1.0-cbb2",
+        ":bytestring-0.12.1.0-c563",
+        ":containers-0.6.8-7acc",
+    ],
+    import_dirs = ["lib/x86_64-linux-ghc-9.8.2/binary-0.8.9.1-5151"],
+    shared_libs = {
+        "libHSbinary-0.8.9.1-5151-ghc9.8.2.so": "lib/x86_64-linux-ghc-9.8.2/libHSbinary-0.8.9.1-5151-ghc9.8.2.so",
+    },
+    static_libs = [
+        "lib/x86_64-linux-ghc-9.8.2/binary-0.8.9.1-5151/libHSbinary-0.8.9.1-5151.a",
+    ],
+    cxx_header_dirs = [],
+    exported_linker_flags = [],
+    visibility = ["PUBLIC"],
 )
- 
+
 haskell_prebuilt_library(
-  name = "bytestring-0.12.1.0-c563",
-  version = "0.12.1.0",
-  id = "bytestring-0.12.1.0-c563",
-  db = "lib/package.conf.d",
-  deps = [
-    ":base-4.19.1.0-cbb2",
-    ":deepseq-1.5.0.0-d161",
-    ":ghc-prim-0.11.0-8a73",
-    ":template-haskell-2.21.0.0-2542"
-  ],
-  import_dirs = [
-    "lib/x86_64-linux-ghc-9.8.2/bytestring-0.12.1.0-c563"
-  ],
-  shared_libs = {
-    "libHSbytestring-0.12.1.0-c563-ghc9.8.2.so": "lib/x86_64-linux-ghc-9.8.2/libHSbytestring-0.12.1.0-c563-ghc9.8.2.so"
-  },
-  static_libs = [
-    "lib/x86_64-linux-ghc-9.8.2/bytestring-0.12.1.0-c563/libHSbytestring-0.12.1.0-c563.a"
-  ],
-  cxx_header_dirs = [
-    "lib/x86_64-linux-ghc-9.8.2/bytestring-0.12.1.0-c563/include"
-  ],
-  exported_linker_flags = [ ],
-  visibility = [ "PUBLIC" ]
+    name = "bytestring-0.12.1.0-c563",
+    version = "0.12.1.0",
+    id = "bytestring-0.12.1.0-c563",
+    db = "lib/package.conf.d",
+    deps = [
+        ":base-4.19.1.0-cbb2",
+        ":deepseq-1.5.0.0-d161",
+        ":ghc-prim-0.11.0-8a73",
+        ":template-haskell-2.21.0.0-2542",
+    ],
+    import_dirs = [
+        "lib/x86_64-linux-ghc-9.8.2/bytestring-0.12.1.0-c563",
+    ],
+    shared_libs = {
+        "libHSbytestring-0.12.1.0-c563-ghc9.8.2.so": "lib/x86_64-linux-ghc-9.8.2/libHSbytestring-0.12.1.0-c563-ghc9.8.2.so",
+    },
+    static_libs = [
+        "lib/x86_64-linux-ghc-9.8.2/bytestring-0.12.1.0-c563/libHSbytestring-0.12.1.0-c563.a",
+    ],
+    cxx_header_dirs = [
+        "lib/x86_64-linux-ghc-9.8.2/bytestring-0.12.1.0-c563/include",
+    ],
+    exported_linker_flags = [],
+    visibility = ["PUBLIC"],
 )
- 
+
 haskell_prebuilt_library(
-  name = "containers-0.6.8-7acc",
-  version = "0.6.8",
-  id = "containers-0.6.8-7acc",
-  db = "lib/package.conf.d",
-  deps = [
-    ":array-0.5.6.0-20c0",
-    ":base-4.19.1.0-cbb2",
-    ":deepseq-1.5.0.0-d161",
-    ":template-haskell-2.21.0.0-2542"
-  ],
-  import_dirs = [
-    "lib/x86_64-linux-ghc-9.8.2/containers-0.6.8-7acc"
-  ],
-  shared_libs = {
-    "libHScontainers-0.6.8-7acc-ghc9.8.2.so": "lib/x86_64-linux-ghc-9.8.2/libHScontainers-0.6.8-7acc-ghc9.8.2.so"
-  },
-  static_libs = [
-    "lib/x86_64-linux-ghc-9.8.2/containers-0.6.8-7acc/libHScontainers-0.6.8-7acc.a"
-  ],
-  cxx_header_dirs = [ ],
-  exported_linker_flags = [ ],
-  visibility = [ "PUBLIC" ]
+    name = "containers-0.6.8-7acc",
+    version = "0.6.8",
+    id = "containers-0.6.8-7acc",
+    db = "lib/package.conf.d",
+    deps = [
+        ":array-0.5.6.0-20c0",
+        ":base-4.19.1.0-cbb2",
+        ":deepseq-1.5.0.0-d161",
+        ":template-haskell-2.21.0.0-2542",
+    ],
+    import_dirs = [
+        "lib/x86_64-linux-ghc-9.8.2/containers-0.6.8-7acc",
+    ],
+    shared_libs = {
+        "libHScontainers-0.6.8-7acc-ghc9.8.2.so": "lib/x86_64-linux-ghc-9.8.2/libHScontainers-0.6.8-7acc-ghc9.8.2.so",
+    },
+    static_libs = [
+        "lib/x86_64-linux-ghc-9.8.2/containers-0.6.8-7acc/libHScontainers-0.6.8-7acc.a",
+    ],
+    cxx_header_dirs = [],
+    exported_linker_flags = [],
+    visibility = ["PUBLIC"],
 )
- 
+
 haskell_prebuilt_library(
-  name = "deepseq-1.5.0.0-d161",
-  version = "1.5.0.0",
-  id = "deepseq-1.5.0.0-d161",
-  db = "lib/package.conf.d",
-  deps = [
-    ":array-0.5.6.0-20c0",
-    ":base-4.19.1.0-cbb2",
-    ":ghc-prim-0.11.0-8a73"
-  ],
-  import_dirs = [
-    "lib/x86_64-linux-ghc-9.8.2/deepseq-1.5.0.0-d161"
-  ],
-  shared_libs = {
-    "libHSdeepseq-1.5.0.0-d161-ghc9.8.2.so": "lib/x86_64-linux-ghc-9.8.2/libHSdeepseq-1.5.0.0-d161-ghc9.8.2.so"
-  },
-  static_libs = [
-    "lib/x86_64-linux-ghc-9.8.2/deepseq-1.5.0.0-d161/libHSdeepseq-1.5.0.0-d161.a"
-  ],
-  cxx_header_dirs = [ ],
-  exported_linker_flags = [ ],
-  visibility = [ "PUBLIC" ]
+    name = "deepseq-1.5.0.0-d161",
+    version = "1.5.0.0",
+    id = "deepseq-1.5.0.0-d161",
+    db = "lib/package.conf.d",
+    deps = [
+        ":array-0.5.6.0-20c0",
+        ":base-4.19.1.0-cbb2",
+        ":ghc-prim-0.11.0-8a73",
+    ],
+    import_dirs = [
+        "lib/x86_64-linux-ghc-9.8.2/deepseq-1.5.0.0-d161",
+    ],
+    shared_libs = {
+        "libHSdeepseq-1.5.0.0-d161-ghc9.8.2.so": "lib/x86_64-linux-ghc-9.8.2/libHSdeepseq-1.5.0.0-d161-ghc9.8.2.so",
+    },
+    static_libs = [
+        "lib/x86_64-linux-ghc-9.8.2/deepseq-1.5.0.0-d161/libHSdeepseq-1.5.0.0-d161.a",
+    ],
+    cxx_header_dirs = [],
+    exported_linker_flags = [],
+    visibility = ["PUBLIC"],
 )
- 
+
 haskell_prebuilt_library(
-  name = "directory-1.3.8.1-3db4",
-  version = "1.3.8.1",
-  id = "directory-1.3.8.1-3db4",
-  db = "lib/package.conf.d",
-  deps = [
-    ":base-4.19.1.0-cbb2",
-    ":filepath-1.4.200.1-c404",
-    ":time-1.12.2-5921",
-    ":unix-2.8.4.0-d7dc"
-  ],
-  import_dirs = [
-    "lib/x86_64-linux-ghc-9.8.2/directory-1.3.8.1-3db4"
-  ],
-  shared_libs = {
-    "libHSdirectory-1.3.8.1-3db4-ghc9.8.2.so": "lib/x86_64-linux-ghc-9.8.2/libHSdirectory-1.3.8.1-3db4-ghc9.8.2.so"
-  },
-  static_libs = [
-    "lib/x86_64-linux-ghc-9.8.2/directory-1.3.8.1-3db4/libHSdirectory-1.3.8.1-3db4.a"
-  ],
-  cxx_header_dirs = [
-    "lib/x86_64-linux-ghc-9.8.2/directory-1.3.8.1-3db4/include"
-  ],
-  exported_linker_flags = [ ],
-  visibility = [ "PUBLIC" ]
+    name = "directory-1.3.8.1-3db4",
+    version = "1.3.8.1",
+    id = "directory-1.3.8.1-3db4",
+    db = "lib/package.conf.d",
+    deps = [
+        ":base-4.19.1.0-cbb2",
+        ":filepath-1.4.200.1-c404",
+        ":time-1.12.2-5921",
+        ":unix-2.8.4.0-d7dc",
+    ],
+    import_dirs = [
+        "lib/x86_64-linux-ghc-9.8.2/directory-1.3.8.1-3db4",
+    ],
+    shared_libs = {
+        "libHSdirectory-1.3.8.1-3db4-ghc9.8.2.so": "lib/x86_64-linux-ghc-9.8.2/libHSdirectory-1.3.8.1-3db4-ghc9.8.2.so",
+    },
+    static_libs = [
+        "lib/x86_64-linux-ghc-9.8.2/directory-1.3.8.1-3db4/libHSdirectory-1.3.8.1-3db4.a",
+    ],
+    cxx_header_dirs = [
+        "lib/x86_64-linux-ghc-9.8.2/directory-1.3.8.1-3db4/include",
+    ],
+    exported_linker_flags = [],
+    visibility = ["PUBLIC"],
 )
- 
+
 haskell_prebuilt_library(
-  name = "exceptions-0.10.7-6306",
-  version = "0.10.7",
-  id = "exceptions-0.10.7-6306",
-  db = "lib/package.conf.d",
-  deps = [
-    ":base-4.19.1.0-cbb2",
-    ":mtl-2.3.1-4ed7",
-    ":stm-2.5.2.1-4277",
-    ":template-haskell-2.21.0.0-2542",
-    ":transformers-0.6.1.0-d712"
-  ],
-  import_dirs = [
-    "lib/x86_64-linux-ghc-9.8.2/exceptions-0.10.7-6306"
-  ],
-  shared_libs = {
-    "libHSexceptions-0.10.7-6306-ghc9.8.2.so": "lib/x86_64-linux-ghc-9.8.2/libHSexceptions-0.10.7-6306-ghc9.8.2.so"
-  },
-  static_libs = [
-    "lib/x86_64-linux-ghc-9.8.2/exceptions-0.10.7-6306/libHSexceptions-0.10.7-6306.a"
-  ],
-  cxx_header_dirs = [ ],
-  exported_linker_flags = [ ],
-  visibility = [ "PUBLIC" ]
+    name = "exceptions-0.10.7-6306",
+    version = "0.10.7",
+    id = "exceptions-0.10.7-6306",
+    db = "lib/package.conf.d",
+    deps = [
+        ":base-4.19.1.0-cbb2",
+        ":mtl-2.3.1-4ed7",
+        ":stm-2.5.2.1-4277",
+        ":template-haskell-2.21.0.0-2542",
+        ":transformers-0.6.1.0-d712",
+    ],
+    import_dirs = [
+        "lib/x86_64-linux-ghc-9.8.2/exceptions-0.10.7-6306",
+    ],
+    shared_libs = {
+        "libHSexceptions-0.10.7-6306-ghc9.8.2.so": "lib/x86_64-linux-ghc-9.8.2/libHSexceptions-0.10.7-6306-ghc9.8.2.so",
+    },
+    static_libs = [
+        "lib/x86_64-linux-ghc-9.8.2/exceptions-0.10.7-6306/libHSexceptions-0.10.7-6306.a",
+    ],
+    cxx_header_dirs = [],
+    exported_linker_flags = [],
+    visibility = ["PUBLIC"],
 )
- 
+
 haskell_prebuilt_library(
-  name = "filepath-1.4.200.1-c404",
-  version = "1.4.200.1",
-  id = "filepath-1.4.200.1-c404",
-  db = "lib/package.conf.d",
-  deps = [
-    ":base-4.19.1.0-cbb2",
-    ":bytestring-0.12.1.0-c563",
-    ":deepseq-1.5.0.0-d161",
-    ":exceptions-0.10.7-6306",
-    ":template-haskell-2.21.0.0-2542"
-  ],
-  import_dirs = [
-    "lib/x86_64-linux-ghc-9.8.2/filepath-1.4.200.1-c404"
-  ],
-  shared_libs = {
-    "libHSfilepath-1.4.200.1-c404-ghc9.8.2.so": "lib/x86_64-linux-ghc-9.8.2/libHSfilepath-1.4.200.1-c404-ghc9.8.2.so"
-  },
-  static_libs = [
-    "lib/x86_64-linux-ghc-9.8.2/filepath-1.4.200.1-c404/libHSfilepath-1.4.200.1-c404.a"
-  ],
-  cxx_header_dirs = [ ],
-  exported_linker_flags = [ ],
-  visibility = [ "PUBLIC" ]
+    name = "filepath-1.4.200.1-c404",
+    version = "1.4.200.1",
+    id = "filepath-1.4.200.1-c404",
+    db = "lib/package.conf.d",
+    deps = [
+        ":base-4.19.1.0-cbb2",
+        ":bytestring-0.12.1.0-c563",
+        ":deepseq-1.5.0.0-d161",
+        ":exceptions-0.10.7-6306",
+        ":template-haskell-2.21.0.0-2542",
+    ],
+    import_dirs = [
+        "lib/x86_64-linux-ghc-9.8.2/filepath-1.4.200.1-c404",
+    ],
+    shared_libs = {
+        "libHSfilepath-1.4.200.1-c404-ghc9.8.2.so": "lib/x86_64-linux-ghc-9.8.2/libHSfilepath-1.4.200.1-c404-ghc9.8.2.so",
+    },
+    static_libs = [
+        "lib/x86_64-linux-ghc-9.8.2/filepath-1.4.200.1-c404/libHSfilepath-1.4.200.1-c404.a",
+    ],
+    cxx_header_dirs = [],
+    exported_linker_flags = [],
+    visibility = ["PUBLIC"],
 )
- 
+
 haskell_prebuilt_library(
-  name = "ghc-9.8.2-2c96",
-  version = "9.8.2",
-  id = "ghc-9.8.2-2c96",
-  db = "lib/package.conf.d",
-  deps = [
-    ":array-0.5.6.0-20c0",
-    ":base-4.19.1.0-cbb2",
-    ":binary-0.8.9.1-5151",
-    ":bytestring-0.12.1.0-c563",
-    ":containers-0.6.8-7acc",
-    ":deepseq-1.5.0.0-d161",
-    ":directory-1.3.8.1-3db4",
-    ":exceptions-0.10.7-6306",
-    ":filepath-1.4.200.1-c404",
-    ":ghc-boot-9.8.2-5e59",
-    ":ghc-heap-9.8.2-dac3",
-    ":ghci-9.8.2-f176",
-    ":hpc-0.7.0.0-0481",
-    ":process-1.6.18.0-1a33",
-    ":semaphore-compat-1.0.0-cf4a",
-    ":stm-2.5.2.1-4277",
-    ":template-haskell-2.21.0.0-2542",
-    ":time-1.12.2-5921",
-    ":transformers-0.6.1.0-d712",
-    ":unix-2.8.4.0-d7dc"
-  ],
-  import_dirs = [ "lib/x86_64-linux-ghc-9.8.2/ghc-9.8.2-2c96" ],
-  shared_libs = {
-    "libHSghc-9.8.2-2c96-ghc9.8.2.so": "lib/x86_64-linux-ghc-9.8.2/libHSghc-9.8.2-2c96-ghc9.8.2.so"
-  },
-  static_libs = [
-    "lib/x86_64-linux-ghc-9.8.2/ghc-9.8.2-2c96/libHSghc-9.8.2-2c96.a"
-  ],
-  cxx_header_dirs = [ ],
-  exported_linker_flags = [ ],
-  visibility = [ "PUBLIC" ]
+    name = "ghc-9.8.2-2c96",
+    version = "9.8.2",
+    id = "ghc-9.8.2-2c96",
+    db = "lib/package.conf.d",
+    deps = [
+        ":array-0.5.6.0-20c0",
+        ":base-4.19.1.0-cbb2",
+        ":binary-0.8.9.1-5151",
+        ":bytestring-0.12.1.0-c563",
+        ":containers-0.6.8-7acc",
+        ":deepseq-1.5.0.0-d161",
+        ":directory-1.3.8.1-3db4",
+        ":exceptions-0.10.7-6306",
+        ":filepath-1.4.200.1-c404",
+        ":ghc-boot-9.8.2-5e59",
+        ":ghc-heap-9.8.2-dac3",
+        ":ghci-9.8.2-f176",
+        ":hpc-0.7.0.0-0481",
+        ":process-1.6.18.0-1a33",
+        ":semaphore-compat-1.0.0-cf4a",
+        ":stm-2.5.2.1-4277",
+        ":template-haskell-2.21.0.0-2542",
+        ":time-1.12.2-5921",
+        ":transformers-0.6.1.0-d712",
+        ":unix-2.8.4.0-d7dc",
+    ],
+    import_dirs = ["lib/x86_64-linux-ghc-9.8.2/ghc-9.8.2-2c96"],
+    shared_libs = {
+        "libHSghc-9.8.2-2c96-ghc9.8.2.so": "lib/x86_64-linux-ghc-9.8.2/libHSghc-9.8.2-2c96-ghc9.8.2.so",
+    },
+    static_libs = [
+        "lib/x86_64-linux-ghc-9.8.2/ghc-9.8.2-2c96/libHSghc-9.8.2-2c96.a",
+    ],
+    cxx_header_dirs = [],
+    exported_linker_flags = [],
+    visibility = ["PUBLIC"],
 )
- 
+
 haskell_prebuilt_library(
-  name = "ghc-bignum-1.3-c030",
-  version = "1.3",
-  id = "ghc-bignum-1.3-c030",
-  db = "lib/package.conf.d",
-  deps = [ ":ghc-prim-0.11.0-8a73" ],
-  import_dirs = [ "lib/x86_64-linux-ghc-9.8.2/ghc-bignum-1.3-c030" ],
-  shared_libs = {
-    "libHSghc-bignum-1.3-c030-ghc9.8.2.so": "lib/x86_64-linux-ghc-9.8.2/libHSghc-bignum-1.3-c030-ghc9.8.2.so"
-  },
-  static_libs = [
-    "lib/x86_64-linux-ghc-9.8.2/ghc-bignum-1.3-c030/libHSghc-bignum-1.3-c030.a"
-  ],
-  cxx_header_dirs = [
-    "lib/x86_64-linux-ghc-9.8.2/ghc-bignum-1.3-c030/include"
-  ],
-  exported_linker_flags = [ ],
-  visibility = [ "PUBLIC" ]
+    name = "ghc-bignum-1.3-c030",
+    version = "1.3",
+    id = "ghc-bignum-1.3-c030",
+    db = "lib/package.conf.d",
+    deps = [":ghc-prim-0.11.0-8a73"],
+    import_dirs = ["lib/x86_64-linux-ghc-9.8.2/ghc-bignum-1.3-c030"],
+    shared_libs = {
+        "libHSghc-bignum-1.3-c030-ghc9.8.2.so": "lib/x86_64-linux-ghc-9.8.2/libHSghc-bignum-1.3-c030-ghc9.8.2.so",
+    },
+    static_libs = [
+        "lib/x86_64-linux-ghc-9.8.2/ghc-bignum-1.3-c030/libHSghc-bignum-1.3-c030.a",
+    ],
+    cxx_header_dirs = [
+        "lib/x86_64-linux-ghc-9.8.2/ghc-bignum-1.3-c030/include",
+    ],
+    exported_linker_flags = [],
+    visibility = ["PUBLIC"],
 )
- 
+
 haskell_prebuilt_library(
-  name = "ghc-boot-9.8.2-5e59",
-  version = "9.8.2",
-  id = "ghc-boot-9.8.2-5e59",
-  db = "lib/package.conf.d",
-  deps = [
-    ":base-4.19.1.0-cbb2",
-    ":binary-0.8.9.1-5151",
-    ":bytestring-0.12.1.0-c563",
-    ":containers-0.6.8-7acc",
-    ":deepseq-1.5.0.0-d161",
-    ":directory-1.3.8.1-3db4",
-    ":filepath-1.4.200.1-c404",
-    ":ghc-boot-th-9.8.2-5f69",
-    ":unix-2.8.4.0-d7dc"
-  ],
-  import_dirs = [ "lib/x86_64-linux-ghc-9.8.2/ghc-boot-9.8.2-5e59" ],
-  shared_libs = {
-    "libHSghc-boot-9.8.2-5e59-ghc9.8.2.so": "lib/x86_64-linux-ghc-9.8.2/libHSghc-boot-9.8.2-5e59-ghc9.8.2.so"
-  },
-  static_libs = [
-    "lib/x86_64-linux-ghc-9.8.2/ghc-boot-9.8.2-5e59/libHSghc-boot-9.8.2-5e59.a"
-  ],
-  cxx_header_dirs = [ ],
-  exported_linker_flags = [ ],
-  visibility = [ "PUBLIC" ]
+    name = "ghc-boot-9.8.2-5e59",
+    version = "9.8.2",
+    id = "ghc-boot-9.8.2-5e59",
+    db = "lib/package.conf.d",
+    deps = [
+        ":base-4.19.1.0-cbb2",
+        ":binary-0.8.9.1-5151",
+        ":bytestring-0.12.1.0-c563",
+        ":containers-0.6.8-7acc",
+        ":deepseq-1.5.0.0-d161",
+        ":directory-1.3.8.1-3db4",
+        ":filepath-1.4.200.1-c404",
+        ":ghc-boot-th-9.8.2-5f69",
+        ":unix-2.8.4.0-d7dc",
+    ],
+    import_dirs = ["lib/x86_64-linux-ghc-9.8.2/ghc-boot-9.8.2-5e59"],
+    shared_libs = {
+        "libHSghc-boot-9.8.2-5e59-ghc9.8.2.so": "lib/x86_64-linux-ghc-9.8.2/libHSghc-boot-9.8.2-5e59-ghc9.8.2.so",
+    },
+    static_libs = [
+        "lib/x86_64-linux-ghc-9.8.2/ghc-boot-9.8.2-5e59/libHSghc-boot-9.8.2-5e59.a",
+    ],
+    cxx_header_dirs = [],
+    exported_linker_flags = [],
+    visibility = ["PUBLIC"],
 )
- 
+
 haskell_prebuilt_library(
-  name = "ghc-boot-th-9.8.2-5f69",
-  version = "9.8.2",
-  id = "ghc-boot-th-9.8.2-5f69",
-  db = "lib/package.conf.d",
-  deps = [ ":base-4.19.1.0-cbb2" ],
-  import_dirs = [
-    "lib/x86_64-linux-ghc-9.8.2/ghc-boot-th-9.8.2-5f69"
-  ],
-  shared_libs = {
-    "libHSghc-boot-th-9.8.2-5f69-ghc9.8.2.so": "lib/x86_64-linux-ghc-9.8.2/libHSghc-boot-th-9.8.2-5f69-ghc9.8.2.so"
-  },
-  static_libs = [
-    "lib/x86_64-linux-ghc-9.8.2/ghc-boot-th-9.8.2-5f69/libHSghc-boot-th-9.8.2-5f69.a"
-  ],
-  cxx_header_dirs = [ ],
-  exported_linker_flags = [ ],
-  visibility = [ "PUBLIC" ]
+    name = "ghc-boot-th-9.8.2-5f69",
+    version = "9.8.2",
+    id = "ghc-boot-th-9.8.2-5f69",
+    db = "lib/package.conf.d",
+    deps = [":base-4.19.1.0-cbb2"],
+    import_dirs = [
+        "lib/x86_64-linux-ghc-9.8.2/ghc-boot-th-9.8.2-5f69",
+    ],
+    shared_libs = {
+        "libHSghc-boot-th-9.8.2-5f69-ghc9.8.2.so": "lib/x86_64-linux-ghc-9.8.2/libHSghc-boot-th-9.8.2-5f69-ghc9.8.2.so",
+    },
+    static_libs = [
+        "lib/x86_64-linux-ghc-9.8.2/ghc-boot-th-9.8.2-5f69/libHSghc-boot-th-9.8.2-5f69.a",
+    ],
+    cxx_header_dirs = [],
+    exported_linker_flags = [],
+    visibility = ["PUBLIC"],
 )
- 
+
 haskell_prebuilt_library(
-  name = "ghc-compact-0.1.0.0-a497",
-  version = "0.1.0.0",
-  id = "ghc-compact-0.1.0.0-a497",
-  db = "lib/package.conf.d",
-  deps = [
-    ":base-4.19.1.0-cbb2",
-    ":bytestring-0.12.1.0-c563",
-    ":ghc-prim-0.11.0-8a73"
-  ],
-  import_dirs = [
-    "lib/x86_64-linux-ghc-9.8.2/ghc-compact-0.1.0.0-a497"
-  ],
-  shared_libs = {
-    "libHSghc-compact-0.1.0.0-a497-ghc9.8.2.so": "lib/x86_64-linux-ghc-9.8.2/libHSghc-compact-0.1.0.0-a497-ghc9.8.2.so"
-  },
-  static_libs = [
-    "lib/x86_64-linux-ghc-9.8.2/ghc-compact-0.1.0.0-a497/libHSghc-compact-0.1.0.0-a497.a"
-  ],
-  cxx_header_dirs = [ ],
-  exported_linker_flags = [ ],
-  visibility = [ "PUBLIC" ]
+    name = "ghc-compact-0.1.0.0-a497",
+    version = "0.1.0.0",
+    id = "ghc-compact-0.1.0.0-a497",
+    db = "lib/package.conf.d",
+    deps = [
+        ":base-4.19.1.0-cbb2",
+        ":bytestring-0.12.1.0-c563",
+        ":ghc-prim-0.11.0-8a73",
+    ],
+    import_dirs = [
+        "lib/x86_64-linux-ghc-9.8.2/ghc-compact-0.1.0.0-a497",
+    ],
+    shared_libs = {
+        "libHSghc-compact-0.1.0.0-a497-ghc9.8.2.so": "lib/x86_64-linux-ghc-9.8.2/libHSghc-compact-0.1.0.0-a497-ghc9.8.2.so",
+    },
+    static_libs = [
+        "lib/x86_64-linux-ghc-9.8.2/ghc-compact-0.1.0.0-a497/libHSghc-compact-0.1.0.0-a497.a",
+    ],
+    cxx_header_dirs = [],
+    exported_linker_flags = [],
+    visibility = ["PUBLIC"],
 )
- 
+
 haskell_prebuilt_library(
-  name = "ghc-heap-9.8.2-dac3",
-  version = "9.8.2",
-  id = "ghc-heap-9.8.2-dac3",
-  db = "lib/package.conf.d",
-  deps = [
-    ":base-4.19.1.0-cbb2",
-    ":containers-0.6.8-7acc",
-    ":ghc-prim-0.11.0-8a73",
-    ":rts-1.0.2"
-  ],
-  import_dirs = [ "lib/x86_64-linux-ghc-9.8.2/ghc-heap-9.8.2-dac3" ],
-  shared_libs = {
-    "libHSghc-heap-9.8.2-dac3-ghc9.8.2.so": "lib/x86_64-linux-ghc-9.8.2/libHSghc-heap-9.8.2-dac3-ghc9.8.2.so"
-  },
-  static_libs = [
-    "lib/x86_64-linux-ghc-9.8.2/ghc-heap-9.8.2-dac3/libHSghc-heap-9.8.2-dac3.a"
-  ],
-  cxx_header_dirs = [ ],
-  exported_linker_flags = [ ],
-  visibility = [ "PUBLIC" ]
+    name = "ghc-heap-9.8.2-dac3",
+    version = "9.8.2",
+    id = "ghc-heap-9.8.2-dac3",
+    db = "lib/package.conf.d",
+    deps = [
+        ":base-4.19.1.0-cbb2",
+        ":containers-0.6.8-7acc",
+        ":ghc-prim-0.11.0-8a73",
+        ":rts-1.0.2",
+    ],
+    import_dirs = ["lib/x86_64-linux-ghc-9.8.2/ghc-heap-9.8.2-dac3"],
+    shared_libs = {
+        "libHSghc-heap-9.8.2-dac3-ghc9.8.2.so": "lib/x86_64-linux-ghc-9.8.2/libHSghc-heap-9.8.2-dac3-ghc9.8.2.so",
+    },
+    static_libs = [
+        "lib/x86_64-linux-ghc-9.8.2/ghc-heap-9.8.2-dac3/libHSghc-heap-9.8.2-dac3.a",
+    ],
+    cxx_header_dirs = [],
+    exported_linker_flags = [],
+    visibility = ["PUBLIC"],
 )
- 
+
 haskell_prebuilt_library(
-  name = "ghc-prim-0.11.0-8a73",
-  version = "0.11.0",
-  id = "ghc-prim-0.11.0-8a73",
-  db = "lib/package.conf.d",
-  deps = [ ":rts-1.0.2" ],
-  import_dirs = [
-    "lib/x86_64-linux-ghc-9.8.2/ghc-prim-0.11.0-8a73"
-  ],
-  shared_libs = {
-    "libHSghc-prim-0.11.0-8a73-ghc9.8.2.so": "lib/x86_64-linux-ghc-9.8.2/libHSghc-prim-0.11.0-8a73-ghc9.8.2.so"
-  },
-  static_libs = [
-    "lib/x86_64-linux-ghc-9.8.2/ghc-prim-0.11.0-8a73/libHSghc-prim-0.11.0-8a73.a"
-  ],
-  cxx_header_dirs = [ ],
-  exported_linker_flags = [ ],
-  visibility = [ "PUBLIC" ]
+    name = "ghc-prim-0.11.0-8a73",
+    version = "0.11.0",
+    id = "ghc-prim-0.11.0-8a73",
+    db = "lib/package.conf.d",
+    deps = [":rts-1.0.2"],
+    import_dirs = [
+        "lib/x86_64-linux-ghc-9.8.2/ghc-prim-0.11.0-8a73",
+    ],
+    shared_libs = {
+        "libHSghc-prim-0.11.0-8a73-ghc9.8.2.so": "lib/x86_64-linux-ghc-9.8.2/libHSghc-prim-0.11.0-8a73-ghc9.8.2.so",
+    },
+    static_libs = [
+        "lib/x86_64-linux-ghc-9.8.2/ghc-prim-0.11.0-8a73/libHSghc-prim-0.11.0-8a73.a",
+    ],
+    cxx_header_dirs = [],
+    exported_linker_flags = [],
+    visibility = ["PUBLIC"],
 )
- 
+
 haskell_prebuilt_library(
-  name = "ghci-9.8.2-f176",
-  version = "9.8.2",
-  id = "ghci-9.8.2-f176",
-  db = "lib/package.conf.d",
-  deps = [
-    ":array-0.5.6.0-20c0",
-    ":base-4.19.1.0-cbb2",
-    ":binary-0.8.9.1-5151",
-    ":bytestring-0.12.1.0-c563",
-    ":containers-0.6.8-7acc",
-    ":deepseq-1.5.0.0-d161",
-    ":filepath-1.4.200.1-c404",
-    ":ghc-boot-9.8.2-5e59",
-    ":ghc-heap-9.8.2-dac3",
-    ":ghc-prim-0.11.0-8a73",
-    ":rts-1.0.2",
-    ":template-haskell-2.21.0.0-2542",
-    ":transformers-0.6.1.0-d712",
-    ":unix-2.8.4.0-d7dc"
-  ],
-  import_dirs = [ "lib/x86_64-linux-ghc-9.8.2/ghci-9.8.2-f176" ],
-  shared_libs = {
-    "libHSghci-9.8.2-f176-ghc9.8.2.so": "lib/x86_64-linux-ghc-9.8.2/libHSghci-9.8.2-f176-ghc9.8.2.so"
-  },
-  static_libs = [
-    "lib/x86_64-linux-ghc-9.8.2/ghci-9.8.2-f176/libHSghci-9.8.2-f176.a"
-  ],
-  cxx_header_dirs = [ ],
-  exported_linker_flags = [ ],
-  visibility = [ "PUBLIC" ]
+    name = "ghci-9.8.2-f176",
+    version = "9.8.2",
+    id = "ghci-9.8.2-f176",
+    db = "lib/package.conf.d",
+    deps = [
+        ":array-0.5.6.0-20c0",
+        ":base-4.19.1.0-cbb2",
+        ":binary-0.8.9.1-5151",
+        ":bytestring-0.12.1.0-c563",
+        ":containers-0.6.8-7acc",
+        ":deepseq-1.5.0.0-d161",
+        ":filepath-1.4.200.1-c404",
+        ":ghc-boot-9.8.2-5e59",
+        ":ghc-heap-9.8.2-dac3",
+        ":ghc-prim-0.11.0-8a73",
+        ":rts-1.0.2",
+        ":template-haskell-2.21.0.0-2542",
+        ":transformers-0.6.1.0-d712",
+        ":unix-2.8.4.0-d7dc",
+    ],
+    import_dirs = ["lib/x86_64-linux-ghc-9.8.2/ghci-9.8.2-f176"],
+    shared_libs = {
+        "libHSghci-9.8.2-f176-ghc9.8.2.so": "lib/x86_64-linux-ghc-9.8.2/libHSghci-9.8.2-f176-ghc9.8.2.so",
+    },
+    static_libs = [
+        "lib/x86_64-linux-ghc-9.8.2/ghci-9.8.2-f176/libHSghci-9.8.2-f176.a",
+    ],
+    cxx_header_dirs = [],
+    exported_linker_flags = [],
+    visibility = ["PUBLIC"],
 )
- 
+
 haskell_prebuilt_library(
-  name = "haskeline-0.8.2.1-edf0",
-  version = "0.8.2.1",
-  id = "haskeline-0.8.2.1-edf0",
-  db = "lib/package.conf.d",
-  deps = [
-    ":base-4.19.1.0-cbb2",
-    ":bytestring-0.12.1.0-c563",
-    ":containers-0.6.8-7acc",
-    ":directory-1.3.8.1-3db4",
-    ":exceptions-0.10.7-6306",
-    ":filepath-1.4.200.1-c404",
-    ":process-1.6.18.0-1a33",
-    ":stm-2.5.2.1-4277",
-    ":terminfo-0.4.1.6-bee1",
-    ":transformers-0.6.1.0-d712",
-    ":unix-2.8.4.0-d7dc"
-  ],
-  import_dirs = [
-    "lib/x86_64-linux-ghc-9.8.2/haskeline-0.8.2.1-edf0"
-  ],
-  shared_libs = {
-    "libHShaskeline-0.8.2.1-edf0-ghc9.8.2.so": "lib/x86_64-linux-ghc-9.8.2/libHShaskeline-0.8.2.1-edf0-ghc9.8.2.so"
-  },
-  static_libs = [
-    "lib/x86_64-linux-ghc-9.8.2/haskeline-0.8.2.1-edf0/libHShaskeline-0.8.2.1-edf0.a"
-  ],
-  cxx_header_dirs = [ ],
-  exported_linker_flags = [ ],
-  visibility = [ "PUBLIC" ]
+    name = "haskeline-0.8.2.1-edf0",
+    version = "0.8.2.1",
+    id = "haskeline-0.8.2.1-edf0",
+    db = "lib/package.conf.d",
+    deps = [
+        ":base-4.19.1.0-cbb2",
+        ":bytestring-0.12.1.0-c563",
+        ":containers-0.6.8-7acc",
+        ":directory-1.3.8.1-3db4",
+        ":exceptions-0.10.7-6306",
+        ":filepath-1.4.200.1-c404",
+        ":process-1.6.18.0-1a33",
+        ":stm-2.5.2.1-4277",
+        ":terminfo-0.4.1.6-bee1",
+        ":transformers-0.6.1.0-d712",
+        ":unix-2.8.4.0-d7dc",
+    ],
+    import_dirs = [
+        "lib/x86_64-linux-ghc-9.8.2/haskeline-0.8.2.1-edf0",
+    ],
+    shared_libs = {
+        "libHShaskeline-0.8.2.1-edf0-ghc9.8.2.so": "lib/x86_64-linux-ghc-9.8.2/libHShaskeline-0.8.2.1-edf0-ghc9.8.2.so",
+    },
+    static_libs = [
+        "lib/x86_64-linux-ghc-9.8.2/haskeline-0.8.2.1-edf0/libHShaskeline-0.8.2.1-edf0.a",
+    ],
+    cxx_header_dirs = [],
+    exported_linker_flags = [],
+    visibility = ["PUBLIC"],
 )
- 
+
 haskell_prebuilt_library(
-  name = "hpc-0.7.0.0-0481",
-  version = "0.7.0.0",
-  id = "hpc-0.7.0.0-0481",
-  db = "lib/package.conf.d",
-  deps = [
-    ":base-4.19.1.0-cbb2",
-    ":containers-0.6.8-7acc",
-    ":deepseq-1.5.0.0-d161",
-    ":directory-1.3.8.1-3db4",
-    ":filepath-1.4.200.1-c404",
-    ":time-1.12.2-5921"
-  ],
-  import_dirs = [ "lib/x86_64-linux-ghc-9.8.2/hpc-0.7.0.0-0481" ],
-  shared_libs = {
-    "libHShpc-0.7.0.0-0481-ghc9.8.2.so": "lib/x86_64-linux-ghc-9.8.2/libHShpc-0.7.0.0-0481-ghc9.8.2.so"
-  },
-  static_libs = [
-    "lib/x86_64-linux-ghc-9.8.2/hpc-0.7.0.0-0481/libHShpc-0.7.0.0-0481.a"
-  ],
-  cxx_header_dirs = [ ],
-  exported_linker_flags = [ ],
-  visibility = [ "PUBLIC" ]
+    name = "hpc-0.7.0.0-0481",
+    version = "0.7.0.0",
+    id = "hpc-0.7.0.0-0481",
+    db = "lib/package.conf.d",
+    deps = [
+        ":base-4.19.1.0-cbb2",
+        ":containers-0.6.8-7acc",
+        ":deepseq-1.5.0.0-d161",
+        ":directory-1.3.8.1-3db4",
+        ":filepath-1.4.200.1-c404",
+        ":time-1.12.2-5921",
+    ],
+    import_dirs = ["lib/x86_64-linux-ghc-9.8.2/hpc-0.7.0.0-0481"],
+    shared_libs = {
+        "libHShpc-0.7.0.0-0481-ghc9.8.2.so": "lib/x86_64-linux-ghc-9.8.2/libHShpc-0.7.0.0-0481-ghc9.8.2.so",
+    },
+    static_libs = [
+        "lib/x86_64-linux-ghc-9.8.2/hpc-0.7.0.0-0481/libHShpc-0.7.0.0-0481.a",
+    ],
+    cxx_header_dirs = [],
+    exported_linker_flags = [],
+    visibility = ["PUBLIC"],
 )
- 
+
 haskell_prebuilt_library(
-  name = "integer-gmp-1.1-8ef4",
-  version = "1.1",
-  id = "integer-gmp-1.1-8ef4",
-  db = "lib/package.conf.d",
-  deps = [
-    ":base-4.19.1.0-cbb2",
-    ":ghc-bignum-1.3-c030",
-    ":ghc-prim-0.11.0-8a73"
-  ],
-  import_dirs = [
-    "lib/x86_64-linux-ghc-9.8.2/integer-gmp-1.1-8ef4"
-  ],
-  shared_libs = {
-    "libHSinteger-gmp-1.1-8ef4-ghc9.8.2.so": "lib/x86_64-linux-ghc-9.8.2/libHSinteger-gmp-1.1-8ef4-ghc9.8.2.so"
-  },
-  static_libs = [
-    "lib/x86_64-linux-ghc-9.8.2/integer-gmp-1.1-8ef4/libHSinteger-gmp-1.1-8ef4.a"
-  ],
-  cxx_header_dirs = [ ],
-  exported_linker_flags = [ ],
-  visibility = [ "PUBLIC" ]
+    name = "integer-gmp-1.1-8ef4",
+    version = "1.1",
+    id = "integer-gmp-1.1-8ef4",
+    db = "lib/package.conf.d",
+    deps = [
+        ":base-4.19.1.0-cbb2",
+        ":ghc-bignum-1.3-c030",
+        ":ghc-prim-0.11.0-8a73",
+    ],
+    import_dirs = [
+        "lib/x86_64-linux-ghc-9.8.2/integer-gmp-1.1-8ef4",
+    ],
+    shared_libs = {
+        "libHSinteger-gmp-1.1-8ef4-ghc9.8.2.so": "lib/x86_64-linux-ghc-9.8.2/libHSinteger-gmp-1.1-8ef4-ghc9.8.2.so",
+    },
+    static_libs = [
+        "lib/x86_64-linux-ghc-9.8.2/integer-gmp-1.1-8ef4/libHSinteger-gmp-1.1-8ef4.a",
+    ],
+    cxx_header_dirs = [],
+    exported_linker_flags = [],
+    visibility = ["PUBLIC"],
 )
- 
+
 haskell_prebuilt_library(
-  name = "mtl-2.3.1-4ed7",
-  version = "2.3.1",
-  id = "mtl-2.3.1-4ed7",
-  db = "lib/package.conf.d",
-  deps = [ ":base-4.19.1.0-cbb2", ":transformers-0.6.1.0-d712" ],
-  import_dirs = [ "lib/x86_64-linux-ghc-9.8.2/mtl-2.3.1-4ed7" ],
-  shared_libs = {
-    "libHSmtl-2.3.1-4ed7-ghc9.8.2.so": "lib/x86_64-linux-ghc-9.8.2/libHSmtl-2.3.1-4ed7-ghc9.8.2.so"
-  },
-  static_libs = [
-    "lib/x86_64-linux-ghc-9.8.2/mtl-2.3.1-4ed7/libHSmtl-2.3.1-4ed7.a"
-  ],
-  cxx_header_dirs = [ ],
-  exported_linker_flags = [ ],
-  visibility = [ "PUBLIC" ]
+    name = "mtl-2.3.1-4ed7",
+    version = "2.3.1",
+    id = "mtl-2.3.1-4ed7",
+    db = "lib/package.conf.d",
+    deps = [":base-4.19.1.0-cbb2", ":transformers-0.6.1.0-d712"],
+    import_dirs = ["lib/x86_64-linux-ghc-9.8.2/mtl-2.3.1-4ed7"],
+    shared_libs = {
+        "libHSmtl-2.3.1-4ed7-ghc9.8.2.so": "lib/x86_64-linux-ghc-9.8.2/libHSmtl-2.3.1-4ed7-ghc9.8.2.so",
+    },
+    static_libs = [
+        "lib/x86_64-linux-ghc-9.8.2/mtl-2.3.1-4ed7/libHSmtl-2.3.1-4ed7.a",
+    ],
+    cxx_header_dirs = [],
+    exported_linker_flags = [],
+    visibility = ["PUBLIC"],
 )
- 
+
 haskell_prebuilt_library(
-  name = "parsec-3.1.17.0-5705",
-  version = "3.1.17.0",
-  id = "parsec-3.1.17.0-5705",
-  db = "lib/package.conf.d",
-  deps = [
-    ":base-4.19.1.0-cbb2",
-    ":bytestring-0.12.1.0-c563",
-    ":mtl-2.3.1-4ed7",
-    ":text-2.1.1-cd34"
-  ],
-  import_dirs = [
-    "lib/x86_64-linux-ghc-9.8.2/parsec-3.1.17.0-5705"
-  ],
-  shared_libs = {
-    "libHSparsec-3.1.17.0-5705-ghc9.8.2.so": "lib/x86_64-linux-ghc-9.8.2/libHSparsec-3.1.17.0-5705-ghc9.8.2.so"
-  },
-  static_libs = [
-    "lib/x86_64-linux-ghc-9.8.2/parsec-3.1.17.0-5705/libHSparsec-3.1.17.0-5705.a"
-  ],
-  cxx_header_dirs = [ ],
-  exported_linker_flags = [ ],
-  visibility = [ "PUBLIC" ]
+    name = "parsec-3.1.17.0-5705",
+    version = "3.1.17.0",
+    id = "parsec-3.1.17.0-5705",
+    db = "lib/package.conf.d",
+    deps = [
+        ":base-4.19.1.0-cbb2",
+        ":bytestring-0.12.1.0-c563",
+        ":mtl-2.3.1-4ed7",
+        ":text-2.1.1-cd34",
+    ],
+    import_dirs = [
+        "lib/x86_64-linux-ghc-9.8.2/parsec-3.1.17.0-5705",
+    ],
+    shared_libs = {
+        "libHSparsec-3.1.17.0-5705-ghc9.8.2.so": "lib/x86_64-linux-ghc-9.8.2/libHSparsec-3.1.17.0-5705-ghc9.8.2.so",
+    },
+    static_libs = [
+        "lib/x86_64-linux-ghc-9.8.2/parsec-3.1.17.0-5705/libHSparsec-3.1.17.0-5705.a",
+    ],
+    cxx_header_dirs = [],
+    exported_linker_flags = [],
+    visibility = ["PUBLIC"],
 )
- 
+
 haskell_prebuilt_library(
-  name = "pretty-1.1.3.6-a699",
-  version = "1.1.3.6",
-  id = "pretty-1.1.3.6-a699",
-  db = "lib/package.conf.d",
-  deps = [
-    ":base-4.19.1.0-cbb2",
-    ":deepseq-1.5.0.0-d161",
-    ":ghc-prim-0.11.0-8a73"
-  ],
-  import_dirs = [ "lib/x86_64-linux-ghc-9.8.2/pretty-1.1.3.6-a699" ],
-  shared_libs = {
-    "libHSpretty-1.1.3.6-a699-ghc9.8.2.so": "lib/x86_64-linux-ghc-9.8.2/libHSpretty-1.1.3.6-a699-ghc9.8.2.so"
-  },
-  static_libs = [
-    "lib/x86_64-linux-ghc-9.8.2/pretty-1.1.3.6-a699/libHSpretty-1.1.3.6-a699.a"
-  ],
-  cxx_header_dirs = [ ],
-  exported_linker_flags = [ ],
-  visibility = [ "PUBLIC" ]
+    name = "pretty-1.1.3.6-a699",
+    version = "1.1.3.6",
+    id = "pretty-1.1.3.6-a699",
+    db = "lib/package.conf.d",
+    deps = [
+        ":base-4.19.1.0-cbb2",
+        ":deepseq-1.5.0.0-d161",
+        ":ghc-prim-0.11.0-8a73",
+    ],
+    import_dirs = ["lib/x86_64-linux-ghc-9.8.2/pretty-1.1.3.6-a699"],
+    shared_libs = {
+        "libHSpretty-1.1.3.6-a699-ghc9.8.2.so": "lib/x86_64-linux-ghc-9.8.2/libHSpretty-1.1.3.6-a699-ghc9.8.2.so",
+    },
+    static_libs = [
+        "lib/x86_64-linux-ghc-9.8.2/pretty-1.1.3.6-a699/libHSpretty-1.1.3.6-a699.a",
+    ],
+    cxx_header_dirs = [],
+    exported_linker_flags = [],
+    visibility = ["PUBLIC"],
 )
- 
+
 haskell_prebuilt_library(
-  name = "process-1.6.18.0-1a33",
-  version = "1.6.18.0",
-  id = "process-1.6.18.0-1a33",
-  db = "lib/package.conf.d",
-  deps = [
-    ":base-4.19.1.0-cbb2",
-    ":deepseq-1.5.0.0-d161",
-    ":directory-1.3.8.1-3db4",
-    ":filepath-1.4.200.1-c404",
-    ":unix-2.8.4.0-d7dc"
-  ],
-  import_dirs = [
-    "lib/x86_64-linux-ghc-9.8.2/process-1.6.18.0-1a33"
-  ],
-  shared_libs = {
-    "libHSprocess-1.6.18.0-1a33-ghc9.8.2.so": "lib/x86_64-linux-ghc-9.8.2/libHSprocess-1.6.18.0-1a33-ghc9.8.2.so"
-  },
-  static_libs = [
-    "lib/x86_64-linux-ghc-9.8.2/process-1.6.18.0-1a33/libHSprocess-1.6.18.0-1a33.a"
-  ],
-  cxx_header_dirs = [
-    "lib/x86_64-linux-ghc-9.8.2/process-1.6.18.0-1a33/include"
-  ],
-  exported_linker_flags = [ ],
-  visibility = [ "PUBLIC" ]
+    name = "process-1.6.18.0-1a33",
+    version = "1.6.18.0",
+    id = "process-1.6.18.0-1a33",
+    db = "lib/package.conf.d",
+    deps = [
+        ":base-4.19.1.0-cbb2",
+        ":deepseq-1.5.0.0-d161",
+        ":directory-1.3.8.1-3db4",
+        ":filepath-1.4.200.1-c404",
+        ":unix-2.8.4.0-d7dc",
+    ],
+    import_dirs = [
+        "lib/x86_64-linux-ghc-9.8.2/process-1.6.18.0-1a33",
+    ],
+    shared_libs = {
+        "libHSprocess-1.6.18.0-1a33-ghc9.8.2.so": "lib/x86_64-linux-ghc-9.8.2/libHSprocess-1.6.18.0-1a33-ghc9.8.2.so",
+    },
+    static_libs = [
+        "lib/x86_64-linux-ghc-9.8.2/process-1.6.18.0-1a33/libHSprocess-1.6.18.0-1a33.a",
+    ],
+    cxx_header_dirs = [
+        "lib/x86_64-linux-ghc-9.8.2/process-1.6.18.0-1a33/include",
+    ],
+    exported_linker_flags = [],
+    visibility = ["PUBLIC"],
 )
- 
+
 haskell_prebuilt_library(
-  name = "rts-1.0.2",
-  version = "1.0.2",
-  id = "rts-1.0.2",
-  db = "lib/package.conf.d",
-  deps = [ ],
-  import_dirs = [ ],
-  shared_libs = {
-    "libHSrts-1.0.2-ghc9.8.2.so": "lib/x86_64-linux-ghc-9.8.2/libHSrts-1.0.2-ghc9.8.2.so",
-    "libffi.so": "lib/x86_64-linux-ghc-9.8.2/libffi.so"
-  },
-  static_libs = [
-    "lib/x86_64-linux-ghc-9.8.2/rts-1.0.2/libHSrts-1.0.2.a",
-    "lib/x86_64-linux-ghc-9.8.2/rts-1.0.2/libCffi.a"
-  ],
-  cxx_header_dirs = [
-    "lib/x86_64-linux-ghc-9.8.2/rts-1.0.2/include"
-  ],
-  exported_linker_flags = [
-    "-Wl,-u,base_GHCziTopHandler_runIO_closure",
-    "-Wl,-u,base_GHCziTopHandler_runNonIO_closure",
-    "-Wl,-u,ghczmprim_GHCziTupleziPrim_Z0T_closure",
-    "-Wl,-u,ghczmprim_GHCziTypes_True_closure",
-    "-Wl,-u,ghczmprim_GHCziTypes_False_closure",
-    "-Wl,-u,base_GHCziPack_unpackCString_closure",
-    "-Wl,-u,base_GHCziWeakziFinalizze_runFinalizzerBatch_closure",
-    "-Wl,-u,base_GHCziIOziException_stackOverflow_closure",
-    "-Wl,-u,base_GHCziIOziException_heapOverflow_closure",
-    "-Wl,-u,base_GHCziIOziException_allocationLimitExceeded_closure",
-    "-Wl,-u,base_GHCziIOziException_blockedIndefinitelyOnMVar_closure",
-    "-Wl,-u,base_GHCziIOziException_blockedIndefinitelyOnSTM_closure",
-    "-Wl,-u,base_GHCziIOziException_cannotCompactFunction_closure",
-    "-Wl,-u,base_GHCziIOziException_cannotCompactPinned_closure",
-    "-Wl,-u,base_GHCziIOziException_cannotCompactMutable_closure",
-    "-Wl,-u,base_GHCziIOPort_doubleReadException_closure",
-    "-Wl,-u,base_ControlziExceptionziBase_nonTermination_closure",
-    "-Wl,-u,base_ControlziExceptionziBase_nestedAtomically_closure",
-    "-Wl,-u,base_GHCziEventziThread_blockedOnBadFD_closure",
-    "-Wl,-u,base_GHCziConcziSync_runSparks_closure",
-    "-Wl,-u,base_GHCziConcziIO_ensureIOManagerIsRunning_closure",
-    "-Wl,-u,base_GHCziConcziIO_interruptIOManager_closure",
-    "-Wl,-u,base_GHCziConcziIO_ioManagerCapabilitiesChanged_closure",
-    "-Wl,-u,base_GHCziConcziSignal_runHandlersPtr_closure",
-    "-Wl,-u,base_GHCziTopHandler_flushStdHandles_closure",
-    "-Wl,-u,base_GHCziTopHandler_runMainIO_closure",
-    "-Wl,-u,ghczmprim_GHCziTypes_Czh_con_info",
-    "-Wl,-u,ghczmprim_GHCziTypes_Izh_con_info",
-    "-Wl,-u,ghczmprim_GHCziTypes_Fzh_con_info",
-    "-Wl,-u,ghczmprim_GHCziTypes_Dzh_con_info",
-    "-Wl,-u,ghczmprim_GHCziTypes_Wzh_con_info",
-    "-Wl,-u,base_GHCziPtr_Ptr_con_info",
-    "-Wl,-u,base_GHCziPtr_FunPtr_con_info",
-    "-Wl,-u,base_GHCziInt_I8zh_con_info",
-    "-Wl,-u,base_GHCziInt_I16zh_con_info",
-    "-Wl,-u,base_GHCziInt_I32zh_con_info",
-    "-Wl,-u,base_GHCziInt_I64zh_con_info",
-    "-Wl,-u,base_GHCziWord_W8zh_con_info",
-    "-Wl,-u,base_GHCziWord_W16zh_con_info",
-    "-Wl,-u,base_GHCziWord_W32zh_con_info",
-    "-Wl,-u,base_GHCziWord_W64zh_con_info",
-    "-Wl,-u,base_GHCziStable_StablePtr_con_info",
-    "-Wl,-u,hs_atomic_add8",
-    "-Wl,-u,hs_atomic_add16",
-    "-Wl,-u,hs_atomic_add32",
-    "-Wl,-u,hs_atomic_add64",
-    "-Wl,-u,hs_atomic_sub8",
-    "-Wl,-u,hs_atomic_sub16",
-    "-Wl,-u,hs_atomic_sub32",
-    "-Wl,-u,hs_atomic_sub64",
-    "-Wl,-u,hs_atomic_and8",
-    "-Wl,-u,hs_atomic_and16",
-    "-Wl,-u,hs_atomic_and32",
-    "-Wl,-u,hs_atomic_and64",
-    "-Wl,-u,hs_atomic_nand8",
-    "-Wl,-u,hs_atomic_nand16",
-    "-Wl,-u,hs_atomic_nand32",
-    "-Wl,-u,hs_atomic_nand64",
-    "-Wl,-u,hs_atomic_or8",
-    "-Wl,-u,hs_atomic_or16",
-    "-Wl,-u,hs_atomic_or32",
-    "-Wl,-u,hs_atomic_or64",
-    "-Wl,-u,hs_atomic_xor8",
-    "-Wl,-u,hs_atomic_xor16",
-    "-Wl,-u,hs_atomic_xor32",
-    "-Wl,-u,hs_atomic_xor64",
-    "-Wl,-u,hs_cmpxchg8",
-    "-Wl,-u,hs_cmpxchg16",
-    "-Wl,-u,hs_cmpxchg32",
-    "-Wl,-u,hs_cmpxchg64",
-    "-Wl,-u,hs_xchg8",
-    "-Wl,-u,hs_xchg16",
-    "-Wl,-u,hs_xchg32",
-    "-Wl,-u,hs_xchg64",
-    "-Wl,-u,hs_atomicread8",
-    "-Wl,-u,hs_atomicread16",
-    "-Wl,-u,hs_atomicread32",
-    "-Wl,-u,hs_atomicread64",
-    "-Wl,-u,hs_atomicwrite8",
-    "-Wl,-u,hs_atomicwrite16",
-    "-Wl,-u,hs_atomicwrite32",
-    "-Wl,-u,hs_atomicwrite64",
-    "-Wl,-u,base_GHCziStackziCloneStack_StackSnapshot_closure"
-  ],
-  visibility = [ "PUBLIC" ]
+    name = "rts-1.0.2",
+    version = "1.0.2",
+    id = "rts-1.0.2",
+    db = "lib/package.conf.d",
+    deps = [],
+    import_dirs = [],
+    shared_libs = {
+        "libHSrts-1.0.2-ghc9.8.2.so": "lib/x86_64-linux-ghc-9.8.2/libHSrts-1.0.2-ghc9.8.2.so",
+        "libffi.so": "lib/x86_64-linux-ghc-9.8.2/libffi.so",
+    },
+    static_libs = [
+        "lib/x86_64-linux-ghc-9.8.2/rts-1.0.2/libHSrts-1.0.2.a",
+        "lib/x86_64-linux-ghc-9.8.2/rts-1.0.2/libCffi.a",
+    ],
+    cxx_header_dirs = [
+        "lib/x86_64-linux-ghc-9.8.2/rts-1.0.2/include",
+    ],
+    exported_linker_flags = [
+        "-Wl,-u,base_GHCziTopHandler_runIO_closure",
+        "-Wl,-u,base_GHCziTopHandler_runNonIO_closure",
+        "-Wl,-u,ghczmprim_GHCziTupleziPrim_Z0T_closure",
+        "-Wl,-u,ghczmprim_GHCziTypes_True_closure",
+        "-Wl,-u,ghczmprim_GHCziTypes_False_closure",
+        "-Wl,-u,base_GHCziPack_unpackCString_closure",
+        "-Wl,-u,base_GHCziWeakziFinalizze_runFinalizzerBatch_closure",
+        "-Wl,-u,base_GHCziIOziException_stackOverflow_closure",
+        "-Wl,-u,base_GHCziIOziException_heapOverflow_closure",
+        "-Wl,-u,base_GHCziIOziException_allocationLimitExceeded_closure",
+        "-Wl,-u,base_GHCziIOziException_blockedIndefinitelyOnMVar_closure",
+        "-Wl,-u,base_GHCziIOziException_blockedIndefinitelyOnSTM_closure",
+        "-Wl,-u,base_GHCziIOziException_cannotCompactFunction_closure",
+        "-Wl,-u,base_GHCziIOziException_cannotCompactPinned_closure",
+        "-Wl,-u,base_GHCziIOziException_cannotCompactMutable_closure",
+        "-Wl,-u,base_GHCziIOPort_doubleReadException_closure",
+        "-Wl,-u,base_ControlziExceptionziBase_nonTermination_closure",
+        "-Wl,-u,base_ControlziExceptionziBase_nestedAtomically_closure",
+        "-Wl,-u,base_GHCziEventziThread_blockedOnBadFD_closure",
+        "-Wl,-u,base_GHCziConcziSync_runSparks_closure",
+        "-Wl,-u,base_GHCziConcziIO_ensureIOManagerIsRunning_closure",
+        "-Wl,-u,base_GHCziConcziIO_interruptIOManager_closure",
+        "-Wl,-u,base_GHCziConcziIO_ioManagerCapabilitiesChanged_closure",
+        "-Wl,-u,base_GHCziConcziSignal_runHandlersPtr_closure",
+        "-Wl,-u,base_GHCziTopHandler_flushStdHandles_closure",
+        "-Wl,-u,base_GHCziTopHandler_runMainIO_closure",
+        "-Wl,-u,ghczmprim_GHCziTypes_Czh_con_info",
+        "-Wl,-u,ghczmprim_GHCziTypes_Izh_con_info",
+        "-Wl,-u,ghczmprim_GHCziTypes_Fzh_con_info",
+        "-Wl,-u,ghczmprim_GHCziTypes_Dzh_con_info",
+        "-Wl,-u,ghczmprim_GHCziTypes_Wzh_con_info",
+        "-Wl,-u,base_GHCziPtr_Ptr_con_info",
+        "-Wl,-u,base_GHCziPtr_FunPtr_con_info",
+        "-Wl,-u,base_GHCziInt_I8zh_con_info",
+        "-Wl,-u,base_GHCziInt_I16zh_con_info",
+        "-Wl,-u,base_GHCziInt_I32zh_con_info",
+        "-Wl,-u,base_GHCziInt_I64zh_con_info",
+        "-Wl,-u,base_GHCziWord_W8zh_con_info",
+        "-Wl,-u,base_GHCziWord_W16zh_con_info",
+        "-Wl,-u,base_GHCziWord_W32zh_con_info",
+        "-Wl,-u,base_GHCziWord_W64zh_con_info",
+        "-Wl,-u,base_GHCziStable_StablePtr_con_info",
+        "-Wl,-u,hs_atomic_add8",
+        "-Wl,-u,hs_atomic_add16",
+        "-Wl,-u,hs_atomic_add32",
+        "-Wl,-u,hs_atomic_add64",
+        "-Wl,-u,hs_atomic_sub8",
+        "-Wl,-u,hs_atomic_sub16",
+        "-Wl,-u,hs_atomic_sub32",
+        "-Wl,-u,hs_atomic_sub64",
+        "-Wl,-u,hs_atomic_and8",
+        "-Wl,-u,hs_atomic_and16",
+        "-Wl,-u,hs_atomic_and32",
+        "-Wl,-u,hs_atomic_and64",
+        "-Wl,-u,hs_atomic_nand8",
+        "-Wl,-u,hs_atomic_nand16",
+        "-Wl,-u,hs_atomic_nand32",
+        "-Wl,-u,hs_atomic_nand64",
+        "-Wl,-u,hs_atomic_or8",
+        "-Wl,-u,hs_atomic_or16",
+        "-Wl,-u,hs_atomic_or32",
+        "-Wl,-u,hs_atomic_or64",
+        "-Wl,-u,hs_atomic_xor8",
+        "-Wl,-u,hs_atomic_xor16",
+        "-Wl,-u,hs_atomic_xor32",
+        "-Wl,-u,hs_atomic_xor64",
+        "-Wl,-u,hs_cmpxchg8",
+        "-Wl,-u,hs_cmpxchg16",
+        "-Wl,-u,hs_cmpxchg32",
+        "-Wl,-u,hs_cmpxchg64",
+        "-Wl,-u,hs_xchg8",
+        "-Wl,-u,hs_xchg16",
+        "-Wl,-u,hs_xchg32",
+        "-Wl,-u,hs_xchg64",
+        "-Wl,-u,hs_atomicread8",
+        "-Wl,-u,hs_atomicread16",
+        "-Wl,-u,hs_atomicread32",
+        "-Wl,-u,hs_atomicread64",
+        "-Wl,-u,hs_atomicwrite8",
+        "-Wl,-u,hs_atomicwrite16",
+        "-Wl,-u,hs_atomicwrite32",
+        "-Wl,-u,hs_atomicwrite64",
+        "-Wl,-u,base_GHCziStackziCloneStack_StackSnapshot_closure",
+    ],
+    visibility = ["PUBLIC"],
 )
- 
+
 haskell_prebuilt_library(
-  name = "semaphore-compat-1.0.0-cf4a",
-  version = "1.0.0",
-  id = "semaphore-compat-1.0.0-cf4a",
-  db = "lib/package.conf.d",
-  deps = [
-    ":base-4.19.1.0-cbb2",
-    ":exceptions-0.10.7-6306",
-    ":unix-2.8.4.0-d7dc"
-  ],
-  import_dirs = [
-    "lib/x86_64-linux-ghc-9.8.2/semaphore-compat-1.0.0-cf4a"
-  ],
-  shared_libs = {
-    "libHSsemaphore-compat-1.0.0-cf4a-ghc9.8.2.so": "lib/x86_64-linux-ghc-9.8.2/libHSsemaphore-compat-1.0.0-cf4a-ghc9.8.2.so"
-  },
-  static_libs = [
-    "lib/x86_64-linux-ghc-9.8.2/semaphore-compat-1.0.0-cf4a/libHSsemaphore-compat-1.0.0-cf4a.a"
-  ],
-  cxx_header_dirs = [ ],
-  exported_linker_flags = [ ],
-  visibility = [ "PUBLIC" ]
+    name = "semaphore-compat-1.0.0-cf4a",
+    version = "1.0.0",
+    id = "semaphore-compat-1.0.0-cf4a",
+    db = "lib/package.conf.d",
+    deps = [
+        ":base-4.19.1.0-cbb2",
+        ":exceptions-0.10.7-6306",
+        ":unix-2.8.4.0-d7dc",
+    ],
+    import_dirs = [
+        "lib/x86_64-linux-ghc-9.8.2/semaphore-compat-1.0.0-cf4a",
+    ],
+    shared_libs = {
+        "libHSsemaphore-compat-1.0.0-cf4a-ghc9.8.2.so": "lib/x86_64-linux-ghc-9.8.2/libHSsemaphore-compat-1.0.0-cf4a-ghc9.8.2.so",
+    },
+    static_libs = [
+        "lib/x86_64-linux-ghc-9.8.2/semaphore-compat-1.0.0-cf4a/libHSsemaphore-compat-1.0.0-cf4a.a",
+    ],
+    cxx_header_dirs = [],
+    exported_linker_flags = [],
+    visibility = ["PUBLIC"],
 )
- 
+
 haskell_prebuilt_library(
-  name = "stm-2.5.2.1-4277",
-  version = "2.5.2.1",
-  id = "stm-2.5.2.1-4277",
-  db = "lib/package.conf.d",
-  deps = [ ":array-0.5.6.0-20c0", ":base-4.19.1.0-cbb2" ],
-  import_dirs = [ "lib/x86_64-linux-ghc-9.8.2/stm-2.5.2.1-4277" ],
-  shared_libs = {
-    "libHSstm-2.5.2.1-4277-ghc9.8.2.so": "lib/x86_64-linux-ghc-9.8.2/libHSstm-2.5.2.1-4277-ghc9.8.2.so"
-  },
-  static_libs = [
-    "lib/x86_64-linux-ghc-9.8.2/stm-2.5.2.1-4277/libHSstm-2.5.2.1-4277.a"
-  ],
-  cxx_header_dirs = [ ],
-  exported_linker_flags = [ ],
-  visibility = [ "PUBLIC" ]
+    name = "stm-2.5.2.1-4277",
+    version = "2.5.2.1",
+    id = "stm-2.5.2.1-4277",
+    db = "lib/package.conf.d",
+    deps = [":array-0.5.6.0-20c0", ":base-4.19.1.0-cbb2"],
+    import_dirs = ["lib/x86_64-linux-ghc-9.8.2/stm-2.5.2.1-4277"],
+    shared_libs = {
+        "libHSstm-2.5.2.1-4277-ghc9.8.2.so": "lib/x86_64-linux-ghc-9.8.2/libHSstm-2.5.2.1-4277-ghc9.8.2.so",
+    },
+    static_libs = [
+        "lib/x86_64-linux-ghc-9.8.2/stm-2.5.2.1-4277/libHSstm-2.5.2.1-4277.a",
+    ],
+    cxx_header_dirs = [],
+    exported_linker_flags = [],
+    visibility = ["PUBLIC"],
 )
- 
+
 haskell_prebuilt_library(
-  name = "system-cxx-std-lib-1.0",
-  version = "1.0",
-  id = "system-cxx-std-lib-1.0",
-  db = "lib/package.conf.d",
-  deps = [ ],
-  import_dirs = [ ],
-  shared_libs = { },
-  static_libs = [ ],
-  cxx_header_dirs = [ ],
-  exported_linker_flags = [ ],
-  visibility = [ "PUBLIC" ]
+    name = "system-cxx-std-lib-1.0",
+    version = "1.0",
+    id = "system-cxx-std-lib-1.0",
+    db = "lib/package.conf.d",
+    deps = [],
+    import_dirs = [],
+    shared_libs = {},
+    static_libs = [],
+    cxx_header_dirs = [],
+    exported_linker_flags = [],
+    visibility = ["PUBLIC"],
 )
- 
+
 haskell_prebuilt_library(
-  name = "template-haskell-2.21.0.0-2542",
-  version = "2.21.0.0",
-  id = "template-haskell-2.21.0.0-2542",
-  db = "lib/package.conf.d",
-  deps = [
-    ":base-4.19.1.0-cbb2",
-    ":ghc-boot-th-9.8.2-5f69",
-    ":ghc-prim-0.11.0-8a73",
-    ":pretty-1.1.3.6-a699"
-  ],
-  import_dirs = [
-    "lib/x86_64-linux-ghc-9.8.2/template-haskell-2.21.0.0-2542"
-  ],
-  shared_libs = {
-    "libHStemplate-haskell-2.21.0.0-2542-ghc9.8.2.so": "lib/x86_64-linux-ghc-9.8.2/libHStemplate-haskell-2.21.0.0-2542-ghc9.8.2.so"
-  },
-  static_libs = [
-    "lib/x86_64-linux-ghc-9.8.2/template-haskell-2.21.0.0-2542/libHStemplate-haskell-2.21.0.0-2542.a"
-  ],
-  cxx_header_dirs = [ ],
-  exported_linker_flags = [ ],
-  visibility = [ "PUBLIC" ]
+    name = "template-haskell-2.21.0.0-2542",
+    version = "2.21.0.0",
+    id = "template-haskell-2.21.0.0-2542",
+    db = "lib/package.conf.d",
+    deps = [
+        ":base-4.19.1.0-cbb2",
+        ":ghc-boot-th-9.8.2-5f69",
+        ":ghc-prim-0.11.0-8a73",
+        ":pretty-1.1.3.6-a699",
+    ],
+    import_dirs = [
+        "lib/x86_64-linux-ghc-9.8.2/template-haskell-2.21.0.0-2542",
+    ],
+    shared_libs = {
+        "libHStemplate-haskell-2.21.0.0-2542-ghc9.8.2.so": "lib/x86_64-linux-ghc-9.8.2/libHStemplate-haskell-2.21.0.0-2542-ghc9.8.2.so",
+    },
+    static_libs = [
+        "lib/x86_64-linux-ghc-9.8.2/template-haskell-2.21.0.0-2542/libHStemplate-haskell-2.21.0.0-2542.a",
+    ],
+    cxx_header_dirs = [],
+    exported_linker_flags = [],
+    visibility = ["PUBLIC"],
 )
- 
+
 haskell_prebuilt_library(
-  name = "terminfo-0.4.1.6-bee1",
-  version = "0.4.1.6",
-  id = "terminfo-0.4.1.6-bee1",
-  db = "lib/package.conf.d",
-  deps = [ ":base-4.19.1.0-cbb2" ],
-  import_dirs = [
-    "lib/x86_64-linux-ghc-9.8.2/terminfo-0.4.1.6-bee1"
-  ],
-  shared_libs = {
-    "libHSterminfo-0.4.1.6-bee1-ghc9.8.2.so": "lib/x86_64-linux-ghc-9.8.2/libHSterminfo-0.4.1.6-bee1-ghc9.8.2.so"
-  },
-  static_libs = [
-    "lib/x86_64-linux-ghc-9.8.2/terminfo-0.4.1.6-bee1/libHSterminfo-0.4.1.6-bee1.a"
-  ],
-  cxx_header_dirs = [ ],
-  exported_linker_flags = [ ],
-  visibility = [ "PUBLIC" ]
+    name = "terminfo-0.4.1.6-bee1",
+    version = "0.4.1.6",
+    id = "terminfo-0.4.1.6-bee1",
+    db = "lib/package.conf.d",
+    deps = [":base-4.19.1.0-cbb2"],
+    import_dirs = [
+        "lib/x86_64-linux-ghc-9.8.2/terminfo-0.4.1.6-bee1",
+    ],
+    shared_libs = {
+        "libHSterminfo-0.4.1.6-bee1-ghc9.8.2.so": "lib/x86_64-linux-ghc-9.8.2/libHSterminfo-0.4.1.6-bee1-ghc9.8.2.so",
+    },
+    static_libs = [
+        "lib/x86_64-linux-ghc-9.8.2/terminfo-0.4.1.6-bee1/libHSterminfo-0.4.1.6-bee1.a",
+    ],
+    cxx_header_dirs = [],
+    exported_linker_flags = [],
+    visibility = ["PUBLIC"],
 )
- 
+
 haskell_prebuilt_library(
-  name = "text-2.1.1-cd34",
-  version = "2.1.1",
-  id = "text-2.1.1-cd34",
-  db = "lib/package.conf.d",
-  deps = [
-    ":array-0.5.6.0-20c0",
-    ":base-4.19.1.0-cbb2",
-    ":binary-0.8.9.1-5151",
-    ":bytestring-0.12.1.0-c563",
-    ":deepseq-1.5.0.0-d161",
-    ":ghc-prim-0.11.0-8a73",
-    ":template-haskell-2.21.0.0-2542"
-  ],
-  import_dirs = [ "lib/x86_64-linux-ghc-9.8.2/text-2.1.1-cd34" ],
-  shared_libs = {
-    "libHStext-2.1.1-cd34-ghc9.8.2.so": "lib/x86_64-linux-ghc-9.8.2/libHStext-2.1.1-cd34-ghc9.8.2.so"
-  },
-  static_libs = [
-    "lib/x86_64-linux-ghc-9.8.2/text-2.1.1-cd34/libHStext-2.1.1-cd34.a"
-  ],
-  cxx_header_dirs = [ ],
-  exported_linker_flags = [ ],
-  visibility = [ "PUBLIC" ]
+    name = "text-2.1.1-cd34",
+    version = "2.1.1",
+    id = "text-2.1.1-cd34",
+    db = "lib/package.conf.d",
+    deps = [
+        ":array-0.5.6.0-20c0",
+        ":base-4.19.1.0-cbb2",
+        ":binary-0.8.9.1-5151",
+        ":bytestring-0.12.1.0-c563",
+        ":deepseq-1.5.0.0-d161",
+        ":ghc-prim-0.11.0-8a73",
+        ":template-haskell-2.21.0.0-2542",
+    ],
+    import_dirs = ["lib/x86_64-linux-ghc-9.8.2/text-2.1.1-cd34"],
+    shared_libs = {
+        "libHStext-2.1.1-cd34-ghc9.8.2.so": "lib/x86_64-linux-ghc-9.8.2/libHStext-2.1.1-cd34-ghc9.8.2.so",
+    },
+    static_libs = [
+        "lib/x86_64-linux-ghc-9.8.2/text-2.1.1-cd34/libHStext-2.1.1-cd34.a",
+    ],
+    cxx_header_dirs = [],
+    exported_linker_flags = [],
+    visibility = ["PUBLIC"],
 )
- 
+
 haskell_prebuilt_library(
-  name = "time-1.12.2-5921",
-  version = "1.12.2",
-  id = "time-1.12.2-5921",
-  db = "lib/package.conf.d",
-  deps = [ ":base-4.19.1.0-cbb2", ":deepseq-1.5.0.0-d161" ],
-  import_dirs = [ "lib/x86_64-linux-ghc-9.8.2/time-1.12.2-5921" ],
-  shared_libs = {
-    "libHStime-1.12.2-5921-ghc9.8.2.so": "lib/x86_64-linux-ghc-9.8.2/libHStime-1.12.2-5921-ghc9.8.2.so"
-  },
-  static_libs = [
-    "lib/x86_64-linux-ghc-9.8.2/time-1.12.2-5921/libHStime-1.12.2-5921.a"
-  ],
-  cxx_header_dirs = [
-    "lib/x86_64-linux-ghc-9.8.2/time-1.12.2-5921/include"
-  ],
-  exported_linker_flags = [ ],
-  visibility = [ "PUBLIC" ]
+    name = "time-1.12.2-5921",
+    version = "1.12.2",
+    id = "time-1.12.2-5921",
+    db = "lib/package.conf.d",
+    deps = [":base-4.19.1.0-cbb2", ":deepseq-1.5.0.0-d161"],
+    import_dirs = ["lib/x86_64-linux-ghc-9.8.2/time-1.12.2-5921"],
+    shared_libs = {
+        "libHStime-1.12.2-5921-ghc9.8.2.so": "lib/x86_64-linux-ghc-9.8.2/libHStime-1.12.2-5921-ghc9.8.2.so",
+    },
+    static_libs = [
+        "lib/x86_64-linux-ghc-9.8.2/time-1.12.2-5921/libHStime-1.12.2-5921.a",
+    ],
+    cxx_header_dirs = [
+        "lib/x86_64-linux-ghc-9.8.2/time-1.12.2-5921/include",
+    ],
+    exported_linker_flags = [],
+    visibility = ["PUBLIC"],
 )
- 
+
 haskell_prebuilt_library(
-  name = "transformers-0.6.1.0-d712",
-  version = "0.6.1.0",
-  id = "transformers-0.6.1.0-d712",
-  db = "lib/package.conf.d",
-  deps = [ ":base-4.19.1.0-cbb2" ],
-  import_dirs = [
-    "lib/x86_64-linux-ghc-9.8.2/transformers-0.6.1.0-d712"
-  ],
-  shared_libs = {
-    "libHStransformers-0.6.1.0-d712-ghc9.8.2.so": "lib/x86_64-linux-ghc-9.8.2/libHStransformers-0.6.1.0-d712-ghc9.8.2.so"
-  },
-  static_libs = [
-    "lib/x86_64-linux-ghc-9.8.2/transformers-0.6.1.0-d712/libHStransformers-0.6.1.0-d712.a"
-  ],
-  cxx_header_dirs = [ ],
-  exported_linker_flags = [ ],
-  visibility = [ "PUBLIC" ]
+    name = "transformers-0.6.1.0-d712",
+    version = "0.6.1.0",
+    id = "transformers-0.6.1.0-d712",
+    db = "lib/package.conf.d",
+    deps = [":base-4.19.1.0-cbb2"],
+    import_dirs = [
+        "lib/x86_64-linux-ghc-9.8.2/transformers-0.6.1.0-d712",
+    ],
+    shared_libs = {
+        "libHStransformers-0.6.1.0-d712-ghc9.8.2.so": "lib/x86_64-linux-ghc-9.8.2/libHStransformers-0.6.1.0-d712-ghc9.8.2.so",
+    },
+    static_libs = [
+        "lib/x86_64-linux-ghc-9.8.2/transformers-0.6.1.0-d712/libHStransformers-0.6.1.0-d712.a",
+    ],
+    cxx_header_dirs = [],
+    exported_linker_flags = [],
+    visibility = ["PUBLIC"],
 )
- 
+
 haskell_prebuilt_library(
-  name = "unix-2.8.4.0-d7dc",
-  version = "2.8.4.0",
-  id = "unix-2.8.4.0-d7dc",
-  db = "lib/package.conf.d",
-  deps = [
-    ":base-4.19.1.0-cbb2",
-    ":bytestring-0.12.1.0-c563",
-    ":filepath-1.4.200.1-c404",
-    ":time-1.12.2-5921"
-  ],
-  import_dirs = [ "lib/x86_64-linux-ghc-9.8.2/unix-2.8.4.0-d7dc" ],
-  shared_libs = {
-    "libHSunix-2.8.4.0-d7dc-ghc9.8.2.so": "lib/x86_64-linux-ghc-9.8.2/libHSunix-2.8.4.0-d7dc-ghc9.8.2.so"
-  },
-  static_libs = [
-    "lib/x86_64-linux-ghc-9.8.2/unix-2.8.4.0-d7dc/libHSunix-2.8.4.0-d7dc.a"
-  ],
-  cxx_header_dirs = [
-    "lib/x86_64-linux-ghc-9.8.2/unix-2.8.4.0-d7dc/include"
-  ],
-  exported_linker_flags = [ ],
-  visibility = [ "PUBLIC" ]
+    name = "unix-2.8.4.0-d7dc",
+    version = "2.8.4.0",
+    id = "unix-2.8.4.0-d7dc",
+    db = "lib/package.conf.d",
+    deps = [
+        ":base-4.19.1.0-cbb2",
+        ":bytestring-0.12.1.0-c563",
+        ":filepath-1.4.200.1-c404",
+        ":time-1.12.2-5921",
+    ],
+    import_dirs = ["lib/x86_64-linux-ghc-9.8.2/unix-2.8.4.0-d7dc"],
+    shared_libs = {
+        "libHSunix-2.8.4.0-d7dc-ghc9.8.2.so": "lib/x86_64-linux-ghc-9.8.2/libHSunix-2.8.4.0-d7dc-ghc9.8.2.so",
+    },
+    static_libs = [
+        "lib/x86_64-linux-ghc-9.8.2/unix-2.8.4.0-d7dc/libHSunix-2.8.4.0-d7dc.a",
+    ],
+    cxx_header_dirs = [
+        "lib/x86_64-linux-ghc-9.8.2/unix-2.8.4.0-d7dc/include",
+    ],
+    exported_linker_flags = [],
+    visibility = ["PUBLIC"],
 )
- 
+
 haskell_prebuilt_library(
-  name = "xhtml-3000.2.2.1-38ba",
-  version = "3000.2.2.1",
-  id = "xhtml-3000.2.2.1-38ba",
-  db = "lib/package.conf.d",
-  deps = [ ":base-4.19.1.0-cbb2" ],
-  import_dirs = [
-    "lib/x86_64-linux-ghc-9.8.2/xhtml-3000.2.2.1-38ba"
-  ],
-  shared_libs = {
-    "libHSxhtml-3000.2.2.1-38ba-ghc9.8.2.so": "lib/x86_64-linux-ghc-9.8.2/libHSxhtml-3000.2.2.1-38ba-ghc9.8.2.so"
-  },
-  static_libs = [
-    "lib/x86_64-linux-ghc-9.8.2/xhtml-3000.2.2.1-38ba/libHSxhtml-3000.2.2.1-38ba.a"
-  ],
-  cxx_header_dirs = [ ],
-  exported_linker_flags = [ ],
-  visibility = [ "PUBLIC" ]
+    name = "xhtml-3000.2.2.1-38ba",
+    version = "3000.2.2.1",
+    id = "xhtml-3000.2.2.1-38ba",
+    db = "lib/package.conf.d",
+    deps = [":base-4.19.1.0-cbb2"],
+    import_dirs = [
+        "lib/x86_64-linux-ghc-9.8.2/xhtml-3000.2.2.1-38ba",
+    ],
+    shared_libs = {
+        "libHSxhtml-3000.2.2.1-38ba-ghc9.8.2.so": "lib/x86_64-linux-ghc-9.8.2/libHSxhtml-3000.2.2.1-38ba-ghc9.8.2.so",
+    },
+    static_libs = [
+        "lib/x86_64-linux-ghc-9.8.2/xhtml-3000.2.2.1-38ba/libHSxhtml-3000.2.2.1-38ba.a",
+    ],
+    cxx_header_dirs = [],
+    exported_linker_flags = [],
+    visibility = ["PUBLIC"],
 )
- 
+
