@@ -13,14 +13,14 @@ haskell_binary(
     name = "import_toolchain",
     srcs = {"Main.hs": "import_toolchain.hs"},
     deps = [
-        "toolchains//haskell/ghc-9.10.1:base",
-        "toolchains//haskell/ghc-9.10.1:bytestring",
-        "toolchains//haskell/ghc-9.10.1:Cabal",
-        "toolchains//haskell/ghc-9.10.1:directory",
-        "toolchains//haskell/ghc-9.10.1:filepath",
-        "toolchains//haskell/ghc-9.10.1:pretty",
-        "toolchains//haskell/ghc-9.10.1:process",
-        "toolchains//haskell/ghc-9.10.1:transformers",
+        "toolchains//ghc-9.10.1:base",
+        "toolchains//ghc-9.10.1:bytestring",
+        "toolchains//ghc-9.10.1:Cabal",
+        "toolchains//ghc-9.10.1:directory",
+        "toolchains//ghc-9.10.1:filepath",
+        "toolchains//ghc-9.10.1:pretty",
+        "toolchains//ghc-9.10.1:process",
+        "toolchains//ghc-9.10.1:transformers",
     ],
 )
 
