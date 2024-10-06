@@ -1,6 +1,7 @@
 load("@prelude//haskell:toolchain.bzl", "HaskellPlatformInfo", "HaskellToolchainInfo")
 load("@prelude//haskell:util.bzl", "get_artifact_suffix")
 load("@prelude//linking:link_info.bzl", "LinkStyle")
+load("//rules/haskell/toolchain.bzl", "HaskellToolchainLibraries")
 
 CabalPackageInfo = provider(
     fields = {
@@ -47,8 +48,10 @@ source_unit_attrs = {
     "exec_deps": attrs.list(attrs.exec_dep(providers = [ExeDependInfo]), default = []),
     "flags": attrs.dict(attrs.string(), attrs.bool()),
     "src": attrs.dep(providers = [CabalPackageInfo]),
-    "setup": attrs.exec_dep(),
-    "_haskell_toolchain": attrs.toolchain_dep(providers = [HaskellToolchainInfo, HaskellPlatformInfo], default = "toolchains//:haskell"),
+    "_haskell_toolchain": attrs.toolchain_dep(
+        providers = [HaskellToolchainInfo, HaskellPlatformInfo, HaskellToolchainLibraries],
+        default = "toolchains//:haskell",
+    ),
 }
 
 def manglePkgName(name: str) -> str:

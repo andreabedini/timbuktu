@@ -4,7 +4,7 @@ load(
     "CabalPackageInfo",
 )
 
-def unit_src(pkg_src, **kwargs):
+def pkg_src(pkg_src, **kwargs):
     if pkg_src["type"] == "repo-tar":
         repo_tar_src(pkg_src["repo"], **kwargs)
 
@@ -51,8 +51,11 @@ def _secure_repo_package_impl(ctx: AnalysisContext) -> list[Provider]:
 
     return [
         DefaultInfo(
-            default_outputs = [srcdir],
+            default_output = srcdir,
             other_outputs = [filelist],
+            sub_targets = {
+                "Setup.hs": [DefaultInfo(default_output = srcdir.project("Setup.hs"))],
+            },
         ),
         CabalPackageInfo(
             pkg_name = ctx.attrs.pkg_name,

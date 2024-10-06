@@ -221,8 +221,13 @@ configured_unit = rule(
     impl = _configured_unit_impl,
     attrs =
         common_unit_attrs |
-        source_unit_attrs | {
+        source_unit_attrs |
+        {
             "component_name": attrs.string(),
+            "setup": attrs.dep(
+                default = "//rules/haskell/cabal_install:setup_simple",
+                providers = [RunInfo],
+            ),
         },
 )
 
@@ -308,7 +313,10 @@ def _configured_legacy_unit_impl(ctx: AnalysisContext) -> list[Provider]:
 
 configured_legacy_unit = rule(
     impl = _configured_legacy_unit_impl,
-    attrs = common_unit_attrs | source_unit_attrs,
+    attrs =
+        common_unit_attrs |
+        source_unit_attrs |
+        {"setup": attrs.dep(providers = [RunInfo])},
 )
 
 def _in_dir(*script, work_dir):

@@ -1,26 +1,41 @@
+load("//rules/haskell:toolchain.bzl", "haskell_toolchain_library")
+
+[
+    haskell_toolchain_library(name = name)
+    for name in [
+        "base",
+        "bytestring",
+        "Cabal",
+        "directory",
+        "filepath",
+        "pretty",
+        "process",
+        "transformers",
+    ]
+]
+
 haskell_binary(
     name = "parse_cabal_fields",
-    srcs = {
-        "Main.hs": "parse_cabal_fields.hs",
-    },
+    srcs = {"Main.hs": "parse_cabal_fields.hs"},
     deps = [
-        "//ghc:Cabal",
-        "//ghc:base",
-        "//ghc:bytestring",
+        ":Cabal",
+        ":base",
+        ":bytestring",
     ],
 )
+
 haskell_binary(
     name = "import_toolchain",
     srcs = {"Main.hs": "import_toolchain.hs"},
     deps = [
-        "toolchains//ghc-9.10.1:base",
-        "toolchains//ghc-9.10.1:bytestring",
-        "toolchains//ghc-9.10.1:Cabal",
-        "toolchains//ghc-9.10.1:directory",
-        "toolchains//ghc-9.10.1:filepath",
-        "toolchains//ghc-9.10.1:pretty",
-        "toolchains//ghc-9.10.1:process",
-        "toolchains//ghc-9.10.1:transformers",
+        ":base",
+        ":bytestring",
+        ":Cabal",
+        ":directory",
+        ":filepath",
+        ":pretty",
+        ":process",
+        ":transformers",
     ],
 )
 
