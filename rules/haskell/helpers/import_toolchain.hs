@@ -10,12 +10,13 @@ import Control.Monad.Trans.Maybe (hoistMaybe, runMaybeT)
 import Data.ByteString qualified as BS
 import Data.Either (partitionEithers)
 import Data.Foldable (Foldable (..), for_)
-import Data.List (isPrefixOf, stripPrefix)
+import Data.List (isPrefixOf, sortOn, stripPrefix)
 import Data.Maybe (fromMaybe)
 import Data.Monoid (Endo (..))
 import Data.String
 import Data.Traversable (for)
 import Distribution.InstalledPackageInfo qualified as IPI
+import Distribution.Package (packageName)
 import Distribution.Pretty (Pretty (..), prettyShow)
 import Distribution.Types.PackageId (PackageIdentifier (..))
 import System.Console.GetOpt (ArgDescr (..), ArgOrder (..), OptDescr (..), getOpt)
@@ -58,7 +59,7 @@ main = do
       libDir = fromMaybe (error "Missing \"LibDir\"") $ lookup "LibDir" info
       compilerId = "ghc-" ++ ghcVersion
 
-  outdir <- canonicalizePath $ fromMaybe ("toolchains/haskell/" ++ compilerId) outPath
+  outdir <- canonicalizePath $ fromMaybe ("toolchains/" ++ compilerId) outPath
   createDirectoryIfMissing True outdir
   putStrLn $ "Output directory: " ++ outdir
 
@@ -67,13 +68,14 @@ main = do
   putStrLn $ "Linking " ++ libDir ++ " to " ++ outLibDir
 
   let globalPackageDb = libDir </> "package.conf.d"
-  entries <- map (\ipi -> ipi {IPI.pkgRoot = Just libDir}) <$> readPackageDbEntries globalPackageDb
+  entries <- sortOn IPI.installedUnitId . map (\ipi -> ipi {IPI.pkgRoot = Just libDir}) <$> readPackageDbEntries globalPackageDb
+
+  let toolchain = renderToolchain compilerId entries
   output <- traverse (renderPackageInfo ghcVersion) entries
 
   writeFile (outdir </> "BUCK") $
-    -- renderStyle (style{mode = ZigZagMode}) $
     render $
-      vcat (map pretty (renderToolchain compilerId ghcPath)) $$ vcat output
+      vcat toolchain $$ vcat output
   putStrLn $ "Generated BUCK file: " ++ outdir </> "BUCK"
 
 readSettings :: String -> [(String, String)]
@@ -105,16 +107,22 @@ readPackageDbEntries packagedb = do
 
   return ipis
 
-renderToolchain :: String -> FilePath -> [Doc]
-renderToolchain compilerId path =
+renderToolchain :: String -> [IPI.InstalledPackageInfo] -> [Doc]
+renderToolchain compilerId entries =
   [ load "@root//rules/haskell:toolchain.bzl" ["haskell_toolchain"],
     rule
       "haskell_toolchain"
-      [ ("name", quoted compilerId),
-        ("compiler", quoted path),
-        ("linker", quoted path),
-        ("packager", "FIXME"),
-        ("haddock", "FIXME"),
+      [ ("name", Quoted compilerId),
+        ("compiler", Quoted compilerId),
+        ("linker", Quoted compilerId),
+        ("packager", Quoted $ "ghc-pkg" ++ drop 3 compilerId),
+        ("haddock", Quoted $ "haddock" ++ drop 3 compilerId),
+        ( "packages",
+          Dict
+            [ (prettyShow $ packageName sourcePackageId, Quoted . prettyShow $ installedUnitId)
+            | IPI.InstalledPackageInfo {sourcePackageId, installedUnitId} <- entries
+            ]
+        ),
         ("visibility", "PUBLIC")
       ]
   ]
@@ -142,72 +150,73 @@ renderPackageInfo ghcVersion IPI.InstalledPackageInfo {..} = do
   dynamicLibDirs <- traverse normaliseDir libraryDynDirs
   importDirs' <- traverse normaliseDir importDirs
 
-  let r1 =
-        rule
-          "haskell_prebuilt_library"
-          [ ("name", quotedPretty installedUnitId),
-            ("version", quotedPretty (pkgVersion sourcePackageId)),
-            ("id", quotedPretty installedUnitId),
-            ("db", quoted db),
-            ("deps", list [quotedPretty (Label d) | d <- depends]),
-            ("import_dirs", list [quoted dir | dir <- importDirs']),
-            ( "shared_libs",
-              list
-                [ dict [(dynamicLibName hsLib, [quoted $ dynamicLibDir </> dynamicLibName hsLib])]
-                | hsLib <- hsLibraries,
-                  dynamicLibDir <- dynamicLibDirs
-                ]
-            ),
-            ( "static_libs",
-              list
-                [ quoted $ staticLibDir </> staticLibName hsLib
-                | hsLib <- hsLibraries,
-                  staticLibDir <- staticLibDirs
-                ]
-            ),
-            ("cxx_header_dirs", list [quoted hdr | hdr <- cxxHeaderDirs]),
-            ("exported_linker_flags", list [quoted opt | opt <- ldOptions]),
-            ("visibility", "PUBLIC")
-          ]
-
-  return $ pretty r1
+  return $
+    rule
+      "haskell_prebuilt_library"
+      [ ("name", Quoted (prettyShow installedUnitId)),
+        ("version", Quoted (prettyShow (pkgVersion sourcePackageId))),
+        ("id", Quoted (prettyShow installedUnitId)),
+        ("db", Quoted db),
+        ("deps", List [Label (prettyShow d) | d <- depends]),
+        ("import_dirs", List [Quoted dir | dir <- importDirs']),
+        ( "shared_libs",
+          List
+            [ Dict [(dynamicLibName hsLib, Quoted $ dynamicLibDir </> dynamicLibName hsLib)]
+            | hsLib <- hsLibraries,
+              dynamicLibDir <- dynamicLibDirs
+            ]
+        ),
+        ( "static_libs",
+          List
+            [ Quoted $ staticLibDir </> staticLibName hsLib
+            | hsLib <- hsLibraries,
+              staticLibDir <- staticLibDirs
+            ]
+        ),
+        ("cxx_header_dirs", List [Quoted hdr | hdr <- cxxHeaderDirs]),
+        ("exported_linker_flags", List [Quoted opt | opt <- ldOptions]),
+        ("visibility", "PUBLIC")
+      ]
 
 --
 -- Pretty print utilities
 --
 
-dict :: [(String, [Doc])] -> Doc
-dict kvs =
-  lbrace
-    $+$ (nest 2 $ sep $ punctuate comma [quoted k <> ":" <+> list v | (k, v) <- kvs])
-    $+$ rbrace
+data Term = List [Term] | Dict [(String, Term)] | Quoted String | Label String
 
--- (prefix <> lbrace)
---     $+$ (nest 2 $ sep $ punctuate comma $ --     $+$ rbrace
+instance IsString Term where
+  fromString = Quoted
 
-list :: [Doc] -> Doc
-list ts =
-  lbrack
-    $+$ (nest 2 $ sep $ punctuate comma ts)
-    $+$ rbrack
+instance Pretty Term where
+  pretty = pretty2 empty
 
-rule :: String -> [(String, Doc)] -> Doc
+pretty2 :: Doc -> Term -> Doc
+pretty2 prefix (List ts) =
+  sep
+    [ prefix <+> lbrack,
+      nest 2 $ sep $ punctuate comma $ map pretty ts,
+      rbrack
+    ]
+pretty2 prefix (Dict kvs) =
+  sep
+    [ prefix <+> lbrace,
+      nest 2 $ sep $ punctuate comma [pretty2 (pretty (Quoted k) <> ":") v | (k, v) <- kvs],
+      rbrace
+    ]
+pretty2 prefix (Quoted s) =
+  prefix <+> text (show s)
+pretty2 prefix (Label s) =
+  prefix <+> text (show (':' : s))
+
+rule :: String -> [(String, Term)] -> Doc
 rule n args =
   (text n <> lparen)
-    $+$ (nest 2 $ sep $ punctuate comma [text k <+> "=" <+> v | (k, v) <- args])
+    $+$ (nest 2 $ sep $ punctuate comma [pretty2 (text k <+> "=") v | (k, v) <- args])
     $+$ rparen
+    $+$ " "
 
 load :: String -> [String] -> Doc
 load m names =
-  text "load(" <> quoted m <> "," <+> (hsep $ punctuate comma $ map quoted names) <> ")" <> "\n"
-
-quoted :: String -> Doc
-quoted = text . show
-
-quotedPretty :: (Pretty a) => a -> Doc
-quotedPretty = quoted . prettyShow
-
-data Label a = Label a
-
-instance (Pretty a) => Pretty (Label a) where
-  pretty (Label a) = ":" <> pretty a
+  text "load"
+    <> parens (pretty (Quoted m) <> "," <+> (hsep $ punctuate comma $ map (pretty . Quoted) names))
+    $+$ ""
