@@ -109,21 +109,21 @@ readPackageDbEntries packagedb = do
 
 renderToolchain :: String -> [IPI.InstalledPackageInfo] -> [Doc]
 renderToolchain compilerId entries =
-  [ load "@root//rules/haskell:toolchain.bzl" ["haskell_toolchain"],
+  [ load "@toolchains//:haskell.bzl" ["haskell_toolchain"],
     rule
       "haskell_toolchain"
-      [ ("name", Quoted compilerId),
+      [ ("name", "haskell"),
         ("compiler", Quoted compilerId),
         ("linker", Quoted compilerId),
         ("packager", Quoted $ "ghc-pkg" ++ drop 3 compilerId),
         ("haddock", Quoted $ "haddock" ++ drop 3 compilerId),
         ( "packages",
           Dict
-            [ (prettyShow $ packageName sourcePackageId, Quoted . prettyShow $ installedUnitId)
+            [ (prettyShow $ packageName sourcePackageId, Label . prettyShow $ installedUnitId)
             | IPI.InstalledPackageInfo {sourcePackageId, installedUnitId} <- entries
             ]
         ),
-        ("visibility", "PUBLIC")
+        ("visibility", List ["PUBLIC"])
       ]
   ]
 
@@ -160,8 +160,8 @@ renderPackageInfo ghcVersion IPI.InstalledPackageInfo {..} = do
         ("deps", List [Label (prettyShow d) | d <- depends]),
         ("import_dirs", List [Quoted dir | dir <- importDirs']),
         ( "shared_libs",
-          List
-            [ Dict [(dynamicLibName hsLib, Quoted $ dynamicLibDir </> dynamicLibName hsLib)]
+          Dict
+            [ (dynamicLibName hsLib, Quoted $ dynamicLibDir </> dynamicLibName hsLib)
             | hsLib <- hsLibraries,
               dynamicLibDir <- dynamicLibDirs
             ]
@@ -175,7 +175,7 @@ renderPackageInfo ghcVersion IPI.InstalledPackageInfo {..} = do
         ),
         ("cxx_header_dirs", List [Quoted hdr | hdr <- cxxHeaderDirs]),
         ("exported_linker_flags", List [Quoted opt | opt <- ldOptions]),
-        ("visibility", "PUBLIC")
+        ("visibility", List ["PUBLIC"])
       ]
 
 --
