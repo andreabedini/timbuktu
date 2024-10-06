@@ -1,6 +1,24 @@
 load("//rules/haskell:toolchain.bzl", "haskell_toolchain_library")
 load("//rules/haskell/cabal/paths.bzl", "cabal_paths_module")
 load("//rules/haskell/hackage.bzl", "hackage_package", "module_path")
+load("test.bzl", "test")
+
+test(
+    name = "test",
+    cabalfile = ":alex-3.5.1.0[alex.cabal]",
+)
+
+# genrule(
+#     name = "test",
+#     cmd = """
+#     OUT=\\$(realpath $OUT)
+#     cd $SRCS
+#     $(exe //rules/haskell/cabal_install:setup_simple) configure --builddir $TMP
+#     mv $TMP/buildinfo.json $OUT
+#     """,
+#     out = "buildinfo.json",
+#     srcs = [":alex-3.5.1.0"],
+# )
 
 alex_modules = [
     "Main",
@@ -26,7 +44,7 @@ alex_modules = [
 hackage_package(
     name = "alex-3.5.1.0",
     sha256 = "c92efe86f8eb959ee03be6c04ee57ebc7e4abc75a6c4b26551215d7443e92a07",
-    sub_targets = ["data"] + [module_path(m, dir = "src") for m in alex_modules],
+    sub_targets = ["data", "alex.cabal"] + [module_path(m, dir = "src") for m in alex_modules],
 )
 
 cabal_paths_module(
@@ -39,18 +57,6 @@ cabal_paths_module(
     datadir = "data",
     libexecdir = "libexec",
     sysconfdir = "sysconf",
-)
-
-genrule(
-    name = "test",
-    cmd = """
-    OUT=\\$(realpath $OUT)
-    cd $SRCS
-    $(exe //rules/haskell/cabal_install:setup_simple) configure --builddir $TMP
-    mv $TMP/buildinfo.json $OUT
-    """,
-    out = "buildinfo.json",
-    srcs = [":alex-3.5.1.0"],
 )
 
 haskell_toolchain_library(name = "base")
