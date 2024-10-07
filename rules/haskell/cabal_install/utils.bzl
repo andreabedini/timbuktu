@@ -1,20 +1,2 @@
-def normalise_legacy_unit(unit):
-    if "components" in unit:
-        components = unit["components"]
-
-        depends = []
-        exe_depends = []
-        for n, c in components.items():
-            if n != "setup":
-                depends += c["depends"]
-                exe_depends += c["exe-depends"]
-
-        setup_depends = components["setup"]["depends"] if "setup" in components else []
-
-        unit.update({
-            "depends": depends,
-            "exe-depends": exe_depends,
-            "setup-depends": setup_depends,
-        })
-
-    return unit
+def _in_dir(*script, work_dir):
+    return cmd_args("env", "-C", work_dir, cmd_args(relative_to = work_dir, *script))

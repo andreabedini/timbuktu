@@ -1,12 +1,6 @@
 load("//rules/haskell:toolchain.bzl", "haskell_toolchain_library")
 load("//rules/haskell/cabal/paths.bzl", "cabal_paths_module")
 load("//rules/haskell/hackage.bzl", "hackage_package", "module_path")
-load("test.bzl", "test")
-
-test(
-    name = "test",
-    cabalfile = ":alex-3.5.1.0[alex.cabal]",
-)
 
 # genrule(
 #     name = "test",

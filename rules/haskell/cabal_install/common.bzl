@@ -94,3 +94,39 @@ def output_args(ctx: AnalysisContext) -> cmd_args:
         "-stubdir",
         stubs.as_output(),
     )
+
+def _flags(ctx: AnalysisContext) -> cmd_args:
+    return cmd_args([("+" if value else "-") + name for name, value in ctx.attrs.flags.items()], format = "--flags={}")
+
+def _dependency(unitInfo: UnitInfo) -> str:
+    if unitInfo.lib_name:
+        return "--dependency={}:{}={}".format(unitInfo.name, unitInfo.lib_name, unitInfo.id)
+    else:
+        return "--dependency={}={}".format(unitInfo.name, unitInfo.id)
+
+def _dependencies(ctx: AnalysisContext) -> list[str]:
+    return [_dependency(d[UnitInfo]) for d in ctx.attrs.deps]
+
+def configure_args(ctx: AnalysisContext) -> cmd_args:
+    haskell_toolchain = ctx.attrs._haskell_toolchain[HaskellToolchainInfo]
+    tset_deps = ctx.actions.tset(
+        PackageConfTSet,
+        children = [
+            dep[UnitInfo].package_conf_tset
+            for dep in ctx.attrs.deps
+        ],
+    )
+    return cmd_args(
+        cmd_args(haskell_toolchain.compiler, format = "--with-compiler={}"),
+        "--exact-configuration",
+        "--ghc-option=-hide-all-packages",
+        "--exact-configuration",
+        "--package-db=clear",
+        "--package-db=global",
+        cmd_args(package_db(ctx, tset_deps), format = "--package-db={}"),
+        _dependencies(ctx),
+        _flags(ctx),
+    )
+
+def _in_dir(*script, work_dir):
+    return cmd_args("env", "-C", work_dir, cmd_args(relative_to = work_dir, *script))

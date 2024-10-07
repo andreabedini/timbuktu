@@ -1,8 +1,8 @@
 load("@prelude//haskell:toolchain.bzl", "HaskellPlatformInfo", "HaskellToolchainInfo")
-load("cabal_install/configured_unit.bzl", "configured_legacy_unit", "configured_unit")
+load("cabal_install/build.bzl", "build")
+load("cabal_install/build_legacy.bzl", "build_legacy")
 load("cabal_install/pkg_src.bzl", "pkg_src")
 load("cabal_install/pre_existing_unit.bzl", "pre_existing_unit")
-load("cabal_install/utils.bzl", "normalise_legacy_unit")
 load("toolchain.bzl", "haskell_toolchain_library")
 
 _as_source = lambda dep: ":{}".format(dep)
@@ -48,7 +48,7 @@ def interpret_plan(planjson: str):
                     visibility = ["PUBLIC"],
                 )
 
-                configured_legacy_unit(
+                build_legacy(
                     name = unit["id"],
                     unit_id = unit["id"],
                     pkg_name = unit["pkg-name"],
@@ -61,7 +61,7 @@ def interpret_plan(planjson: str):
                     _haskell_toolchain = haskell_toolchain,
                 )
             else:
-                configured_unit(
+                build(
                     name = unit["id"],
                     unit_id = unit["id"],
                     pkg_name = unit["pkg-name"],
@@ -114,3 +114,24 @@ cabal_project = rule(
         "_haskell_toolchain": attrs.toolchain_dep(providers = [HaskellToolchainInfo, HaskellPlatformInfo], default = "toolchains//:haskell"),
     },
 )
+
+def normalise_legacy_unit(unit):
+    if "components" in unit:
+        components = unit["components"]
+
+        depends = []
+        exe_depends = []
+        for n, c in components.items():
+            if n != "setup":
+                depends += c["depends"]
+                exe_depends += c["exe-depends"]
+
+        setup_depends = components["setup"]["depends"] if "setup" in components else []
+
+        unit.update({
+            "depends": depends,
+            "exe-depends": exe_depends,
+            "setup-depends": setup_depends,
+        })
+
+    return unit
