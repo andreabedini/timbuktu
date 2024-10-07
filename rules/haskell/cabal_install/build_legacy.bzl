@@ -6,6 +6,7 @@ load(
     "ExeDependInfo",
     "PackageConfTSet",
     "UnitInfo",
+    "build_env",
     "common_unit_attrs",
     "configure_args",
     "manglePkgName",
@@ -19,65 +20,95 @@ def _build_legacy_impl(ctx: AnalysisContext) -> list[Provider]:
     have to configure and build in a single step, since we do not really know
     what is gong to be written where.
     """
-    haskell_toolchain = ctx.attrs._haskell_toolchain[HaskellToolchainInfo]
-    setup = ctx.attrs.setup[RunInfo]
     srcdir = ctx.attrs.src[CabalPackageInfo].srcdir
+    setup = ctx.attrs.setup[RunInfo]
 
-    tset_deps = ctx.actions.tset(
-        PackageConfTSet,
-        children = [dep[UnitInfo].package_conf_tset for dep in ctx.attrs.deps],
+    env = build_env(ctx.attrs.exec_deps)
+
+    # configure
+
+    prefix = ctx.actions.declare_output("prefix", dir = True)
+    builddir = ctx.actions.declare_output("builddir", dir = True)
+
+    configure_cmd = cmd_args(
+        env,
+        setup,
+        "configure",
+        cmd_args(builddir, format = "--builddir={}", ignore_artifacts = True),
+        cmd_args(prefix, format = "--prefix=$(realpath {})", ignore_artifacts = True),
+        "--libsubdir=",
+        "--libexecsubdir=",
+        "--datadir='$prefix/data'",
+        "--datasubdir=",
+        "--docdir='$prefix/doc'",
+        configure_args(ctx),
+        delimiter = " ",
     )
 
-    builddir = ctx.actions.declare_output("builddir")
-    package_conf = ctx.actions.declare_output("{}.conf".format(ctx.attrs.unit_id))
+    configure_cmd.add("--ipi={}".format(ctx.attrs.unit_id))
 
-    script = ctx.actions.write(
-        "script.sh",
-        [
-            "#!/usr/bin/env bash",
-            "pwd",
-            cmd_args(builddir.as_output(), format = "PREFIX=$(realpath {})"),
-            "set -euo pipefail",
-            cmd_args(srcdir, format = "cd {}"),
-            cmd_args(
-                setup,
-                "configure",
-                cmd_args(builddir.as_output(), format = "--builddir={}"),
-                "--prefix=$PREFIX",
-                configure_args(ctx),
-                "--ipi={}".format(ctx.attrs.unit_id),
-                delimiter = " ",
-                relative_to = srcdir,
-            ),
-            cmd_args(
-                setup,
-                "build",
-                cmd_args(builddir.as_output(), format = "--builddir={}"),
-                delimiter = " ",
-                relative_to = srcdir,
-            ),
-            cmd_args(
-                setup,
-                "register",
-                cmd_args(builddir.as_output(), format = "--builddir={}"),
-                cmd_args(package_conf.as_output(), format = "--gen-pkg-config={}"),
-                "--inplace",
-                delimiter = " ",
-                relative_to = srcdir,
-            ),
-        ],
+    # build
+
+    build_cmd = cmd_args(
+        env,
+        setup,
+        "build",
+        cmd_args(builddir, format = "--builddir={}", ignore_artifacts = True),
+        delimiter = " ",
+    )
+
+    # copy
+
+    copy_cmd = cmd_args(
+        env,
+        setup,
+        "copy",
+        cmd_args(builddir, format = "--builddir={}", ignore_artifacts = True),
+        delimiter = " ",
+    )
+
+    package_conf = ctx.actions.declare_output("package.conf.d", "{}.conf".format(ctx.attrs.unit_id))
+
+    register_cmd = cmd_args(
+        env,
+        setup,
+        "register",
+        cmd_args(builddir, format = "--builddir={}", ignore_artifacts = True),
+        cmd_args(package_conf.as_output(), format = "--gen-pkg-config={}"),
+        delimiter = " ",
+    )
+
+    build_sh_content = cmd_args(
+        "#!/usr/bin/env bash",
+        "set -euo pipefail",
+        cmd_args(configure_cmd, relative_to = srcdir),
+        cmd_args(copy_cmd, relative_to = srcdir),
+        cmd_args(register_cmd, relative_to = srcdir),
+        hidden = [srcdir, setup, builddir.as_output(), prefix.as_output()],
+    )
+
+    build_sh = ctx.actions.write(
+        "build.sh",
+        cmd_args(
+            build_sh_content,
+            hidden = [srcdir, builddir.as_output(), prefix.as_output()],
+        ),
         is_executable = True,
         with_inputs = True,
     )
+
     ctx.actions.run(
-        cmd_args(script, hidden = [builddir.as_output(), package_conf.as_output()]),
+        cmd_args(build_sh, hidden = [prefix.as_output(), builddir.as_output(), package_conf.as_output()]),
         category = "build_legacy",
     )
 
     package_conf_tset = ctx.actions.tset(
         PackageConfTSet,
         value = package_conf,
-        children = [tset_deps],
+        children = [
+            dep[UnitInfo].package_conf_tset
+            for dep in ctx.attrs.deps
+        ],
     )
 
     return [
@@ -100,6 +131,3 @@ build_legacy = rule(
         source_unit_attrs |
         {"setup": attrs.dep(providers = [RunInfo])},
 )
-
-def _in_dir(*script, work_dir):
-    return cmd_args("env", "-C", work_dir, cmd_args(relative_to = work_dir, *script))

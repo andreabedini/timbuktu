@@ -53,10 +53,25 @@ cabal_paths_module(
     sysconfdir = "sysconf",
 )
 
-haskell_toolchain_library(name = "base")
-haskell_toolchain_library(name = "array")
-haskell_toolchain_library(name = "containers")
-haskell_toolchain_library(name = "directory")
+[
+    haskell_toolchain_library(name = name)
+    for name in [
+        "array",
+        "base",
+        "binary",
+        "bytestring",
+        "containers",
+        "deepseq",
+        "directory",
+        "filepath",
+        "mtl",
+        "parsec",
+        "pretty",
+        "text",
+        "time",
+        "transformers",
+    ]
+]
 
 haskell_binary(
     name = "alex",
@@ -245,20 +260,20 @@ haskell_library(
         for m in Cabal_syntax_modules
     } | {module_path("Distribution.Fields.Lexer"): ":Distribution_Fields_Lexer"},
     deps = [
-        "toolchains//ghc-9.10.1:array",
-        "toolchains//ghc-9.10.1:base",
-        "toolchains//ghc-9.10.1:binary",
-        "toolchains//ghc-9.10.1:bytestring",
-        "toolchains//ghc-9.10.1:containers",
-        "toolchains//ghc-9.10.1:deepseq",
-        "toolchains//ghc-9.10.1:directory",
-        "toolchains//ghc-9.10.1:filepath",
-        "toolchains//ghc-9.10.1:mtl",
-        "toolchains//ghc-9.10.1:parsec",
-        "toolchains//ghc-9.10.1:pretty",
-        "toolchains//ghc-9.10.1:text",
-        "toolchains//ghc-9.10.1:time",
-        "toolchains//ghc-9.10.1:transformers",
+        ":array",
+        ":base",
+        ":binary",
+        ":bytestring",
+        ":containers",
+        ":deepseq",
+        ":directory",
+        ":filepath",
+        ":mtl",
+        ":parsec",
+        ":pretty",
+        ":text",
+        ":time",
+        ":transformers",
     ],
 )
 

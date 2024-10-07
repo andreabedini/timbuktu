@@ -23,8 +23,9 @@ def _secure_repo_package_impl(ctx: AnalysisContext) -> list[Provider]:
     srcdir = ctx.actions.declare_output(pkg_id, dir = True)
     filelist = ctx.actions.declare_output("filelist")
 
-    script = [
+    unpack_sh_content = cmd_args(
         "#!/usr/bin/env bash",
+        "set -euo pipefail",
         cmd_args(
             "tar",
             "--extract",
@@ -37,16 +38,21 @@ def _secure_repo_package_impl(ctx: AnalysisContext) -> list[Provider]:
             filelist.as_output(),
             delimiter = " ",
         ),
-    ]
+    )
 
     if ctx.attrs.pkg_cabal_sha256:
         cabal_file = "{}.cabal".format(ctx.attrs.pkg_name)
         url = "https://casa.stackage.org/{}".format(ctx.attrs.pkg_cabal_sha256)
         revision = ctx.actions.download_file(cabal_file, url, sha256 = ctx.attrs.pkg_cabal_sha256)
-        script.append(cmd_args("cp", revision, srcdir.as_output(), delimiter = " "))
+        unpack_sh_content.add(cmd_args("cp", revision, srcdir.as_output(), delimiter = " "))
 
-    unpack = ctx.actions.write("unpack.sh", script, with_inputs = True, is_executable = True)
-    ctx.actions.run(cmd_args(unpack, hidden = [filelist.as_output(), srcdir.as_output()]), category = "tar_extract")
+    unpack_sh = ctx.actions.write("unpack.sh", unpack_sh_content, is_executable = True, with_inputs = True)
+
+    ctx.actions.run(
+        cmd_args(unpack_sh, hidden = [filelist.as_output(), srcdir.as_output()]),
+        category = "unpack",
+    )
+
     cabalfile = srcdir.project(ctx.attrs.pkg_name + ".cabal")
 
     return [

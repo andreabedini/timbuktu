@@ -128,5 +128,23 @@ def configure_args(ctx: AnalysisContext) -> cmd_args:
         _flags(ctx),
     )
 
+def build_env(exec_deps: list[Dependency]) -> cmd_args:
+    env = cmd_args()
+
+    if exec_deps:
+        path = cmd_args([k[ExeDependInfo].exe for k in exec_deps], parent = 1, delimiter = ":")
+        env.add(cmd_args(path, format = "PATH={}:$PATH"))
+
+    for dep in exec_deps:
+        env.add(cmd_args(
+            [
+                cmd_args(dep[ExeDependInfo].mangledPkgName, format = "{}_datadir"),
+                dep[ExeDependInfo].datadir,
+            ],
+            delimiter = "=",
+        ))
+
+    return env
+
 def _in_dir(*script, work_dir):
     return cmd_args("env", "-C", work_dir, cmd_args(relative_to = work_dir, *script))

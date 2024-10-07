@@ -21,9 +21,7 @@ def interpret_plan(planjson: str):
 
     for unit in units:
         if unit["type"] == "configured" and unit["style"] == "global":
-            pkg_name = unit["pkg-name"]
-            pkg_version = unit["pkg-version"]
-            pkg_id = "{}-{}".format(pkg_name, pkg_version)
+            pkg_id = "{pkg-name}-{pkg-version}".format(**unit)
 
             normalise_legacy_unit(unit)
 
@@ -75,6 +73,7 @@ def interpret_plan(planjson: str):
                 )
 
         elif unit["type"] == "pre-existing":
+            # haskell_toolchain_library(name = unit["pkg-name"])
             pre_existing_unit(
                 name = unit["id"],
                 unit_id = unit["id"],

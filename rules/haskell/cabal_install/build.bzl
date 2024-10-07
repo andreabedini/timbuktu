@@ -6,6 +6,7 @@ load(
     "ExeDependInfo",
     "PackageConfTSet",
     "UnitInfo",
+    "build_env",
     "common_unit_attrs",
     "configure_args",
     "manglePkgName",
@@ -19,22 +20,7 @@ def _build_impl(ctx: AnalysisContext) -> list[Provider]:
 
     # NOTE: I need to copy so I know (statically) where the datadir is
 
-    # env
-
-    env = cmd_args()
-
-    if ctx.attrs.exec_deps:
-        path = cmd_args([k[ExeDependInfo].exe for k in ctx.attrs.exec_deps], parent = 1, delimiter = ":")
-        env.add(cmd_args(path, format = "PATH={}:$PATH"))
-
-    for dep in ctx.attrs.exec_deps:
-        env.add(cmd_args(
-            [
-                cmd_args(dep[ExeDependInfo].mangledPkgName, format = "{}_datadir"),
-                dep[ExeDependInfo].datadir,
-            ],
-            delimiter = "=",
-        ))
+    env = build_env(ctx.attrs.exec_deps)
 
     # configure
 
@@ -52,10 +38,11 @@ def _build_impl(ctx: AnalysisContext) -> list[Provider]:
         "--datadir='$prefix/data'",
         "--datasubdir=",
         "--docdir='$prefix/doc'",
-        "--cid={}".format(ctx.attrs.unit_id),
         configure_args(ctx),
         delimiter = " ",
     )
+
+    configure_cmd.add("--cid={}".format(ctx.attrs.unit_id))
 
     if ctx.attrs.component_name:
         configure_cmd.add(_component_name(ctx))
@@ -94,6 +81,7 @@ def _build_impl(ctx: AnalysisContext) -> list[Provider]:
         "set -euo pipefail",
         cmd_args(srcdir, format = "cd {}"),
         cmd_args(build_cmd, relative_to = srcdir),
+        hidden = [setup_config],
     )
 
     build_sh = ctx.actions.write("build.sh", build_sh_content, is_executable = True, with_inputs = True)
@@ -138,7 +126,7 @@ def _build_impl(ctx: AnalysisContext) -> list[Provider]:
         env,
         setup,
         "register",
-        cmd_args(builddir.as_output(), format = "--builddir={}", parent = 1),
+        cmd_args(builddir, format = "--builddir={}", parent = 1),
         cmd_args(package_conf.as_output(), format = "--gen-pkg-config={}"),
         delimiter = " ",
     )
@@ -151,6 +139,7 @@ def _build_impl(ctx: AnalysisContext) -> list[Provider]:
         "set -euo pipefail",
         cmd_args(srcdir, format = "cd {}"),
         cmd_args(register_cmd, relative_to = srcdir),
+        hidden = [builddir],
     )
 
     register_sh = ctx.actions.write("register.sh", register_sh_content, is_executable = True, with_inputs = True)
