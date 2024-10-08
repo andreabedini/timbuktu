@@ -1,3 +1,4 @@
+# buildifier: disable=module-docstring
 load("//rules/haskell/cabal_install.bzl", "cabal_project", "interpret_plan")
 
 cabal_project(

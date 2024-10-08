@@ -1,14 +1,10 @@
+# buildifier: disable=module-docstring
 load("//rules/haskell/cabal_install.bzl", "cabal_project", "interpret_plan")
 
 cabal_project(
     name = "plan",
     project_file = "cabal.project",
     targets = ["attoparsec"],
-)
-
-alias(
-    name = "attoparsec",
-    actual = ":attoparsec-0.14.4-0639a89cdc9e7fae7f802a0d9a3df251e8662921d23374a10b917160179da157",
 )
 
 interpret_plan("""
