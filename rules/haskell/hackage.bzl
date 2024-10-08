@@ -1,7 +1,8 @@
+load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 load("@prelude//:paths.bzl", "paths")
 
 def hackage_package(name: str, sha256: str, sub_targets: list[str] = []):
-    return native.http_archive(
+    return http_archive(
         name = name,
         urls = ["https://hackage.haskell.org/package/{}/{}.tar.gz".format(name, name)],
         sha256 = sha256,

@@ -2,7 +2,6 @@ load("@prelude//haskell:toolchain.bzl", "HaskellPlatformInfo", "HaskellToolchain
 load("cabal_install/build.bzl", "build")
 load("cabal_install/build_legacy.bzl", "build_legacy")
 load("cabal_install/pkg_src.bzl", "pkg_src")
-load("cabal_install/pre_existing_unit.bzl", "pre_existing_unit")
 load("toolchain.bzl", "haskell_toolchain_library")
 
 _as_source = lambda dep: ":{}".format(dep)

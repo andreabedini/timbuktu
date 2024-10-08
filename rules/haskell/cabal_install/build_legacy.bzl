@@ -1,16 +1,11 @@
-load("@prelude//:paths.bzl", "paths")
-load("@prelude//haskell:toolchain.bzl", "HaskellPlatformInfo", "HaskellToolchainInfo")
 load(
     "common.bzl",
     "CabalPackageInfo",
-    "ExeDependInfo",
     "PackageConfTSet",
     "UnitInfo",
     "build_env",
     "common_unit_attrs",
     "configure_args",
-    "manglePkgName",
-    "package_db",
     "source_unit_attrs",
 )
 

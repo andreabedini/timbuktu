@@ -1,4 +1,3 @@
-load("@prelude//:paths.bzl", "paths")
 load(
     "common.bzl",
     "CabalPackageInfo",
