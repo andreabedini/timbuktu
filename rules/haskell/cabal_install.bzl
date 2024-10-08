@@ -73,15 +73,15 @@ def interpret_plan(planjson: str):
                 )
 
         elif unit["type"] == "pre-existing":
-            # haskell_toolchain_library(name = unit["pkg-name"])
-            pre_existing_unit(
-                name = unit["id"],
-                unit_id = unit["id"],
-                pkg_name = unit["pkg-name"],
-                pkg_version = unit["pkg-version"],
-                deps = map(_as_source, unit["depends"]),
-                _haskell_toolchain = haskell_toolchain,
-            )
+            haskell_toolchain_library(name = unit["id"], id = unit["id"])
+            # pre_existing_unit(
+            #     name = unit["id"],
+            #     unit_id = unit["id"],
+            #     pkg_name = unit["pkg-name"],
+            #     pkg_version = unit["pkg-version"],
+            #     deps = map(_as_source, unit["depends"]),
+            #     _haskell_toolchain = haskell_toolchain,
+            # )
 
 def _cabal_project_impl(ctx: AnalysisContext) -> list[Provider]:
     builddir = ctx.actions.declare_output("dist-newstyle", dir = True)

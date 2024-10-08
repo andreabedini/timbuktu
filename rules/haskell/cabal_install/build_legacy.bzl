@@ -91,7 +91,7 @@ def _build_legacy_impl(ctx: AnalysisContext) -> list[Provider]:
         "build.sh",
         cmd_args(
             build_sh_content,
-            hidden = [srcdir, builddir.as_output(), prefix.as_output()],
+            hidden = [srcdir, setup, builddir.as_output(), prefix.as_output()],
         ),
         is_executable = True,
         with_inputs = True,

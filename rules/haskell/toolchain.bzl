@@ -7,13 +7,17 @@ HaskellToolchainLibraries = provider(fields = {
     "packages_by_id": provider_field(dict[str, Dependency]),
 })
 
-def _haskell_toolchain_library(_ctx: AnalysisContext) -> list[Provider]:
-    packages = _ctx.attrs._haskell_toolchain[HaskellToolchainLibraries].packages_by_name
-    return packages.get(_ctx.label.name).providers
+def _haskell_toolchain_library(ctx: AnalysisContext) -> list[Provider]:
+    toolchain = ctx.attrs._haskell_toolchain[HaskellToolchainLibraries]
+    if ctx.attrs.id:
+        return toolchain.packages_by_id[ctx.attrs.id].providers
+    else:
+        return toolchain.packages_by_name[ctx.label.name].providers
 
 haskell_toolchain_library = rule(
     impl = _haskell_toolchain_library,
     attrs = {
+        "id": attrs.option(attrs.string(), default = None),
         "_haskell_toolchain": attrs.toolchain_dep(
             providers = [HaskellToolchainInfo, HaskellToolchainLibraries],
             default = "@toolchains//:haskell",
