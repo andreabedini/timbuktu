@@ -21,6 +21,8 @@ def _build_impl(ctx: AnalysisContext) -> list[Provider]:
     setup = ctx.attrs.setup[RunInfo]
 
     # NOTE: I need to copy so I know (statically) where the datadir is
+    # WARN: This still does not work because the units I build do not provide
+    # the information the prelude expects.
 
     env = build_env(ctx.attrs.exec_deps)
 
