@@ -1,7 +1,8 @@
-load(
-    "common.bzl",
-    "CabalPackageInfo",
-)
+"""
+Rules and macros to fetch packages as described in a cabal-install build-plan.
+"""
+
+load("common.bzl", "CabalPackageInfo")
 
 def pkg_src(pkg_src, **kwargs):
     if pkg_src["type"] == "repo-tar":
@@ -65,7 +66,6 @@ def _secure_repo_package_impl(ctx: AnalysisContext) -> list[Provider]:
         CabalPackageInfo(
             pkg_name = ctx.attrs.pkg_name,
             pkg_version = ctx.attrs.pkg_version,
-            pkg_id = pkg_id,
             srcdir = srcdir,
             cabalfile = cabalfile,
         ),
@@ -74,10 +74,10 @@ def _secure_repo_package_impl(ctx: AnalysisContext) -> list[Provider]:
 secure_repo_package = rule(
     impl = _secure_repo_package_impl,
     attrs = {
-        "repo_uri": attrs.string(),
-        "pkg_name": attrs.string(),
-        "pkg_version": attrs.string(),
-        "pkg_src_sha256": attrs.string(),
         "pkg_cabal_sha256": attrs.option(attrs.string(), default = None),
+        "pkg_name": attrs.string(),
+        "pkg_src_sha256": attrs.string(),
+        "pkg_version": attrs.string(),
+        "repo_uri": attrs.string(),
     },
 )

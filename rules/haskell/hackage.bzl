@@ -1,5 +1,12 @@
-load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+"""
+Rules to fetch Haskell packages from Hackage.
+
+NOTE: This is not used for cabal-install plans, which has additional logic to
+take into account cabal file revisions.
+"""
+
 load("@prelude//:paths.bzl", "paths")
+load("@prelude//rules.bzl", "http_archive")
 
 def hackage_package(name: str, sha256: str, sub_targets: list[str] = []):
     return http_archive(

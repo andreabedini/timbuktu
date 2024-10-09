@@ -1,14 +1,21 @@
+"""
+Haskell toolchain definition and rules.
+"""
+
 load("@prelude//haskell:toolchain.bzl", "HaskellPlatformInfo", "HaskellToolchainInfo")
 load("@prelude//haskell/library_info.bzl", "HaskellLibraryProvider")
 load("@prelude//linking:link_info.bzl", "LinkStyle")
 
-HaskellToolchainLibraries = provider(fields = {
-    "packages_by_name": provider_field(dict[str, Dependency]),
-    "packages_by_id": provider_field(dict[str, Dependency]),
-})
+HaskellToolchainLibrariesInfo = provider(
+    doc = "Information about the Haskell libraries provided by the toolchain.",
+    fields = {
+        "packages_by_id": provider_field(dict[str, Dependency]),
+        "packages_by_name": provider_field(dict[str, Dependency]),
+    },
+)
 
 def _haskell_toolchain_library(ctx: AnalysisContext) -> list[Provider]:
-    toolchain = ctx.attrs._haskell_toolchain[HaskellToolchainLibraries]
+    toolchain = ctx.attrs._haskell_toolchain[HaskellToolchainLibrariesInfo]
     if ctx.attrs.id:
         return toolchain.packages_by_id[ctx.attrs.id].providers
     else:
@@ -19,13 +26,13 @@ haskell_toolchain_library = rule(
     attrs = {
         "id": attrs.option(attrs.string(), default = None),
         "_haskell_toolchain": attrs.toolchain_dep(
-            providers = [HaskellToolchainInfo, HaskellToolchainLibraries],
+            providers = [HaskellToolchainInfo, HaskellToolchainLibrariesInfo],
             default = "@toolchains//:haskell",
         ),
     },
 )
 
-def _haskell_toolchain(_ctx: AnalysisContext) -> list[Provider]:
+def _haskell_toolchain(ctx: AnalysisContext) -> list[Provider]:
     #
     # build an index of installed packages
     #
@@ -35,26 +42,26 @@ def _haskell_toolchain(_ctx: AnalysisContext) -> list[Provider]:
 
     # The link style is irrelevant but I have to go around the existing design
     # of the prelude
-    linkStyle = LinkStyle("static")
-    for p in _ctx.attrs.packages:
-        hli = p[HaskellLibraryProvider].lib[linkStyle]
+    link_style = LinkStyle("static")
+    for p in ctx.attrs.packages:
+        hli = p[HaskellLibraryProvider].lib[link_style]
         packages_by_name[hli.name] = p
         packages_by_id[hli.id] = p
 
     return [
         DefaultInfo(),
         HaskellToolchainInfo(
-            compiler = _ctx.attrs.compiler,
-            packager = _ctx.attrs.packager,
-            linker = _ctx.attrs.linker,
-            haddock = _ctx.attrs.haddock,
-            compiler_flags = _ctx.attrs.compiler_flags,
-            linker_flags = _ctx.attrs.linker_flags,
+            compiler = ctx.attrs.compiler,
+            packager = ctx.attrs.packager,
+            linker = ctx.attrs.linker,
+            haddock = ctx.attrs.haddock,
+            compiler_flags = ctx.attrs.compiler_flags,
+            linker_flags = ctx.attrs.linker_flags,
         ),
         HaskellPlatformInfo(
             name = host_info().arch,
         ),
-        HaskellToolchainLibraries(
+        HaskellToolchainLibrariesInfo(
             packages_by_name = packages_by_name,
             packages_by_id = packages_by_id,
         ),
@@ -66,11 +73,11 @@ haskell_toolchain = rule(
     impl = _haskell_toolchain,
     attrs = {
         "compiler": attrs.string(default = "ghc"),
-        "packager": attrs.string(default = "ghc-pkg"),
-        "linker": attrs.string(default = "ghc"),
-        "haddock": attrs.string(default = "haddock"),
         "compiler_flags": attrs.list(attrs.string(), default = []),
+        "haddock": attrs.string(default = "haddock"),
+        "linker": attrs.string(default = "ghc"),
         "linker_flags": attrs.list(attrs.string(), default = []),
+        "packager": attrs.string(default = "ghc-pkg"),
         "packages": attrs.list(_haskell_library_dep, default = []),
     },
     is_toolchain_rule = True,

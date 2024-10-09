@@ -1,3 +1,7 @@
+"""
+Haskell helpers.
+"""
+
 load("//rules/haskell:toolchain.bzl", "haskell_toolchain_library")
 
 [
@@ -14,16 +18,6 @@ load("//rules/haskell:toolchain.bzl", "haskell_toolchain_library")
     ]
 ]
 
-# haskell_binary(
-#     name = "parse_cabal_fields",
-#     srcs = {"Main.hs": "parse_cabal_fields.hs"},
-#     deps = [
-#         ":Cabal",
-#         ":base",
-#         ":bytestring",
-#     ],
-# )
-
 haskell_binary(
     name = "import_toolchain",
     srcs = {"Main.hs": "import_toolchain.hs"},
@@ -38,18 +32,13 @@ haskell_binary(
         ":transformers",
     ],
 )
-#
-# git_fetch(
-#     name = "Cabal-syntax-json.git",
-#     repo = "https://github.com/andreabedini/Cabal-syntax-json.git",
-#     rev = "aa4d3132ac0f217c2ced7c9894b3f6efb97203ca",
-# )
-#
-# genrule(
-#     name = "cabal2json",
-#     srcs = [":Cabal-syntax-json.git"],
-#     out = "Cabal-syntax-json",
-#     cmd = "ghc -o ${OUT} -i${SRCDIR}/Cabal-syntax-json ${SRCDIR}/Cabal-syntax-json/Main.hs",
-#     executable = True,
-#     visibility = ["PUBLIC"],
-# )
+
+haskell_binary(
+    name = "parse_cabal_fields",
+    srcs = {"Main.hs": "parse_cabal_fields.hs"},
+    deps = [
+        ":base",
+        ":bytestring",
+        ":Cabal",
+    ],
+)

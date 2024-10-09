@@ -1,3 +1,7 @@
+"""
+Build rules for the simple build-type.
+"""
+
 load("@prelude//:paths.bzl", "paths")
 load(
     "common.bzl",
@@ -199,7 +203,7 @@ build = rule(
         {
             "component_name": attrs.string(),
             "setup": attrs.dep(
-                default = "//rules/haskell/cabal_install:setup_simple",
+                default = "//rules/haskell/cabal_install/helpers:setup_simple",
                 providers = [RunInfo],
             ),
         },

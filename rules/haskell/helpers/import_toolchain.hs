@@ -69,7 +69,7 @@ main = do
 
     iidx <- getPackageDBContents Verbosity.normal compiler GlobalPackageDB progdb
 
-    entries <- for (Index.topologicalOrder iidx) $ \InstalledPackageInfo{..} -> do
+    entries <- for (Index.allPackages iidx) $ \InstalledPackageInfo{..} -> do
         let normalisePath :: FilePath -> IO FilePath
             normalisePath dir = fmap (fromMaybe dir) $ runMaybeT $ do
                 pkgRoot' <- hoistMaybe pkgRoot

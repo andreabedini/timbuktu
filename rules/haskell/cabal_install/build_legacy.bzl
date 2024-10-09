@@ -1,3 +1,7 @@
+"""
+Build rules for legacy packages (i.e. anything other than the simple build-type).
+"""
+
 load(
     "common.bzl",
     "CabalPackageInfo",
@@ -10,11 +14,9 @@ load(
 )
 
 def _build_legacy_impl(ctx: AnalysisContext) -> list[Provider]:
-    """
-    For legacy packages (i.e. anything other than the simple build-type) we
-    have to configure and build in a single step, since we do not really know
-    what is gong to be written where.
-    """
+    # For legacy packages (i.e. anything other than the simple build-type) we
+    # have to configure and build in a single step, since we do not really know
+    # what is gong to be written where.
     srcdir = ctx.attrs.src[CabalPackageInfo].srcdir
     setup = ctx.attrs.setup[RunInfo]
 
@@ -76,21 +78,16 @@ def _build_legacy_impl(ctx: AnalysisContext) -> list[Provider]:
     build_sh_content = cmd_args(
         "#!/usr/bin/env bash",
         "set -euo pipefail",
+        cmd_args("mkdir", "-p", prefix.as_output(), delimiter = " "),
+        cmd_args(srcdir, format = "cd {}"),
         cmd_args(configure_cmd, relative_to = srcdir),
+        cmd_args(build_cmd, relative_to = srcdir),
         cmd_args(copy_cmd, relative_to = srcdir),
         cmd_args(register_cmd, relative_to = srcdir),
         hidden = [srcdir, setup, builddir.as_output(), prefix.as_output()],
     )
 
-    build_sh = ctx.actions.write(
-        "build.sh",
-        cmd_args(
-            build_sh_content,
-            hidden = [srcdir, setup, builddir.as_output(), prefix.as_output()],
-        ),
-        is_executable = True,
-        with_inputs = True,
-    )
+    build_sh = ctx.actions.write("build.sh", build_sh_content, is_executable = True, with_inputs = True)
 
     ctx.actions.run(
         cmd_args(build_sh, hidden = [prefix.as_output(), builddir.as_output(), package_conf.as_output()]),

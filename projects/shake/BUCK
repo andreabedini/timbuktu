@@ -1,13 +1,7 @@
 # buildifier: disable=module-docstring
-load("//rules/haskell/cabal_install.bzl", "cabal_project", "interpret_plan")
+load("//rules/haskell/cabal_install.bzl", "interpret_plan")
 
-cabal_project(
-    name = "plan",
-    project_file = "cabal.project",
-    targets = ["shake"],
-)
-
-interpret_plan("""
+interpret_plan("shake", """
 {
   "cabal-version": "3.12.1.0",
   "cabal-lib-version": "3.12.1.0",
