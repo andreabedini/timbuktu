@@ -1,3 +1,5 @@
+load("//rules/haskell/cabal_install/common.bzl", "manglePkgName")
+
 template = """
 {{-# OPTIONS_GHC -w #-}}
 module Paths_{name}
@@ -47,24 +49,20 @@ PathsModuleCtx = record(
     sysconfdir = str,
 )
 
-def mk_paths_module(ctx: AnalysisContext, module_ctx: PathsModuleCtx) -> Artifact:
-    name = module_ctx.package_name.replace("-", "_")
-    return ctx.actions.write(
-        "Paths_{}.hs".format(name),
-        template.format(
-            name = name,
-            version = module_ctx.package_version,
-            bindir = module_ctx.bindir,
-            libdir = module_ctx.libdir,
-            dynlibdir = module_ctx.dynlibdir,
-            datadir = module_ctx.datadir,
-            libexecdir = module_ctx.libexecdir,
-            sysconfdir = module_ctx.sysconfdir,
-        ).lstrip(),
-    )
+def mk_paths_module(module_ctx: PathsModuleCtx) -> str:
+    return template.format(
+        name = manglePkgName(module_ctx.package_name),
+        version = module_ctx.package_version,
+        bindir = module_ctx.bindir,
+        libdir = module_ctx.libdir,
+        dynlibdir = module_ctx.dynlibdir,
+        datadir = module_ctx.datadir,
+        libexecdir = module_ctx.libexecdir,
+        sysconfdir = module_ctx.sysconfdir,
+    ).lstrip()
 
 def _cabal_paths_module_impl(ctx: AnalysisContext) -> list[Provider]:
-    module_ctx = PathsModuleCtx(
+    s = mk_paths_module(PathsModuleCtx(
         package_name = ctx.attrs.package_name,
         package_version = ctx.attrs.package_version,
         bindir = ctx.attrs.bindir,
@@ -73,10 +71,9 @@ def _cabal_paths_module_impl(ctx: AnalysisContext) -> list[Provider]:
         datadir = ctx.attrs.datadir,
         libexecdir = ctx.attrs.libexecdir,
         sysconfdir = ctx.attrs.sysconfdir,
-    )
-    return [
-        DefaultInfo(default_output = mk_paths_module(ctx, module_ctx)),
-    ]
+    ))
+    out = ctx.actions.write("Paths_{}.hs".format(manglePkgName(ctx.attrs.package_name)), s)
+    return [DefaultInfo(default_output = out)]
 
 cabal_paths_module = rule(
     impl = _cabal_paths_module_impl,

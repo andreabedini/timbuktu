@@ -1,0 +1,8 @@
+load("tmp.bzl", "build")
+
+build(
+    name = "alex-3.5.1.0",
+    cabalfile = "alex-3.5.1.0/alex.cabal",
+    pkg_name = "alex",
+    pkg_version = "3.5.1.0",
+)

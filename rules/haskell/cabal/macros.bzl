@@ -41,7 +41,7 @@ CabalMacroContext = record(
     exe_deps = list[PackageInfo],
 )
 
-def _cabal_macros_gen(ctx: AnalysisContext, m: CabalMacroContext) -> Artifact:
+def cabal_macros_gen(m: CabalMacroContext) -> str:
     s = ""
     for p in m.deps:
         s += "/* package {}-{} */".format(p.name, version_to_string(p.version))
@@ -85,13 +85,10 @@ def _cabal_macros_gen(ctx: AnalysisContext, m: CabalMacroContext) -> Artifact:
 #endif /* CURRENT_PACKAGE_VERSION */
 """.format(m.package_version)
 
-    return ctx.actions.write("cabal_macros.h", s)
-
 def _cabal_macros_impl(ctx: AnalysisContext) -> list[Provider]:
     deps = [haskellLibraryProviderToPackageInfo(d[HaskellLibraryProvider]) for d in ctx.attrs.deps]
     exe_deps = [haskellLibraryProviderToPackageInfo(d[HaskellLibraryProvider]) for d in ctx.attrs.exe_deps]
-    out = _cabal_macros_gen(
-        ctx,
+    s = cabal_macros_gen(
         CabalMacroContext(
             package_version = ctx.attrs.package_version,
             package_key = ctx.attrs.package_key,
@@ -100,6 +97,8 @@ def _cabal_macros_impl(ctx: AnalysisContext) -> list[Provider]:
             exe_deps = exe_deps,
         ),
     )
+    out = ctx.actions.write("cabal_macros.h", s)
+
     return [
         DefaultInfo(default_output = out),
         CPreprocessorInfo(
