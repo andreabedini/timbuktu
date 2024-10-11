@@ -9,7 +9,7 @@ load("@root//rules/haskell/cabal_install/common.bzl", "haskell_toolchain_attrs")
 def _dynamic_target_metadata_impl(
         actions: AnalysisActions,
         artifact_values: dict[Artifact, ArtifactValue],
-        dynamic_values: dict[DynamicValue, ResolvedDynamicValue],
+        dynamic_values: dict[DynamicValue, ResolvedDynamicValue],  # @unused
         outputs: dict[Artifact, Artifact],
         arg: typing.Any) -> list[Provider]:
     buildinfo = artifact_values[arg.buildinfo].read_json()
@@ -26,8 +26,6 @@ def _dynamic_target_metadata_impl(
         sysconfdir = "sysconfdir",
     ))
     paths_module = actions.write("Paths_{}.hs".format(arg.pkg_name, arg.pkg_name), s)
-
-    args = component["compiler-args"]
 
     cmd = cmd_args(arg.compiler)
 
@@ -116,6 +114,7 @@ def _build_impl(ctx: AnalysisContext) -> list[Provider]:
 
 build = rule(
     impl = _build_impl,
+    # @unsorted-dict-items
     attrs = {
         "pkg_name": attrs.string(),
         "pkg_version": attrs.string(),

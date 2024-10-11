@@ -73,11 +73,12 @@ def _secure_repo_package_impl(ctx: AnalysisContext) -> list[Provider]:
 
 secure_repo_package = rule(
     impl = _secure_repo_package_impl,
+    # @unsorted-dict-items
     attrs = {
-        "pkg_cabal_sha256": attrs.option(attrs.string(), default = None),
-        "pkg_name": attrs.string(),
-        "pkg_src_sha256": attrs.string(),
-        "pkg_version": attrs.string(),
         "repo_uri": attrs.string(),
+        "pkg_name": attrs.string(),
+        "pkg_version": attrs.string(),
+        "pkg_cabal_sha256": attrs.option(attrs.string(), default = None),
+        "pkg_src_sha256": attrs.string(),
     },
 )
