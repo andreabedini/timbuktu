@@ -1,0 +1,54 @@
+# vim: ft=bzl
+# buildifier: disable=module-docstring
+
+load("rules/haskell/cabal_install/plan.bzl", "build_plan")
+
+def _thing(ctx: bxl.Context):
+    actions = ctx.bxl_actions().actions
+
+    configured_node = ctx.configured_targets(ctx.cli_args.project)
+    providers = ctx.analysis(configured_node).providers()
+    planjson = providers[DefaultInfo].default_outputs[0]
+
+    buildozer_script = actions.declare_output("buildozer_script")
+    jq_cmd = cmd_args(
+        "jq",
+        "--raw-output",
+        "--from-file",
+        "rules/haskell/cabal_install/plan_json_to_buildozer_script.jq",
+        "--arg",
+        "package",
+        configured_node.label.package,
+        planjson,
+    )
+    actions.run(
+        cmd_args("sh", "-c", cmd_args(jq_cmd, ">", buildozer_script.as_output(), delimiter = " ")),
+        category = "jq",
+    )
+    ctx.output.print(
+        ctx.output.ensure(buildozer_script),
+    )
+
+thing = bxl_main(
+    impl = _thing,
+    cli_args = {
+        "project": cli_args.string(default = ":plan"),
+    },
+)
+
+def _make_plan_impl(ctx: bxl.Context):
+    actions = ctx.bxl_actions().actions
+    plan = build_plan(
+        actions,
+        project_file = ctx.fs.source(ctx.cli_args.project_file),
+        targets = ctx.cli_args.targets,
+    )
+    ctx.output.print(ctx.output.ensure(plan))
+
+make_plan = bxl_main(
+    impl = _make_plan_impl,
+    cli_args = {
+        "project-file": cli_args.string(default = "cabal.project"),
+        "targets": cli_args.list(cli_args.string(), default = ["all"]),
+    },
+)
