@@ -51,7 +51,7 @@ postConf' _args flags pkg_descr lbi = do
             , "components" .= JsonArray (map (mkComponentInfo lbi) activeTargets)
             ]
 
-    LBS.writeFile (distPref </> "buildinfo.json") $ renderJson (JsonObject buildInfoFields)
+    LBS.writeFile (distPref </> "local-build-info.json") $ renderJson (JsonObject buildInfoFields)
 
 -- NOTE: From here on is all serivalisation code that could live in a separate module.
 

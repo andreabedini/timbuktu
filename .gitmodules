@@ -1,3 +1,6 @@
 [submodule "prelude"]
 	path = prelude
 	url = https://github.com/facebook/buck2-prelude
+[submodule "rules/haskell/helpers/Cabal-syntax-json"]
+	path = rules/haskell/helpers/Cabal-syntax-json
+	url = https://github.com/andreabedini/Cabal-syntax-json

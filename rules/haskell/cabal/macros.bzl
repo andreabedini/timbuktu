@@ -107,7 +107,14 @@ def _cabal_macros_impl(ctx: AnalysisContext) -> list[Provider]:
                 value = [
                     CPreprocessor(
                         args = CPreprocessorArgs(args = ["-include", out]),
-                        headers = [CHeader(artifact = out, name = "cabal_macros.h", namespace = "alex", named = True)],
+                        headers = [
+                            CHeader(
+                                artifact = out,
+                                name = "cabal_macros.h",
+                                namespace = "alex",
+                                named = True,
+                            ),
+                        ],
                     ),
                 ],
             ),

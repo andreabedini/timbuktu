@@ -2,22 +2,29 @@
 Build rules for the simple build-type.
 """
 
+load("@prelude//haskell:library_info.bzl", "HaskellLibraryInfo")
 load("@prelude//haskell/toolchain.bzl", "HaskellToolchainInfo")
 load("@root//rules/haskell/cabal/paths.bzl", "PathsModuleCtx", "mk_paths_module")
 load("@root//rules/haskell/cabal_install/common.bzl", "haskell_toolchain_attrs")
 
 def _dynamic_target_metadata_impl(
         actions: AnalysisActions,
-        artifact_values: dict[Artifact, ArtifactValue],
-        dynamic_values: dict[DynamicValue, ResolvedDynamicValue],  # @unused
-        outputs: dict[Artifact, Artifact],
-        arg: typing.Any) -> list[Provider]:
-    buildinfo = artifact_values[arg.buildinfo].read_json()
-    component = buildinfo["components"][0]
+        pkg_name,
+        pkg_version,
+        buildinfo,
+        cabalfile,
+        outfile,
+        outdir,
+        haskell_toolchain) -> list[Provider]:
+    """
+    """
+
+    bi = buildinfo.read_json()
+    component = buildinfo.read_json()["components"][0]
 
     s = mk_paths_module(PathsModuleCtx(
-        package_name = arg.pkg_name,
-        package_version = arg.pkg_version,
+        package_name = pkg_name,
+        package_version = pkg_version,
         bindir = "bindir",
         libdir = "libdir",
         dynlibdir = "dynlibdir",
@@ -25,9 +32,9 @@ def _dynamic_target_metadata_impl(
         libexecdir = "libexecdir",
         sysconfdir = "sysconfdir",
     ))
-    paths_module = actions.write("Paths_{}.hs".format(arg.pkg_name, arg.pkg_name), s)
+    paths_module = actions.write("Paths_{}.hs".format(pkg_name, pkg_name), s)
 
-    cmd = cmd_args(arg.compiler)
+    cmd = cmd_args(haskell_toolchain.compiler)
 
     for a in component["compiler-args"]:
         if not a.startswith("-optP"):
@@ -38,13 +45,12 @@ def _dynamic_target_metadata_impl(
     cmd.add("-v")
 
     # override the output directory
-    cmd.add("-outputdir", outputs[arg.outdir].as_output())
-    cmd.add("-o", outputs[arg.out].as_output())
+    cmd.add("-outputdir", outdir, "-o", outfile)
 
     # add include for the paths_module
     cmd.add(cmd_args(paths_module, format = "-i{}", parent = 1))
 
-    srcdir = cmd_args(arg.cabalfile, parent = 1)
+    srcdir = cmd_args(cabalfile, parent = 1)
     actions.run(
         cmd_args(
             cmd_args(
@@ -52,7 +58,7 @@ def _dynamic_target_metadata_impl(
                 "-C",
                 srcdir,
                 "--",
-                cmd_args(cmd, relative_to = (arg.cabalfile, 1)),
+                cmd_args(cmd, relative_to = (cabalfile, 1)),
             ),
             hidden = [paths_module],
         ),
@@ -61,15 +67,29 @@ def _dynamic_target_metadata_impl(
 
     return []
 
-_dynamic_target_metadata = dynamic_actions(impl = _dynamic_target_metadata_impl)
+_dynamic_target_metadata = dynamic_actions(
+    impl = _dynamic_target_metadata_impl,
+    attrs = {
+        "buildinfo": dynattrs.artifact_value(),
+        "cabalfile": dynattrs.value(Artifact),
+        "outfile": dynattrs.output(),
+        "outdir": dynattrs.output(),
+        "pkg_name": dynattrs.value(str),
+        "pkg_version": dynattrs.value(str),
+        "haskell_toolchain": dynattrs.value(HaskellToolchainInfo),
+    },
+)
 
-def _build_impl(ctx: AnalysisContext) -> list[Provider]:
+def _configure_impl(ctx: AnalysisContext) -> list[Provider]:
+    """
+    Setup.hs configure
+    """
     setup = ctx.attrs.setup[RunInfo]
 
-    cabalfile = ctx.attrs.cabalfile
-    srcdir = cmd_args(cabalfile, parent = 1)
+    srcdir = ctx.attrs.srcdir
+    cabalfile = srcdir.project(ctx.attrs.pkg_name + ".cabal")
 
-    buildinfo = ctx.actions.declare_output("buildinfo.json")
+    buildinfo = ctx.actions.declare_output("local-build-info.json")
 
     ctx.actions.run(
         cmd_args(
@@ -78,38 +98,66 @@ def _build_impl(ctx: AnalysisContext) -> list[Provider]:
                 setup,
                 "configure",
                 cmd_args(buildinfo.as_output(), format = "--builddir={}", parent = 1),
-                relative_to = (cabalfile, 1),
+                relative_to = srcdir,
             ),
             hidden = [buildinfo.as_output()],
         ),
         category = "cabal_configure",
     )
 
-    out = ctx.actions.declare_output("out")
+    return [
+        DefaultInfo(default_output = buildinfo),
+    ]
+
+configure = rule(
+    impl = _configure_impl,
+    attrs = {
+        "srcdir": attrs.source(),
+        "config_flags": attrs.list(attrs.string(), default = []),
+        "setup": attrs.dep(
+            providers = [RunInfo],
+            default = "//rules/haskell/cabal_install/helpers:setup_simple",
+        ),
+    },
+)
+
+def _build_impl(ctx: AnalysisContext) -> list[Provider]:
+    setup = ctx.attrs.setup[RunInfo]
+
+    srcdir = ctx.attrs.srcdir
+    cabalfile = srcdir.project(ctx.attrs.pkg_name + ".cabal")
+
+    buildinfo = ctx.actions.declare_output("local-build-info.json")
+
+    ctx.actions.run(
+        cmd_args(
+            cmd_args("env", "-C", srcdir, "--"),
+            cmd_args(
+                setup,
+                "configure",
+                cmd_args(buildinfo.as_output(), format = "--builddir={}", parent = 1),
+                relative_to = srcdir,
+            ),
+            hidden = [buildinfo.as_output()],
+        ),
+        category = "cabal_configure",
+    )
+
+    outfile = ctx.actions.declare_output("outfile")
     outdir = ctx.actions.declare_output("outdir", dir = True)
 
     ctx.actions.dynamic_output_new(_dynamic_target_metadata(
-        dynamic_values = [],
-        artifact_values = [
-            buildinfo,
-        ],
-        outputs = [
-            out.as_output(),
-            outdir.as_output(),
-        ],
-        arg = struct(
-            buildinfo = buildinfo,
-            out = out,
-            outdir = outdir,
-            cabalfile = cabalfile,
-            compiler = ctx.attrs._haskell_toolchain[HaskellToolchainInfo].compiler,
-            pkg_name = ctx.attrs.pkg_name,
-            pkg_version = ctx.attrs.pkg_version,
-        ),
+        buildinfo = buildinfo,
+        outfile = outfile.as_output(),
+        outdir = outdir.as_output(),
+        cabalfile = cabalfile,
+        haskell_toolchain = ctx.attrs._haskell_toolchain[HaskellToolchainInfo],
+        pkg_name = ctx.attrs.pkg_name,
+        pkg_version = ctx.attrs.pkg_version,
     ))
 
     return [
-        DefaultInfo(default_outputs = [out, outdir]),
+        DefaultInfo(default_outputs = [outfile, outdir, buildinfo]),
     ]
 
 build = rule(
@@ -118,10 +166,11 @@ build = rule(
     attrs = {
         "pkg_name": attrs.string(),
         "pkg_version": attrs.string(),
-        "cabalfile": attrs.source(),
+        "srcdir": attrs.source(),
         "setup": attrs.dep(
             default = "//rules/haskell/cabal_install/helpers:setup_simple",
             providers = [RunInfo],
         ),
+        "deps": attrs.list(attrs.dep(), default = []),
     } | haskell_toolchain_attrs,
 )

@@ -1,4 +1,3 @@
-# buildifier: disable=module-docstring
 load("@root//rules/haskell:toolchain.bzl", "haskell_toolchain")
 
 haskell_toolchain(

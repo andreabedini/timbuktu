@@ -155,9 +155,12 @@ def _build_impl(ctx: AnalysisContext) -> list[Provider]:
 
     # providers
 
-    providers = [DefaultInfo(
-        default_output = prefix,
-    )]
+    providers = [
+        # provider
+        DefaultInfo(
+            default_output = prefix,  # Artifact
+        ),
+    ]
 
     package_conf_tset = ctx.actions.tset(
         PackageConfTSet,
@@ -170,6 +173,14 @@ def _build_impl(ctx: AnalysisContext) -> list[Provider]:
 
     if ctx.attrs.component_name == "lib" or ctx.attrs.component_name.startswith("lib:"):
         lib_name = ctx.attrs.component_name[4:] or None
+
+        # hli = HaskellLibraryInfo(
+        #     lib = {
+        #         LinkStyle("shared"): {},
+        #         LinkStyle("static"): {},
+        #     },
+        # )
+
         providers.append(
             UnitInfo(
                 id = ctx.attrs.unit_id,

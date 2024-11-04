@@ -75,12 +75,14 @@ cabal_paths_module(
 
 haskell_binary(
     name = "alex",
-    srcs = {
-        module_path(m): ":alex-3.5.1.0[" + module_path(m, dir = "src") + "]"
-        for m in alex_modules
-    } | {
-        "Paths_alex.hs": ":alex-paths",
-    },
+    srcs =
+        {
+            module_path(m): ":alex-3.5.1.0[" + module_path(m, dir = "src") + "]"
+            for m in alex_modules
+        } |
+        {
+            "Paths_alex.hs": ":alex-paths",
+        },
     compiler_flags = [
         "-XHaskell2010",
         "-XPatternSynonyms",

@@ -2,11 +2,11 @@
 load("//rules/haskell/cabal_install/interpret_plan.bzl", "interpret_plan")
 load("//rules/haskell/cabal_install/plan.bzl", "plan")
 
-plan(
-    name = "aeson-diff-plan",
-    project_file = "cabal.project",
-    targets = ["aeson-diff"],
-)
+# plan(
+#     name = "aeson-diff-plan",
+#     project_file = "cabal.project",
+#     targets = ["aeson-diff"],
+# )
 
 interpret_plan("aeson-diff", """
 {

@@ -1,8 +1,29 @@
 load("tmp.bzl", "build")
 
+# build(
+#     name = "alex-3.5.1.0",
+#     srcdir = "alex-3.5.1.0",
+#     pkg_name = "alex",
+#     pkg_version = "3.5.1.0",
+# )
+
+# build(
+#     name = "binary-0.8.9.2",
+#     srcdir = "binary-0.8.9.2",
+#     pkg_name = "binary",
+#     pkg_version = "binary-0.8.9.2",
+# )
+
+
+git_fetch(
+    name = "Cabal-syntax-json.git",
+    repo = "https://github.com/andreabedini/Cabal-syntax-json",
+    rev = "52646bb6d4e4ab3a38d4f8cdffd1686202687518",
+)
+
 build(
-    name = "alex-3.5.1.0",
-    cabalfile = "alex-3.5.1.0/alex.cabal",
-    pkg_name = "alex",
-    pkg_version = "3.5.1.0",
+    name = "Cabal-syntax-json",
+    srcdir = ":Cabal-syntax-json.git",
+    pkg_name = "Cabal-syntax-json",
+    pkg_version = "0.0.0.0",
 )

@@ -34,8 +34,8 @@ haskell_binary(
 )
 
 haskell_binary(
-    name = "parse_cabal_fields",
-    srcs = {"Main.hs": "parse_cabal_fields.hs"},
+    name = "parse_fields",
+    srcs = {"Main.hs": "parse_fields.hs"},
     deps = [
         ":base",
         ":bytestring",
