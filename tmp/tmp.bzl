@@ -2,8 +2,10 @@
 Build rules for the simple build-type.
 """
 
-load("@prelude//haskell:library_info.bzl", "HaskellLibraryInfo")
+load("@prelude//haskell:toolchain.bzl", "HaskellPlatformInfo", "HaskellToolchainInfo")
+load("@prelude//haskell/library_info.bzl", "HaskellLibraryProvider")
 load("@prelude//haskell/toolchain.bzl", "HaskellToolchainInfo")
+load("@prelude//linking:link_info.bzl", "LinkStyle")
 load("@root//rules/haskell/cabal/paths.bzl", "PathsModuleCtx", "mk_paths_module")
 load("@root//rules/haskell/cabal_install/common.bzl", "haskell_toolchain_attrs")
 
@@ -129,12 +131,24 @@ def _build_impl(ctx: AnalysisContext) -> list[Provider]:
 
     buildinfo = ctx.actions.declare_output("local-build-info.json")
 
+    dep_args = cmd_args("--exact-configuration")
+    dep_args.add(cmd_args(
+        [dep[HaskellLibraryProvider].lib[LinkStyle("static")].db for dep in ctx.attrs.deps],
+        format = "--package-db={}",
+    ))
+    for dep in ctx.attrs.deps:
+        dep_args.add("--dependency={}={}".format(
+            dep[HaskellLibraryProvider].lib[LinkStyle("static")].name,
+            dep[HaskellLibraryProvider].lib[LinkStyle("static")].id,
+        ))
+
     ctx.actions.run(
         cmd_args(
             cmd_args("env", "-C", srcdir, "--"),
             cmd_args(
                 setup,
                 "configure",
+                dep_args,
                 cmd_args(buildinfo.as_output(), format = "--builddir={}", parent = 1),
                 relative_to = srcdir,
             ),
@@ -171,6 +185,8 @@ build = rule(
             default = "//rules/haskell/cabal_install/helpers:setup_simple",
             providers = [RunInfo],
         ),
-        "deps": attrs.list(attrs.dep(), default = []),
+        "deps": attrs.list(attrs.dep(
+            providers = [HaskellLibraryProvider],
+        ), default = []),
     } | haskell_toolchain_attrs,
 )

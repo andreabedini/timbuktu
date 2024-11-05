@@ -1,3 +1,4 @@
+load("//rules/haskell:toolchain.bzl", "haskell_toolchain_library")
 load("tmp.bzl", "build")
 
 # build(
@@ -20,9 +21,22 @@ git_fetch(
     rev = "52646bb6d4e4ab3a38d4f8cdffd1686202687518",
 )
 
+haskell_toolchain_library(name = "base")
+haskell_toolchain_library(name = "bytestring")
+haskell_toolchain_library(name = "containers")
+haskell_toolchain_library(name = "Cabal")
+haskell_toolchain_library(name = "Cabal-syntax")
+
 build(
     name = "Cabal-syntax-json",
     srcdir = ":Cabal-syntax-json.git",
     pkg_name = "Cabal-syntax-json",
     pkg_version = "0.0.0.0",
+    deps = [
+        ":base",
+        ":bytestring",
+        ":Cabal",
+        ":Cabal-syntax",
+        ":containers",
+    ],
 )

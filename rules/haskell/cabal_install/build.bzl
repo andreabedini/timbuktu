@@ -3,6 +3,9 @@ Build rules for the simple build-type.
 """
 
 load("@prelude//:paths.bzl", "paths")
+load("@prelude//haskell:toolchain.bzl", "HaskellPlatformInfo", "HaskellToolchainInfo")
+load("@prelude//haskell/library_info.bzl", "HaskellLibraryInfo", "HaskellLibraryProvider")
+load("@prelude//linking:link_info.bzl", "LinkStyle")
 load(
     "common.bzl",
     "CabalPackageInfo",
@@ -29,19 +32,26 @@ def _build_impl(ctx: AnalysisContext) -> list[Provider]:
     # configure
 
     prefix = ctx.actions.declare_output("prefix", dir = True)
-    setup_config = ctx.actions.declare_output("builddir", "setup-config")
 
-    configure_cmd = cmd_args(
-        env,
-        setup,
-        "configure",
-        cmd_args(setup_config.as_output(), format = "--builddir={}", parent = 1),
-        cmd_args(prefix, format = "--prefix=$(realpath {})", ignore_artifacts = True),
+    installdirs = cmd_args(
+        cmd_args(prefix, format = "--prefix=$(realpath {})"),
         "--libsubdir=",
         "--libexecsubdir=",
         "--datadir='$prefix/data'",
         "--datasubdir=",
         "--docdir='$prefix/doc'",
+    )
+    
+    setup_config = ctx.actions.declare_output("setup-config")
+    build = ctx.actions.declare_output("build", dir = True)
+    builddir = cmd_args(build, parent = 1)
+
+    configure_cmd = cmd_args(
+        env,
+        setup,
+        "configure",
+        cmd_args(builddir, format = "--builddir={}"),
+        installdirs,
         configure_args(ctx),
         delimiter = " ",
     )
@@ -56,24 +66,27 @@ def _build_impl(ctx: AnalysisContext) -> list[Provider]:
         "set -euo pipefail",
         cmd_args(srcdir, format = "cd {}"),
         cmd_args(configure_cmd, relative_to = srcdir),
+        ignore_artifacts = True,
     )
 
-    configure_sh = ctx.actions.write("configure.sh", configure_sh_content, is_executable = True, with_inputs = True)
+    configure_sh = ctx.actions.write(
+        "configure.sh",
+        configure_sh_content,
+        is_executable = True,
+    )
 
     ctx.actions.run(
-        cmd_args(configure_sh, hidden = [setup_config.as_output()]),
+        cmd_args(configure_sh, hidden = [srcdir, setup, setup_config.as_output()]),
         category = "cabal_configure",
     )
 
     # build
 
-    builddir = ctx.actions.declare_output("builddir", "build", dir = True)
-
     build_cmd = cmd_args(
         env,
         setup,
         "build",
-        cmd_args(builddir.as_output(), format = "--builddir={}", parent = 1),
+        cmd_args(builddir, format = "--builddir={}"),
         delimiter = " ",
     )
 
@@ -85,13 +98,16 @@ def _build_impl(ctx: AnalysisContext) -> list[Provider]:
         "set -euo pipefail",
         cmd_args(srcdir, format = "cd {}"),
         cmd_args(build_cmd, relative_to = srcdir),
-        hidden = [setup_config],
     )
 
-    build_sh = ctx.actions.write("build.sh", build_sh_content, is_executable = True, with_inputs = True)
+    build_sh = ctx.actions.write(
+        "build.sh",
+        build_sh_content,
+        is_executable = True,
+    )
 
     ctx.actions.run(
-        cmd_args(build_sh, hidden = [builddir.as_output()]),
+        cmd_args(build_sh, hidden = [setup_config, build.as_output()]),
         category = "cabal_build",
     )
 
@@ -101,7 +117,7 @@ def _build_impl(ctx: AnalysisContext) -> list[Provider]:
         env,
         setup,
         "copy",
-        cmd_args(builddir, format = "--builddir={}", parent = 1),
+        cmd_args(builddir, format = "--builddir={}"),
         delimiter = " ",
     )
 
@@ -113,25 +129,38 @@ def _build_impl(ctx: AnalysisContext) -> list[Provider]:
         "set -euo pipefail",
         cmd_args(srcdir, format = "cd {}"),
         cmd_args(copy_cmd, relative_to = srcdir),
+        ignore_artifacts = True,
     )
 
-    copy_sh = ctx.actions.write("copy.sh", copy_sh_content, is_executable = True, with_inputs = True)
+    copy_sh = ctx.actions.write(
+        "copy.sh",
+        copy_sh_content,
+        is_executable = True,
+    )
 
     ctx.actions.run(
-        cmd_args(copy_sh, hidden = [prefix.as_output()]),
+        cmd_args(copy_sh, hidden = [builddir, prefix.as_output()]),
         category = "cabal_copy",
     )
 
     # register
 
-    package_conf = ctx.actions.declare_output("package.conf.d", "{}.conf".format(ctx.attrs.unit_id))
+    package_db = ctx.actions.declare_output("package.conf.d", dir = True)
+    package_conf = package_db.project("{}.conf".format(ctx.attrs.unit_id))
 
     register_cmd = cmd_args(
         env,
         setup,
         "register",
-        cmd_args(builddir, format = "--builddir={}", parent = 1),
-        cmd_args(package_conf.as_output(), format = "--gen-pkg-config={}"),
+        cmd_args(builddir, format = "--builddir={}"),
+        cmd_args(package_conf, format = "--gen-pkg-config={}"),
+        delimiter = " ",
+    )
+
+    ghc_cmd = cmd_args(
+        "ghc-pkg",
+        "recache",
+        cmd_args(package_db, format = "--package-db={}"),
         delimiter = " ",
     )
 
@@ -142,14 +171,20 @@ def _build_impl(ctx: AnalysisContext) -> list[Provider]:
         "#!/usr/bin/env bash",
         "set -euo pipefail",
         cmd_args(srcdir, format = "cd {}"),
+        cmd_args("mkdir", package_db, delimiter = " ", relative_to = srcdir),
         cmd_args(register_cmd, relative_to = srcdir),
-        hidden = [builddir],
+        cmd_args(ghc_cmd, relative_to = srcdir),
+        ignore_artifacts = True,
     )
 
-    register_sh = ctx.actions.write("register.sh", register_sh_content, is_executable = True, with_inputs = True)
+    register_sh = ctx.actions.write(
+        "register.sh",
+        register_sh_content,
+        is_executable = True,
+    )
 
     ctx.actions.run(
-        cmd_args(register_sh, hidden = [package_conf.as_output()]),
+        cmd_args(register_sh, hidden = [builddir, package_conf.as_output()]),
         category = "cabal_register",
     )
 
@@ -158,40 +193,62 @@ def _build_impl(ctx: AnalysisContext) -> list[Provider]:
     providers = [
         # provider
         DefaultInfo(
-            default_output = prefix,  # Artifact
+            default_outputs = [prefix, package_conf],
         ),
     ]
 
-    package_conf_tset = ctx.actions.tset(
-        PackageConfTSet,
-        value = package_conf,
-        children = [
-            dep[UnitInfo].package_conf_tset
-            for dep in ctx.attrs.deps
-        ],
-    )
+    # package_conf_tset = ctx.actions.tset(
+    #     PackageConfTSet,
+    #     value = package_conf,
+    #     children = [
+    #         dep[UnitInfo].package_conf_tset
+    #         for dep in ctx.attrs.deps
+    #     ],
+    # )
 
     if ctx.attrs.component_name == "lib" or ctx.attrs.component_name.startswith("lib:"):
         lib_name = ctx.attrs.component_name[4:] or None
 
-        # hli = HaskellLibraryInfo(
-        #     lib = {
-        #         LinkStyle("shared"): {},
-        #         LinkStyle("static"): {},
-        #     },
-        # )
-
-        providers.append(
-            UnitInfo(
-                id = ctx.attrs.unit_id,
-                name = ctx.attrs.pkg_name,
-                version = ctx.attrs.pkg_version,
-                lib_name = lib_name,
-                #
-                package_conf = package_conf,
-                package_conf_tset = package_conf_tset,
-            ),
+        hli = HaskellLibraryProvider(
+            lib = {
+                LinkStyle("shared"): HaskellLibraryInfo(
+                    name = ctx.attrs.pkg_name,
+                    version = ctx.attrs.pkg_version,
+                    id = ctx.attrs.unit_id,
+                    db = package_db,
+                    import_dirs = {},
+                    stub_dirs = [],
+                    libs = [],
+                    is_prebuilt = True,
+                    profiling_enabled = False,
+                ),
+                LinkStyle("static"): HaskellLibraryInfo(
+                    name = ctx.attrs.pkg_name,
+                    version = ctx.attrs.pkg_version,
+                    id = ctx.attrs.unit_id,
+                    db = package_db,
+                    import_dirs = {},
+                    stub_dirs = [],
+                    libs = [],
+                    is_prebuilt = True,
+                    profiling_enabled = False,
+                ),
+            },
         )
+
+        providers.append(hli)
+
+        # providers.append(
+        #     UnitInfo(
+        #         id = ctx.attrs.unit_id,
+        #         name = ctx.attrs.pkg_name,
+        #         version = ctx.attrs.pkg_version,
+        #         lib_name = lib_name,
+        #         #
+        #         package_conf = package_conf,
+        #         package_conf_tset = package_conf_tset,
+        #     ),
+        # )
 
     if ctx.attrs.component_name.startswith("exe:"):
         exe_name = ctx.attrs.component_name[4:]

@@ -3,6 +3,8 @@ Common definitions for cabal-install plans.
 """
 
 load("@prelude//haskell:toolchain.bzl", "HaskellPlatformInfo", "HaskellToolchainInfo")
+load("@prelude//haskell/library_info.bzl", "HaskellLibraryInfo", "HaskellLibraryProvider")
+load("@prelude//linking:link_info.bzl", "LinkStyle")
 load("//rules/haskell/toolchain.bzl", "HaskellToolchainLibrariesInfo")
 
 CabalPackageInfo = provider(
@@ -68,43 +70,48 @@ def manglePkgName(name: str) -> str:
     # NOTE: taken from build-env, check with Cabal
     return name.replace("-", "_")
 
-def package_db(ctx: AnalysisContext, tset: PackageConfTSet) -> cmd_args:
-    cache = ctx.actions.declare_output("package.conf.d", "package.cache")
-    ctx.actions.run(
-        cmd_args(
-            "ghc-pkg",
-            "recache",
-            cmd_args(cache.as_output(), format = "--package-db={}", parent = 1),
-            hidden = [
-                ctx.actions.symlink_file("package.conf.d/{}.conf".format(package_conf.owner.name), package_conf)
-                for package_conf in tset.traverse()
-            ],
-        ),
-        category = "packagedb",
-    )
-    return cmd_args(cache, parent = 1)
+# def package_db(ctx: AnalysisContext, tset: PackageConfTSet) -> cmd_args:
+#     cache = ctx.actions.declare_output("package.conf.d", "package.cache")
+#     ctx.actions.run(
+#         cmd_args(
+#             "ghc-pkg",
+#             "recache",
+#             cmd_args(cache.as_output(), format = "--package-db={}", parent = 1),
+#             hidden = [
+#                 ctx.actions.symlink_file("package.conf.d/{}.conf".format(package_conf.owner.name), package_conf)
+#                 for package_conf in tset.traverse()
+#             ],
+#         ),
+#         category = "packagedb",
+#     )
+#     return cmd_args(cache, parent = 1)
 
 def _flags(ctx: AnalysisContext) -> cmd_args:
     return cmd_args([("+" if value else "-") + name for name, value in ctx.attrs.flags.items()], format = "--flags={}")
 
-def _dependency(unitInfo: UnitInfo) -> str:
-    if unitInfo.lib_name:
-        return "--dependency={}:{}={}".format(unitInfo.name, unitInfo.lib_name, unitInfo.id)
-    else:
-        return "--dependency={}={}".format(unitInfo.name, unitInfo.id)
+# def _dependency(libinfo: HaskellLibraryInfo) -> str:
+#     # if unitInfo.lib_name:
+#     #     return "--dependency={}:{}={}".format(libinfo.name, libinfo.lib_name, libinfo.id)
+#     # else:
+#     return "--dependency={}={}".format(libinfo.name, libinfo.id)
 
-def _dependencies(ctx: AnalysisContext) -> list[str]:
-    return [_dependency(d[UnitInfo]) for d in ctx.attrs.deps]
+def _dependencies(ctx: AnalysisContext) -> cmd_args:
+    args = cmd_args()
+    for d in ctx.attrs.deps:
+        hli = d[HaskellLibraryProvider].lib[LinkStyle("static")]
+        args.add("--dependency={}={}".format(hli.name, hli.id))
+    return args
 
 def configure_args(ctx: AnalysisContext) -> cmd_args:
     haskell_toolchain = ctx.attrs._haskell_toolchain[HaskellToolchainInfo]
-    tset_deps = ctx.actions.tset(
-        PackageConfTSet,
-        children = [
-            dep[UnitInfo].package_conf_tset
-            for dep in ctx.attrs.deps
-        ],
-    )
+
+    # tset_deps = ctx.actions.tset(
+    #     PackageConfTSet,
+    #     children = [
+    #         dep[UnitInfo].package_conf_tset
+    #         for dep in ctx.attrs.deps
+    #     ],
+    # )
     return cmd_args(
         cmd_args(haskell_toolchain.compiler, format = "--with-compiler={}"),
         "--exact-configuration",
@@ -112,7 +119,7 @@ def configure_args(ctx: AnalysisContext) -> cmd_args:
         "--exact-configuration",
         "--package-db=clear",
         "--package-db=global",
-        cmd_args(package_db(ctx, tset_deps), format = "--package-db={}"),
+        # cmd_args(package_db(ctx, tset_deps), format = "--package-db={}"),
         _dependencies(ctx),
         _flags(ctx),
     )

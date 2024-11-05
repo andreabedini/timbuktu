@@ -25,7 +25,8 @@ def _build_legacy_impl(ctx: AnalysisContext) -> list[Provider]:
     # configure
 
     prefix = ctx.actions.declare_output("prefix", dir = True)
-    builddir = ctx.actions.declare_output("builddir", dir = True)
+    builddir = ctx.actions.declare_output("dist", dir = True)
+    packagedb = ctx.actions.declare_output("package.conf.d", dir = True)
 
     configure_cmd = cmd_args(
         env,
@@ -39,6 +40,7 @@ def _build_legacy_impl(ctx: AnalysisContext) -> list[Provider]:
         "--datasubdir=",
         "--docdir='$prefix/doc'",
         configure_args(ctx),
+        cmd_args(packagedb, format = "--package-db={}", ignore_artifacts = True),
         delimiter = " ",
     )
 
@@ -64,14 +66,11 @@ def _build_legacy_impl(ctx: AnalysisContext) -> list[Provider]:
         delimiter = " ",
     )
 
-    package_conf = ctx.actions.declare_output("package.conf.d", "{}.conf".format(ctx.attrs.unit_id))
-
     register_cmd = cmd_args(
         env,
         setup,
         "register",
         cmd_args(builddir, format = "--builddir={}", ignore_artifacts = True),
-        cmd_args(package_conf.as_output(), format = "--gen-pkg-config={}"),
         delimiter = " ",
     )
 
@@ -87,33 +86,38 @@ def _build_legacy_impl(ctx: AnalysisContext) -> list[Provider]:
         hidden = [srcdir, setup, builddir.as_output(), prefix.as_output()],
     )
 
-    build_sh = ctx.actions.write("build.sh", build_sh_content, is_executable = True, with_inputs = True)
+    build_sh = ctx.actions.write(
+        "build.sh",
+        build_sh_content,
+        is_executable = True,
+        with_inputs = True,
+    )
 
     ctx.actions.run(
-        cmd_args(build_sh, hidden = [prefix.as_output(), builddir.as_output(), package_conf.as_output()]),
+        cmd_args(build_sh, hidden = [prefix.as_output(), builddir.as_output(), packagedb.as_output()]),
         category = "build_legacy",
     )
 
-    package_conf_tset = ctx.actions.tset(
-        PackageConfTSet,
-        value = package_conf,
-        children = [
-            dep[UnitInfo].package_conf_tset
-            for dep in ctx.attrs.deps
-        ],
-    )
+    # package_conf_tset = ctx.actions.tset(
+    #     PackageConfTSet,
+    #     value = package_conf,
+    #     children = [
+    #         dep[UnitInfo].package_conf_tset
+    #         for dep in ctx.attrs.deps
+    #     ],
+    # )
 
     return [
         DefaultInfo(
-            default_output = builddir,
+            default_outputs = [prefix, packagedb]
         ),
-        UnitInfo(
-            id = ctx.attrs.unit_id,
-            name = ctx.attrs.pkg_name,
-            version = ctx.attrs.pkg_version,
-            package_conf = package_conf,
-            package_conf_tset = package_conf_tset,
-        ),
+        # UnitInfo(
+        #     id = ctx.attrs.unit_id,
+        #     name = ctx.attrs.pkg_name,
+        #     version = ctx.attrs.pkg_version,
+        #     package_conf = package_conf,
+        #     package_conf_tset = package_conf_tset,
+        # ),
     ]
 
 build_legacy = rule(
