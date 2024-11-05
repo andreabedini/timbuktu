@@ -41,7 +41,7 @@ def _build_impl(ctx: AnalysisContext) -> list[Provider]:
         "--datasubdir=",
         "--docdir='$prefix/doc'",
     )
-    
+
     setup_config = ctx.actions.declare_output("setup-config")
     build = ctx.actions.declare_output("build", dir = True)
     builddir = cmd_args(build, parent = 1)

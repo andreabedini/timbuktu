@@ -109,7 +109,7 @@ def _build_legacy_impl(ctx: AnalysisContext) -> list[Provider]:
 
     return [
         DefaultInfo(
-            default_outputs = [prefix, packagedb]
+            default_outputs = [prefix, packagedb],
         ),
         # UnitInfo(
         #     id = ctx.attrs.unit_id,
