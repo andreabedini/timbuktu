@@ -169,7 +169,7 @@ def _build_impl(ctx: AnalysisContext) -> list[Provider]:
         setup,
         "register",
         cmd_args(builddir, format = "--builddir={}"),
-        cmd_args(package_conf, format = "--gen-pkg-config={}"),
+        cmd_args(package_conf.as_output(), format = "--gen-pkg-config={}"),
         delimiter = " ",
     )
 
@@ -190,7 +190,6 @@ def _build_impl(ctx: AnalysisContext) -> list[Provider]:
         cmd_args("mkdir", package_db, delimiter = " ", relative_to = srcdir),
         cmd_args(register_cmd, relative_to = srcdir),
         cmd_args(ghc_cmd, relative_to = srcdir),
-        # ignore_artifacts = True,
     )
 
     register_sh = ctx.actions.write(

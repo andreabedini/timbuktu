@@ -38,7 +38,7 @@ def _build_legacy_impl(ctx: AnalysisContext) -> list[Provider]:
         env,
         setup,
         "configure",
-        cmd_args(builddir, format = "--builddir={}"),
+        cmd_args(builddir, format = "--builddir={}", ignore_artifacts = True),
         cmd_args(installdirs.args, ignore_artifacts = True),
         configure_args(ctx),
         delimiter = " ",
@@ -52,7 +52,7 @@ def _build_legacy_impl(ctx: AnalysisContext) -> list[Provider]:
         env,
         setup,
         "build",
-        cmd_args(build.as_output(), parent = 1, format = "--builddir={}"),
+        cmd_args(builddir, format = "--builddir={}", ignore_artifacts = True),
         delimiter = " ",
     )
 
@@ -62,7 +62,7 @@ def _build_legacy_impl(ctx: AnalysisContext) -> list[Provider]:
         env,
         setup,
         "copy",
-        cmd_args(builddir, format = "--builddir={}"),
+        cmd_args(builddir, format = "--builddir={}", ignore_artifacts = True),
         delimiter = " ",
     )
 
@@ -70,8 +70,8 @@ def _build_legacy_impl(ctx: AnalysisContext) -> list[Provider]:
         env,
         setup,
         "register",
-        cmd_args(builddir, format = "--builddir={}"),
-        cmd_args(package_conf, format = "--gen-pkg-config={}"),
+        cmd_args(builddir, format = "--builddir={}", ignore_artifacts = True),
+        cmd_args(package_conf.as_output(), format = "--gen-pkg-config={}"),
         delimiter = " ",
     )
 
@@ -90,6 +90,7 @@ def _build_legacy_impl(ctx: AnalysisContext) -> list[Provider]:
         cmd_args(configure_cmd, relative_to = srcdir),
         cmd_args(build_cmd, relative_to = srcdir),
         cmd_args(copy_cmd, relative_to = srcdir),
+        cmd_args("mkdir", package_db, delimiter = " ", relative_to = srcdir),
         cmd_args(register_cmd, relative_to = srcdir),
     )
 
