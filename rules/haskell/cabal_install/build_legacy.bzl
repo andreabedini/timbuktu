@@ -10,6 +10,8 @@ load(
     "build_env",
     "common_unit_attrs",
     "configure_args",
+    "mkInstallDirs",
+    "mkProviders",
     "source_unit_attrs",
 )
 
@@ -22,25 +24,23 @@ def _build_legacy_impl(ctx: AnalysisContext) -> list[Provider]:
 
     env = build_env(ctx.attrs.exec_deps)
 
+    installdirs = mkInstallDirs(ctx.actions)
+
     # configure
 
-    prefix = ctx.actions.declare_output("prefix", dir = True)
-    builddir = ctx.actions.declare_output("dist", dir = True)
-    packagedb = ctx.actions.declare_output("package.conf.d", dir = True)
+    build = ctx.actions.declare_output("build", dir = True)
+    builddir = cmd_args(build, parent = 1)
+
+    package_db = ctx.actions.declare_output("package.conf.d", dir = True)
+    package_conf = package_db.project("{}.conf".format(ctx.attrs.unit_id))
 
     configure_cmd = cmd_args(
         env,
         setup,
         "configure",
-        cmd_args(builddir, format = "--builddir={}", ignore_artifacts = True),
-        cmd_args(prefix, format = "--prefix=$(realpath {})", ignore_artifacts = True),
-        "--libsubdir=",
-        "--libexecsubdir=",
-        "--datadir='$prefix/data'",
-        "--datasubdir=",
-        "--docdir='$prefix/doc'",
+        cmd_args(builddir, format = "--builddir={}"),
+        cmd_args(installdirs.args, ignore_artifacts = True),
         configure_args(ctx),
-        cmd_args(packagedb, format = "--package-db={}", ignore_artifacts = True),
         delimiter = " ",
     )
 
@@ -52,7 +52,7 @@ def _build_legacy_impl(ctx: AnalysisContext) -> list[Provider]:
         env,
         setup,
         "build",
-        cmd_args(builddir, format = "--builddir={}", ignore_artifacts = True),
+        cmd_args(build.as_output(), parent = 1, format = "--builddir={}"),
         delimiter = " ",
     )
 
@@ -62,7 +62,7 @@ def _build_legacy_impl(ctx: AnalysisContext) -> list[Provider]:
         env,
         setup,
         "copy",
-        cmd_args(builddir, format = "--builddir={}", ignore_artifacts = True),
+        cmd_args(builddir, format = "--builddir={}"),
         delimiter = " ",
     )
 
@@ -70,55 +70,78 @@ def _build_legacy_impl(ctx: AnalysisContext) -> list[Provider]:
         env,
         setup,
         "register",
-        cmd_args(builddir, format = "--builddir={}", ignore_artifacts = True),
+        cmd_args(builddir, format = "--builddir={}"),
+        cmd_args(package_conf, format = "--gen-pkg-config={}"),
+        delimiter = " ",
+    )
+
+    ghc_cmd = cmd_args(
+        "ghc-pkg",
+        "recache",
+        cmd_args(package_db.as_output(), format = "--package-db={}"),
         delimiter = " ",
     )
 
     build_sh_content = cmd_args(
         "#!/usr/bin/env bash",
         "set -euo pipefail",
-        cmd_args("mkdir", "-p", prefix.as_output(), delimiter = " "),
+        cmd_args("mkdir", "-p", installdirs.prefix.as_output(), delimiter = " "),
         cmd_args(srcdir, format = "cd {}"),
         cmd_args(configure_cmd, relative_to = srcdir),
         cmd_args(build_cmd, relative_to = srcdir),
         cmd_args(copy_cmd, relative_to = srcdir),
         cmd_args(register_cmd, relative_to = srcdir),
-        hidden = [srcdir, setup, builddir.as_output(), prefix.as_output()],
     )
 
     build_sh = ctx.actions.write(
-        "build.sh",
+        "build_legacy.sh",
         build_sh_content,
         is_executable = True,
         with_inputs = True,
     )
 
     ctx.actions.run(
-        cmd_args(build_sh, hidden = [prefix.as_output(), builddir.as_output(), packagedb.as_output()]),
-        category = "build_legacy",
+        cmd_args(
+            build_sh,
+            hidden = [
+                srcdir,
+                setup,
+                build.as_output(),
+                installdirs.prefix.as_output(),
+                package_conf.as_output(),
+            ],
+        ),
+        category = "cabal_build_legacy",
     )
 
-    # package_conf_tset = ctx.actions.tset(
-    #     PackageConfTSet,
-    #     value = package_conf,
-    #     children = [
-    #         dep[UnitInfo].package_conf_tset
-    #         for dep in ctx.attrs.deps
-    #     ],
-    # )
+    package_conf_tset = ctx.actions.tset(
+        PackageConfTSet,
+        value = package_conf,
+        children = [
+            dep[UnitInfo].package_conf_tset
+            for dep in ctx.attrs.deps
+        ],
+    )
 
-    return [
+    providers = [
         DefaultInfo(
-            default_outputs = [prefix, packagedb],
+            default_outputs = [
+                installdirs.prefix,
+                package_conf,
+            ],
         ),
-        # UnitInfo(
-        #     id = ctx.attrs.unit_id,
-        #     name = ctx.attrs.pkg_name,
-        #     version = ctx.attrs.pkg_version,
-        #     package_conf = package_conf,
-        #     package_conf_tset = package_conf_tset,
-        # ),
+        UnitInfo(
+            id = ctx.attrs.unit_id,
+            name = ctx.attrs.pkg_name,
+            version = ctx.attrs.pkg_version,
+            package_conf = package_conf,
+            package_conf_tset = package_conf_tset,
+        ),
     ]
+
+    providers.extend(mkProviders(ctx, package_db, installdirs))
+
+    return providers
 
 build_legacy = rule(
     impl = _build_legacy_impl,

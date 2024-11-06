@@ -3,9 +3,30 @@ Build rules for the simple build-type.
 """
 
 load("@prelude//:paths.bzl", "paths")
-load("@prelude//haskell:toolchain.bzl", "HaskellPlatformInfo", "HaskellToolchainInfo")
-load("@prelude//haskell/library_info.bzl", "HaskellLibraryInfo", "HaskellLibraryProvider")
-load("@prelude//linking:link_info.bzl", "LinkStyle")
+load(
+    "@prelude//cxx:cxx_toolchain_types.bzl",
+    "LinkerType",
+)
+load(
+    "@prelude//haskell:toolchain.bzl",
+    "HaskellPlatformInfo",
+    "HaskellToolchainInfo",
+)
+load(
+    "@prelude//haskell/library_info.bzl",
+    "HaskellLibraryInfo",
+    "HaskellLibraryInfoTSet",
+    "HaskellLibraryProvider",
+)
+load(
+    "@prelude//linking:link_info.bzl",
+    "Archive",
+    "ArchiveLinkable",
+    "LinkInfo",
+    "LinkInfos",
+    "LinkStyle",
+    "SharedLibLinkable",
+)
 load(
     "common.bzl",
     "CabalPackageInfo",
@@ -16,6 +37,8 @@ load(
     "common_unit_attrs",
     "configure_args",
     "manglePkgName",
+    "mkInstallDirs",
+    "mkProviders",
     "source_unit_attrs",
 )
 
@@ -29,29 +52,24 @@ def _build_impl(ctx: AnalysisContext) -> list[Provider]:
 
     env = build_env(ctx.attrs.exec_deps)
 
-    # configure
-
-    prefix = ctx.actions.declare_output("prefix", dir = True)
-
-    installdirs = cmd_args(
-        cmd_args(prefix, format = "--prefix=$(realpath {})"),
-        "--libsubdir=",
-        "--libexecsubdir=",
-        "--datadir='$prefix/data'",
-        "--datasubdir=",
-        "--docdir='$prefix/doc'",
-    )
+    installdirs = mkInstallDirs(ctx.actions)
 
     setup_config = ctx.actions.declare_output("setup-config")
+
     build = ctx.actions.declare_output("build", dir = True)
     builddir = cmd_args(build, parent = 1)
+
+    package_db = ctx.actions.declare_output("package.conf.d", dir = True)
+    package_conf = package_db.project("{}.conf".format(ctx.attrs.unit_id))
+
+    # configure
 
     configure_cmd = cmd_args(
         env,
         setup,
         "configure",
-        cmd_args(builddir, format = "--builddir={}"),
-        installdirs,
+        cmd_args(builddir, format = "--builddir={}", ignore_artifacts = True),
+        cmd_args(installdirs.args, ignore_artifacts = True),
         configure_args(ctx),
         delimiter = " ",
     )
@@ -66,12 +84,12 @@ def _build_impl(ctx: AnalysisContext) -> list[Provider]:
         "set -euo pipefail",
         cmd_args(srcdir, format = "cd {}"),
         cmd_args(configure_cmd, relative_to = srcdir),
-        ignore_artifacts = True,
     )
 
     configure_sh = ctx.actions.write(
         "configure.sh",
         configure_sh_content,
+        with_inputs = True,
         is_executable = True,
     )
 
@@ -86,7 +104,7 @@ def _build_impl(ctx: AnalysisContext) -> list[Provider]:
         env,
         setup,
         "build",
-        cmd_args(builddir, format = "--builddir={}"),
+        cmd_args(builddir, format = "--builddir={}", ignore_artifacts = True),
         delimiter = " ",
     )
 
@@ -103,6 +121,7 @@ def _build_impl(ctx: AnalysisContext) -> list[Provider]:
     build_sh = ctx.actions.write(
         "build.sh",
         build_sh_content,
+        with_inputs = True,
         is_executable = True,
     )
 
@@ -129,24 +148,21 @@ def _build_impl(ctx: AnalysisContext) -> list[Provider]:
         "set -euo pipefail",
         cmd_args(srcdir, format = "cd {}"),
         cmd_args(copy_cmd, relative_to = srcdir),
-        ignore_artifacts = True,
     )
 
     copy_sh = ctx.actions.write(
         "copy.sh",
         copy_sh_content,
+        with_inputs = True,
         is_executable = True,
     )
 
     ctx.actions.run(
-        cmd_args(copy_sh, hidden = [builddir, prefix.as_output()]),
+        cmd_args(copy_sh, hidden = [installdirs.prefix.as_output()]),
         category = "cabal_copy",
     )
 
     # register
-
-    package_db = ctx.actions.declare_output("package.conf.d", dir = True)
-    package_conf = package_db.project("{}.conf".format(ctx.attrs.unit_id))
 
     register_cmd = cmd_args(
         env,
@@ -174,7 +190,7 @@ def _build_impl(ctx: AnalysisContext) -> list[Provider]:
         cmd_args("mkdir", package_db, delimiter = " ", relative_to = srcdir),
         cmd_args(register_cmd, relative_to = srcdir),
         cmd_args(ghc_cmd, relative_to = srcdir),
-        ignore_artifacts = True,
+        # ignore_artifacts = True,
     )
 
     register_sh = ctx.actions.write(
@@ -184,7 +200,7 @@ def _build_impl(ctx: AnalysisContext) -> list[Provider]:
     )
 
     ctx.actions.run(
-        cmd_args(register_sh, hidden = [builddir, package_conf.as_output()]),
+        cmd_args(register_sh, hidden = [installdirs.prefix, package_db.as_output()]),
         category = "cabal_register",
     )
 
@@ -193,73 +209,56 @@ def _build_impl(ctx: AnalysisContext) -> list[Provider]:
     providers = [
         # provider
         DefaultInfo(
-            default_outputs = [prefix, package_conf],
+            default_outputs = [installdirs.prefix, package_conf],
         ),
     ]
 
-    # package_conf_tset = ctx.actions.tset(
-    #     PackageConfTSet,
-    #     value = package_conf,
-    #     children = [
-    #         dep[UnitInfo].package_conf_tset
-    #         for dep in ctx.attrs.deps
-    #     ],
-    # )
+    package_conf_tset = ctx.actions.tset(
+        PackageConfTSet,
+        value = package_conf,
+        children = [
+            dep[UnitInfo].package_conf_tset
+            for dep in ctx.attrs.deps
+        ],
+    )
+
+    # shared_libs = {
+    #     "libHSCabal-3.12.0.0-7126-ghc9.10.1.so": "lib/x86_64-linux-ghc-9.10.1/libHSCabal-3.12.0.0-7126-ghc9.10.1.so",
+    # },
+    # static_libs = [
+    #     "lib/x86_64-linux-ghc-9.10.1/Cabal-3.12.0.0-7126/libHSCabal-3.12.0.0-7126.a",
+    # ],
+    # profiled_static_libs = [
+    #     "lib/x86_64-linux-ghc-9.10.1/Cabal-3.12.0.0-7126/libHSCabal-3.12.0.0-7126_p.a",
+    # ],
 
     if ctx.attrs.component_name == "lib" or ctx.attrs.component_name.startswith("lib:"):
         lib_name = ctx.attrs.component_name[4:] or None
 
-        hli = HaskellLibraryProvider(
-            lib = {
-                LinkStyle("shared"): HaskellLibraryInfo(
-                    name = ctx.attrs.pkg_name,
-                    version = ctx.attrs.pkg_version,
-                    id = ctx.attrs.unit_id,
-                    db = package_db,
-                    import_dirs = {},
-                    stub_dirs = [],
-                    libs = [],
-                    is_prebuilt = True,
-                    profiling_enabled = False,
-                ),
-                LinkStyle("static"): HaskellLibraryInfo(
-                    name = ctx.attrs.pkg_name,
-                    version = ctx.attrs.pkg_version,
-                    id = ctx.attrs.unit_id,
-                    db = package_db,
-                    import_dirs = {},
-                    stub_dirs = [],
-                    libs = [],
-                    is_prebuilt = True,
-                    profiling_enabled = False,
-                ),
-            },
+        providers.extend(mkProviders(ctx, package_db, installdirs))
+
+        providers.append(
+            UnitInfo(
+                id = ctx.attrs.unit_id,
+                name = ctx.attrs.pkg_name,
+                version = ctx.attrs.pkg_version,
+                lib_name = lib_name,
+                #
+                package_conf = package_conf,
+                package_conf_tset = package_conf_tset,
+            ),
         )
-
-        providers.append(hli)
-
-        # providers.append(
-        #     UnitInfo(
-        #         id = ctx.attrs.unit_id,
-        #         name = ctx.attrs.pkg_name,
-        #         version = ctx.attrs.pkg_version,
-        #         lib_name = lib_name,
-        #         #
-        #         package_conf = package_conf,
-        #         package_conf_tset = package_conf_tset,
-        #     ),
-        # )
 
     if ctx.attrs.component_name.startswith("exe:"):
         exe_name = ctx.attrs.component_name[4:]
-        exe = prefix.project(paths.join("bin", exe_name))
+        exe = installdirs.prefix.project(paths.join("bin", exe_name))
         providers.extend([
             RunInfo(args = exe),
             # NOTE: this is an artifact not cmd_args
             ExeDependInfo(
                 mangledPkgName = manglePkgName(ctx.attrs.pkg_name),
                 exe = exe,
-                datadir = prefix.project("data"),
+                datadir = installdirs.prefix.project("data"),
             ),
         ])
 
