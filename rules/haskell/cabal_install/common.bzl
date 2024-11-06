@@ -226,7 +226,8 @@ def mkProviders(ctx, package_db, installdirs) -> list[Provider]:
             libs.append(installdirs.libdir.project("libHS{}.a".format(ctx.attrs.unit_id)))
         elif link_style == LinkStyle("shared"):
             # FIXME extension
-            libs.append(installdirs.libdir.project("libHS{}-{}.so".format(ctx.attrs.unit_id, compiler)))
+            # HACK ghcx.y.z
+            libs.append(installdirs.libdir.project("libHS{}-{}.so".format(ctx.attrs.unit_id, compiler.replace("ghc-", "ghc"))))
 
         hlibinfo = HaskellLibraryInfo(
             name = ctx.attrs.pkg_name,

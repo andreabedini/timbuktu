@@ -90,7 +90,7 @@ def _build_legacy_impl(ctx: AnalysisContext) -> list[Provider]:
         cmd_args(configure_cmd, relative_to = srcdir),
         cmd_args(build_cmd, relative_to = srcdir),
         cmd_args(copy_cmd, relative_to = srcdir),
-        cmd_args("mkdir", package_db, delimiter = " ", relative_to = srcdir),
+        cmd_args("mkdir", package_db, delimiter = " ", relative_to = srcdir, ignore_artifacts = True),
         cmd_args(register_cmd, relative_to = srcdir),
     )
 
