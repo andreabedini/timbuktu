@@ -1,7 +1,7 @@
 load("@prelude//toolchains:cxx.bzl", "system_cxx_toolchain")
 load("@prelude//toolchains:genrule.bzl", "system_genrule_toolchain")
 load("@prelude//toolchains:python.bzl", "system_python_bootstrap_toolchain", "system_python_toolchain")
-load("defs.bzl", "download_cabal_distribution", "cabal_toolchain", "download_ghc_distribution", "haskell_toolchain")
+load("defs.bzl", "cabal_toolchain", "download_cabal_distribution", "download_ghc_distribution", "haskell_toolchain")
 
 system_cxx_toolchain(
     name = "cxx",
@@ -40,7 +40,7 @@ download_ghc_distribution(
 )
 
 haskell_toolchain(
-    name = "ghc",
+    name = "haskell",
     distribution = ":ghc-bindist",
     visibility = ["PUBLIC"],
 )

@@ -1,0 +1,45 @@
+load("@prelude//haskell/toolchain.bzl", "HaskellToolchainInfo")
+load("@toolchains//defs.bzl", "GhcDistributionInfo")
+
+def _thing(ctx: bxl.Context):
+    configured_node = ctx.configured_targets("toolchains//:haskell")
+    toolchain_providers = ctx.analysis(configured_node).providers()
+    
+    bindist = toolchain_providers[GhcDistributionInfo].archive
+    bindist_ensured = ctx.output.ensure(bindist)
+    
+    ghc = toolchain_providers[HaskellToolchainInfo].compiler
+
+    configured_node = ctx.configured_targets("rules/haskell/helpers:import_toolchain.hs")
+    import_toolchain = ctx.analysis(configured_node).providers()[DefaultInfo].default_outputs[0]
+
+    actions = ctx.bxl_actions().actions
+
+    buckfile = actions.declare_output("BUCK")
+    actions.run(
+        cmd_args(
+            ghc,
+            "--run",
+            import_toolchain,
+            "--",
+            "-w",
+            ghc,
+            "-p",
+            bindist.short_path,
+            "-o",
+            buckfile.as_output()
+        ),
+        category = "haskell_toolchain",
+    )
+    buckfile_ensured = ctx.output.ensure(buckfile)
+    ctx.output.print("rm", "-rf", ctx.cli_args.dest)
+    ctx.output.print("mkdir", "-p", ctx.cli_args.dest)
+    ctx.output.print("cp", "-r", buckfile_ensured.rel_path(), bindist_ensured.rel_path(), ctx.cli_args.dest)
+
+
+thing = bxl_main(
+    impl = _thing,
+    cli_args = {
+        "dest": cli_args.option(cli_args.string())
+    },
+)

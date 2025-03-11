@@ -2,43 +2,56 @@
 Haskell helpers.
 """
 
-load("//rules/haskell:toolchain.bzl", "haskell_toolchain_library")
+# load("//rules/haskell:toolchain.bzl", "haskell_toolchain_library")
+export_file("import_toolchain.hs")
 
-[
-    haskell_toolchain_library(name = name)
-    for name in [
-        "base",
-        "bytestring",
-        "Cabal",
-        "directory",
-        "filepath",
-        "pretty",
-        "process",
-        "transformers",
-    ]
-]
+# [
+#     haskell_toolchain_library(name = name)
+#     for name in [
+#         "base",
+#         "bytestring",
+#         "Cabal",
+#         "directory",
+#         "filepath",
+#         "pretty",
+#         "process",
+#         "transformers",
+#     ]
+# ]
 
-haskell_binary(
-    name = "import_toolchain",
-    srcs = {"Main.hs": "import_toolchain.hs"},
-    deps = [
-        ":base",
-        ":bytestring",
-        ":Cabal",
-        ":directory",
-        ":filepath",
-        ":pretty",
-        ":process",
-        ":transformers",
-    ],
+# haskell_binary(
+#     name = "import_toolchain",
+#     srcs = {"Main.hs": "import_toolchain.hs"},
+#     deps = [
+#         ":base",
+#         ":bytestring",
+#         ":Cabal",
+#         ":directory",
+#         ":filepath",
+#         ":pretty",
+#         ":process",
+#         ":transformers",
+#     ],
+# )
+
+# haskell_binary(
+#     name = "parse_fields",
+#     srcs = {"Main.hs": "parse_fields.hs"},
+#     deps = [
+#         ":base",
+#         ":bytestring",
+#         ":Cabal",
+#     ],
+# )
+
+git_fetch(
+    name = "Cabal-syntax-json-src",
+    repo = "https://github.com/andreabedini/Cabal-syntax-json",
+    rev = "7a80221047fb5dd66a091f4a7248e0afa3bcc248",
 )
 
 haskell_binary(
-    name = "parse_fields",
-    srcs = {"Main.hs": "parse_fields.hs"},
-    deps = [
-        ":base",
-        ":bytestring",
-        ":Cabal",
-    ],
+    name = "Cabal-syntax-json",
+    compiler_flags = ["-i$(location :Cabal-syntax-json-src)/src"],
+    # srcs = ["{}/app/Main.hs"],
 )

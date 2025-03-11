@@ -1,4 +1,4 @@
-load("@prelude//haskell/toolchain.bzl", "HaskellToolchainInfo")
+load("@prelude//haskell/toolchain.bzl", "HaskellPlatformInfo", "HaskellToolchainInfo")
 load("@prelude//paths.bzl", "paths")
 load("@prelude//rules.bzl", "http_archive")
 load("metadata.bzl", "metadata")
@@ -41,7 +41,6 @@ _metadata_os_map = {
     "windows": "Windows",
     "macos": "Darwin",
 }
-
 
 def _get_distribution(
         tool: str,
@@ -98,10 +97,8 @@ def download_ghc_distribution(
 
     distribution = _get_distribution("GHC", version, arch, os, os_version)
 
-    archive_name = paths.basename(distribution.url)
-
     http_archive(
-        name = archive_name,
+        name = name + "-archive",
         urls = [distribution.url],
         sha256 = distribution.sha256,
         strip_prefix = distribution.subdir,
@@ -109,7 +106,7 @@ def download_ghc_distribution(
 
     ghc_distribution(
         name = name,
-        archive = ":" + archive_name,
+        archive = ":" + name + "-archive",
         version = version,
         arch = arch,
         os = os,
@@ -151,6 +148,7 @@ def _haskell_toolchain_impl(ctx: AnalysisContext) -> list[Provider]:
     haddoc = bindist.archive.project("bin/haddock")
     return [
         ctx.attrs.distribution[DefaultInfo],
+        ctx.attrs.distribution[GhcDistributionInfo],
         HaskellToolchainInfo(
             compiler = ghc,
             packager = ghc_pkg,
@@ -159,14 +157,17 @@ def _haskell_toolchain_impl(ctx: AnalysisContext) -> list[Provider]:
             compiler_flags = ctx.attrs.compiler_flags,
             linker_flags = ctx.attrs.linker_flags,
         ),
+        HaskellPlatformInfo(
+            name = bindist.arch,
+        ),
     ]
 
 haskell_toolchain = rule(
     impl = _haskell_toolchain_impl,
     attrs = {
         "distribution": attrs.exec_dep(providers = [GhcDistributionInfo]),
-        "compiler_flags": attrs.list(attrs.arg(), default=[]),
-        "linker_flags": attrs.list(attrs.arg(), default=[]),
+        "compiler_flags": attrs.list(attrs.arg(), default = []),
+        "linker_flags": attrs.list(attrs.arg(), default = []),
     },
     is_toolchain_rule = True,
 )
