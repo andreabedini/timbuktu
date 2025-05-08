@@ -24,23 +24,23 @@ system_python_bootstrap_toolchain(
 )
 
 download_cabal_distribution(
-    name = "cabal-bindist",
+    name = "cabal-3.14.1.1",
     version = "3.14.1.1",
 )
 
 cabal_toolchain(
     name = "cabal",
-    distribution = ":cabal-bindist",
+    distribution = ":cabal-3.14.1.1",
     visibility = ["PUBLIC"],
 )
 
 download_ghc_distribution(
-    name = "ghc-bindist",
+    name = "ghc-9.10.1",
     version = "9.10.1",
 )
 
 haskell_toolchain(
     name = "haskell",
-    distribution = ":ghc-bindist",
+    distribution = ":ghc-9.10.1",
     visibility = ["PUBLIC"],
 )
