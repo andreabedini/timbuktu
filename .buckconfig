@@ -12,14 +12,20 @@
   fbcode_macros = none
   buck = none
 
-# Uses a copy of the prelude bundled with the buck2 binary. You can alternatively delete this
-# section and vendor a copy of the prelude to the `prelude` directory of your project.
-#[external_cells]
-#  prelude = bundled
+[build]
+  # execution_platforms = root//platforms:platforms
+  execution_platforms = prelude//platforms:default
 
 [parser]
   target_platform_detector_spec = target:root//...->prelude//platforms:default
 
-[build]
-  #execution_platforms = root//platforms:platforms
-  execution_platforms = prelude//platforms:default
+# [buck2_re_client]
+#   http_headers         = x-buildbuddy-api-key:$BUILDBUDDY_API_KEY
+
+#   engine_address       = grpc://andreabedini.buildbuddy.io
+#   action_cache_address = grpc://andreabedini.buildbuddy.io
+#   cas_address          = grpc://andreabedini.buildbuddy.io
+
+#   # engine_address       = grpc://localhost:1985
+#   # action_cache_address = grpc://localhost:1985
+#   # cas_address          = grpc://localhost:1985
