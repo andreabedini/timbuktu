@@ -2,28 +2,23 @@
 Rule to generate a plan
 """
 
-# TODO: cabal toolchain
-
-def build_plan(actions, project_file: Artifact, targets: list[str]) -> Artifact:
-    builddir = actions.declare_output("dist-newstyle", dir = True)
-    actions.run(
+def _plan_impl(ctx: AnalysisContext) -> list[Provider]:
+    builddir = ctx.actions.declare_output("dist-newstyle", dir = True)
+    cabal = ctx.attrs._cabal_toolchain[RunInfo]
+    ctx.actions.run(
         cmd_args(
-            "cabal",
+            cabal,
             "build",
             "-v",
             "--dry-run",
             cmd_args(builddir.as_output(), format = "--builddir={}"),
-            cmd_args(project_file, format = "--project-file={}"),
-            cmd_args(targets),
+            cmd_args(ctx.attrs.project_file, format = "--project-file={}"),
+            ctx.attrs.args,
+            cmd_args(ctx.attrs.targets),
         ),
         category = "cabal_plan",
-        local_only = True,
     )
-    return builddir.project("cache/plan.json")
-
-def _plan_impl(ctx: AnalysisContext) -> list[Provider]:
-    plan_json = build_plan(ctx.actions, ctx.attrs.project_file, ctx.attrs.targets)
-    return [DefaultInfo(default_output = plan_json)]
+    return [DefaultInfo(default_output = builddir.project("cache/plan.json"))]
 
 plan = rule(
     impl = _plan_impl,
@@ -34,5 +29,11 @@ plan = rule(
             default = ["all"],
             doc = "The targets to build.",
         ),
+        "args": attrs.list(
+            attrs.args(),
+            default = [],
+            doc = "Additional arguments to pass to cabal-install",
+        ),
+        "_cabal_toolchain": attrs.toolchain_dep(default = "toolchains//:cabal")
     },
 )
