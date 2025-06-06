@@ -1,4 +1,4 @@
-load("ghcup:defs.bzl", "GhcDistributionInfo")
+load("ghcup/defs.bzl", "CabalDistributionInfo", "GhcDistributionInfo")
 load("@prelude//haskell:toolchain.bzl", "HaskellPlatformInfo", "HaskellToolchainInfo")
 load("@prelude//haskell/library_info.bzl", "HaskellLibraryProvider")
 load("@prelude//linking:link_info.bzl", "LinkStyle")
@@ -34,11 +34,12 @@ haskell_toolchain_library = rule(
 )
 
 def _haskell_toolchain_impl(ctx: AnalysisContext) -> list[Provider]:
-    bindist = ctx.attrs.distribution[GhcDistributionInfo]
+    bindist = ctx.attrs.distribution[DefaultInfo].default_outputs[0]
+    bindist_info = ctx.attrs.distribution[GhcDistributionInfo]
 
-    ghc = cmd_args(bindist, format = "{}/bin/ghc")
-    ghc_pkg = cmd_args(bindist, format = "{}/bin/ghc-pkg")
-    haddoc = cmd_args(bindist, format = "{}/bin/haddock")
+    ghc = cmd_args(bindist.project("bin/ghc"))
+    ghc_pkg = cmd_args(bindist.project("bin/ghc-pkg"))
+    haddock = cmd_args(bindist.project("bin/haddock"))
 
     #
     # build an index of installed packages
@@ -57,16 +58,17 @@ def _haskell_toolchain_impl(ctx: AnalysisContext) -> list[Provider]:
 
 
     return [
+        ctx.attrs.distribution[DefaultInfo],
         ctx.attrs.distribution[GhcDistributionInfo],
         HaskellToolchainInfo(
             compiler = ghc,
             packager = ghc_pkg,
-            haddock = haddoc,
+            haddock = haddock,
             compiler_flags = ctx.attrs.compiler_flags,
             linker_flags = ctx.attrs.linker_flags,
         ),
         HaskellPlatformInfo(
-            name = bindist.arch,
+            name = bindist_info.arch,
         ),
         HaskellToolchainLibrariesInfo(
             packages_by_name = packages_by_name,
@@ -75,12 +77,23 @@ def _haskell_toolchain_impl(ctx: AnalysisContext) -> list[Provider]:
     ]
 
 haskell_toolchain = rule(
-    impl = _haskell_toolchain,
+    impl = _haskell_toolchain_impl,
     attrs = {
         "distribution": attrs.exec_dep(providers = [GhcDistributionInfo]),
         "compiler_flags": attrs.list(attrs.string(), default = []),
         "linker_flags": attrs.list(attrs.string(), default = []),
         "packages": attrs.list(attrs.dep(providers = [HaskellLibraryProvider]), default = []),
+    },
+    is_toolchain_rule = True,
+)
+
+def _cabal_toolchain_impl(ctx: AnalysisContext) -> list[Provider]:
+    return ctx.attrs.distribution.providers
+
+cabal_toolchain = rule(
+    impl = _cabal_toolchain_impl,
+    attrs = {
+        "distribution": attrs.exec_dep(providers = [CabalDistributionInfo]),
     },
     is_toolchain_rule = True,
 )

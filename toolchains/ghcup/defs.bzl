@@ -41,7 +41,7 @@ _metadata_os_map = {
     "macos": "Darwin",
 }
 
-def get_distribution(
+def _get_distribution(
         tool: str,
         version: str,
         arch: str,
@@ -92,7 +92,13 @@ def download_ghc_distribution(
         version: str,
         arch: [None, str] = None,
         os: [None, str] = None,
-        os_version: [Nonte, str] = None):
+        os_version: [None, str] = None):
+
+    if not arch:
+        arch = host_arch()
+
+    if not os:
+        os = host_os()
 
     archive_name = name + "-archive"
     bindist = _get_distribution("GHC", version, arch, os, os_version)
@@ -115,7 +121,7 @@ def download_ghc_distribution(
 
 GhcDistributionInfo = provider(
     # @unsorted-dict-items
-    fields = {
+    fields = {      
         "version": provider_field(typing.Any, default = None),
         "arch": provider_field(typing.Any, default = None),
         "os": provider_field(typing.Any, default = None),
@@ -124,7 +130,6 @@ GhcDistributionInfo = provider(
 )
 
 def _ghc_distribution_impl(ctx: AnalysisContext) -> list[Provider]:
-    archive = ctx.attrs.archive[DefaultInfo].default_outputs[0]
     return [
         ctx.attrs.archive[DefaultInfo],
         GhcDistributionInfo(
@@ -140,8 +145,8 @@ ghc_distribution = rule(
     attrs = {
         "archive": attrs.dep(providers = [DefaultInfo]),
         "version": attrs.string(),
-        "arch": attrs.option(attrs.string(), default = host_arch()),
-        "os": attrs.option(attrs.string(), default = host_os()),
+        "arch": attrs.option(attrs.string()),
+        "os": attrs.option(attrs.string()),
         "os_version": attrs.option(attrs.string(), default = None),
     },
 )
@@ -157,8 +162,14 @@ def download_cabal_distribution(
         os: [None, str] = None,
         os_version: [None, str] = None):
 
+    if not arch:
+        arch = host_arch()
+
+    if not os:
+        os = host_os()
+
     archive_name = name + "-archive"
-    bindist = _get_distribution("GHC", version, arch, os, os_version)
+    bindist = _get_distribution("Cabal", version, arch, os, os_version)
 
     http_archive(
         name = archive_name,
@@ -177,10 +188,12 @@ def download_cabal_distribution(
     )
 
 CabalDistributionInfo = provider(
-        "version": provider_field(typing.Any, default = None),
-        "arch": provider_field(typing.Any, default = None),
-        "os": provider_field(typing.Any, default = None),
+    fields = {
+        "version": provider_field(str),
+        "arch": provider_field(str),
+        "os": provider_field(str),
         "os_version": provider_field(typing.Any, default = None),
+        }
 )
 
 def _cabal_distribution_impl(ctx: AnalysisContext) -> list[Provider]:
@@ -202,8 +215,8 @@ cabal_distribution = rule(
     attrs = {
         "archive": attrs.dep(providers = [DefaultInfo]),
         "version": attrs.string(),
-        "arch": attrs.option(attrs.string(), default = host_arch()),
-        "os": attrs.option(attrs.string(), default = host_os()),
+        "arch": attrs.string(),
+        "os": attrs.string(),
         "os_version": attrs.option(attrs.string(), default = None),
     },
 )

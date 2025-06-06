@@ -1,7 +1,8 @@
 load("@prelude//toolchains:cxx.bzl", "system_cxx_toolchain")
 load("@prelude//toolchains:genrule.bzl", "system_genrule_toolchain")
 load("@prelude//toolchains:python.bzl", "system_python_bootstrap_toolchain", "system_python_toolchain")
-load("defs.bzl", "cabal_toolchain", "download_cabal_distribution", "download_ghc_distribution", "haskell_toolchain")
+load("ghcup/defs.bzl", "download_cabal_distribution", "download_ghc_distribution")
+load("defs.bzl", "cabal_toolchain", "haskell_toolchain")
 
 system_cxx_toolchain(
     name = "cxx",
@@ -23,24 +24,24 @@ system_python_bootstrap_toolchain(
     visibility = ["PUBLIC"],
 )
 
-download_cabal_distribution(
-    name = "cabal-3.14.1.1",
-    version = "3.14.1.1",
-)
-
-cabal_toolchain(
-    name = "cabal",
-    distribution = ":cabal-3.14.1.1",
-    visibility = ["PUBLIC"],
-)
-
 download_ghc_distribution(
     name = "ghc-9.10.1",
     version = "9.10.1",
 )
 
 haskell_toolchain(
-    name = "haskell",
+    name = "ghc",
     distribution = ":ghc-9.10.1",
+    visibility = ["PUBLIC"],
+)
+
+download_cabal_distribution(
+    name = "cabal-3.14.2.0",
+    version = "3.14.2.0",
+)
+
+cabal_toolchain(
+    name = "cabal",
+    distribution = ":cabal-3.14.2.0",
     visibility = ["PUBLIC"],
 )

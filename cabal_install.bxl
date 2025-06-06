@@ -1,8 +1,6 @@
 # vim: ft=bzl
 # buildifier: disable=module-docstring
 
-load("rules/haskell/cabal_install/plan.bzl", "build_plan")
-
 def _thing(ctx: bxl.Context):
     actions = ctx.bxl_actions().actions
 
@@ -38,12 +36,38 @@ thing = bxl_main(
 
 def _make_plan_impl(ctx: bxl.Context):
     actions = ctx.bxl_actions().actions
-    plan = build_plan(
-        actions,
-        project_file = ctx.fs.source(ctx.cli_args.project_file),
-        targets = ctx.cli_args.targets,
+    
+    project_file = ctx.fs.source(ctx.cli_args.project_file)
+    targets = ctx.cli_args.targets
+
+    cabal = ctx.analysis(ctx.configured_targets("toolchains//:cabal")).providers()[RunInfo]
+    ghc = ctx.analysis(ctx.configured_targets("toolchains//:ghc")).providers()[RunInfo]
+    
+    builddir = actions.declare_output("dist-newstyle", dir = True)
+
+    actions.run(
+        cmd_args(
+            cabal,
+            "build",
+            "-v",
+            "--dry-run",
+            "--with-compiler", ghc,
+            "--project-file", project_file,
+            "--builddir", builddir.as_output(),
+            targets
+        ),
+        category = "cabal_plan",
     )
+
+    plan = builddir.project("cache/plan.json")
     ctx.output.print(ctx.output.ensure(plan))
+
+    # return [DefaultInfo(default_output = builddir.project("cache/plan.json"))]
+    # plan = build_plan(
+    #     actions,
+    #     project_file = ctx.fs.source(ctx.cli_args.project_file),
+    #     targets = ctx.cli_args.targets,
+    # )
 
 make_plan = bxl_main(
     impl = _make_plan_impl,
