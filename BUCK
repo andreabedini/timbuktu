@@ -1,1 +1,4 @@
-
+haskell_binary(
+    name = "main",
+    srcs = ["Main.hs"],
+)

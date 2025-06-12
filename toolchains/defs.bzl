@@ -1,37 +1,62 @@
-load("ghcup/defs.bzl", "CabalDistributionInfo", "GhcDistributionInfo")
 load("@prelude//haskell:toolchain.bzl", "HaskellPlatformInfo", "HaskellToolchainInfo")
-load("@prelude//haskell/library_info.bzl", "HaskellLibraryProvider")
-load("@prelude//linking:link_info.bzl", "LinkStyle")
+load("ghcup/defs.bzl", "CabalDistributionInfo", "GhcDistributionInfo")
 
 ##
 ## TODO: fix packages
 ##
 
-HaskellToolchainLibrariesInfo = provider(
-    doc = "Information about the Haskell libraries provided by the toolchain.",
-    fields = {
-        "packages_by_id": provider_field(dict[str, Dependency]),
-        "packages_by_name": provider_field(dict[str, Dependency]),
-    },
+HaskellPackageDbEntry = record(
+    name = str,
+    version = str,
 )
 
-def _haskell_toolchain_library(ctx: AnalysisContext) -> list[Provider]:
-    toolchain = ctx.attrs._haskell_toolchain[HaskellToolchainLibrariesInfo]
-    if ctx.attrs.id:
-        return toolchain.packages_by_id[ctx.attrs.id].providers
-    else:
-        return toolchain.packages_by_name[ctx.label.name].providers
+DynamicHaskellPackageDbInfo = provider(fields = {
+    "entries": dict[str, HaskellPackageDbEntry],
+})
 
-haskell_toolchain_library = rule(
-    impl = _haskell_toolchain_library,
+HaskellPackageDbInfo = provider(fields = {
+    "dynamic": DynamicValue,
+})
+
+def _dynamic_package_db_info_impl(actions: AnalysisActions, package_db_info: ArtifactValue) -> list[Provider]:
+    entries = {}
+    lines = package_db_info.read_string().splitlines()
+    for i in range(0, len(lines), 3):
+        if i + 2 >= len(lines):
+            break
+        id = lines[i]
+        name = lines[i + 1]
+        version = lines[i + 2]
+        entries[id] = HaskellPackageDbEntry(name = name, version = version)
+
+    return [
+        DynamicHaskellPackageDbInfo(entries = entries),
+    ]
+
+_dynamic_package_db_info = dynamic_actions(
+    impl = _dynamic_package_db_info_impl,
     attrs = {
-        "id": attrs.option(attrs.string(), default = None),
-        "_haskell_toolchain": attrs.toolchain_dep(
-            providers = [HaskellToolchainInfo, HaskellToolchainLibrariesInfo],
-            default = "@toolchains//:haskell",
-        ),
+        "package_db_info": dynattrs.artifact_value(),
     },
 )
+
+def _package_db_info(ctx, ghc_pkg) -> DynamicValue:
+    package_db_info = ctx.actions.declare_output("package_db_info")
+    cmdline = cmd_args(
+        ghc_pkg,
+        "--simple-output",
+        "field",
+        "\\*",
+        "id,name,version",
+        ">",
+        package_db_info.as_output(),
+        delimiter = " ",
+    )
+    ctx.actions.run(cmd_args("sh", "-c", cmdline), category = "ghc_pkg")
+
+    return ctx.actions.dynamic_output_new(_dynamic_package_db_info(
+        package_db_info = package_db_info,
+    ))
 
 def _haskell_toolchain_impl(ctx: AnalysisContext) -> list[Provider]:
     bindist = ctx.attrs.distribution[DefaultInfo].default_outputs[0]
@@ -40,22 +65,6 @@ def _haskell_toolchain_impl(ctx: AnalysisContext) -> list[Provider]:
     ghc = cmd_args(bindist.project("bin/ghc"))
     ghc_pkg = cmd_args(bindist.project("bin/ghc-pkg"))
     haddock = cmd_args(bindist.project("bin/haddock"))
-
-    #
-    # build an index of installed packages
-    #
-
-    packages_by_name = {}
-    packages_by_id = {}
-
-    # The link style is irrelevant but I have to go around the existing design
-    # of the prelude
-    link_style = LinkStyle("static")
-    for p in ctx.attrs.packages:
-        hli = p[HaskellLibraryProvider].lib[link_style]
-        packages_by_name[hli.name] = p
-        packages_by_id[hli.id] = p
-
 
     return [
         ctx.attrs.distribution[DefaultInfo],
@@ -70,10 +79,7 @@ def _haskell_toolchain_impl(ctx: AnalysisContext) -> list[Provider]:
         HaskellPlatformInfo(
             name = bindist_info.arch,
         ),
-        HaskellToolchainLibrariesInfo(
-            packages_by_name = packages_by_name,
-            packages_by_id = packages_by_id,
-        ),
+        HaskellPackageDbInfo(dynamic = _package_db_info(ctx, ghc_pkg)),
     ]
 
 haskell_toolchain = rule(
@@ -82,10 +88,41 @@ haskell_toolchain = rule(
         "distribution": attrs.exec_dep(providers = [GhcDistributionInfo]),
         "compiler_flags": attrs.list(attrs.string(), default = []),
         "linker_flags": attrs.list(attrs.string(), default = []),
-        "packages": attrs.list(attrs.dep(providers = [HaskellLibraryProvider]), default = []),
     },
     is_toolchain_rule = True,
 )
+
+def _something_impl(ctx: AnalysisContext) -> list[Provider]:
+    packages = ctx.attrs._haskell_toolchain[HaskellPackageDbInfo].dynamic
+    output = ctx.actions.declare_output("something.txt")
+    ctx.actions.dynamic_output_new(_something_dynamic(packages = packages, output = output.as_output()))
+    return [
+        DefaultInfo(default_output = output),
+    ]
+
+something = rule(
+    impl = _something_impl,
+    attrs = {
+        "_haskell_toolchain": attrs.toolchain_dep(
+            providers = [HaskellToolchainInfo, HaskellPackageDbInfo],
+            default = "@toolchains//:haskell",
+        ),
+    },
+)
+
+def _something_dynamic_impl(actions, packages: ResolvedDynamicValue, output: OutputArtifact) -> list[Provider]:
+    actions.write(output, str(packages))
+    return []
+
+_something_dynamic = dynamic_actions(
+    impl = _something_dynamic_impl,
+    attrs = {
+        "packages": dynattrs.dynamic_value(),
+        "output": dynattrs.output(),
+    },
+)
+
+
 
 def _cabal_toolchain_impl(ctx: AnalysisContext) -> list[Provider]:
     return ctx.attrs.distribution.providers

@@ -1,8 +1,27 @@
-"""
-Haskell helpers.
-"""
+load("defs.bzl", "haskell_library")
 
-# load("//rules/haskell:toolchain.bzl", "haskell_toolchain_library")
+git_fetch(
+    name = "ghc-make-deps.git",
+    repo = "https://github.com/andreabedini/ghc-make-deps.git",
+    rev = "208c73052fedcef21ae6ad0b8bce7a40d09d8ac6",
+    sub_targets = ["src"]
+)
+
+haskell_library(
+    name = "ghc-make-deps",
+    pkg_name = "ghc-make-deps",
+    pkg_version = "0.1.0.0",
+    modules = [
+        "MakeDeps",
+        "MakeDeps.MakeFile",
+        "MakeDeps.MakeFile.JSON",
+    ],
+    srcs = [":ghc-make-deps.git[src]"],
+    deps = [
+    ],
+    visibility = ["PUBLIC"]
+)
+
 export_file("import_toolchain.hs")
 
 # [

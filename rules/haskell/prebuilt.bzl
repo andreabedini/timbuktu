@@ -7,7 +7,7 @@ def _prebuilt_impl(ctx: AnalysisContext):
 
     anon_target = ctx.actions.anon_target(haskell_prebuilt_library, {
         # this does not work
-        "name": "xhtml", 
+        "name": "xhtml",
         "version": "3000.2.2.1",
         "id": "xhtml-3000.2.2.1-e764",
         "db": bindist.project("lib/package.conf.d"),
@@ -17,10 +17,10 @@ def _prebuilt_impl(ctx: AnalysisContext):
             "libHSxhtml-3000.2.2.1-e764-ghc9.10.1.so": bindist.project("lib/x86_64-linux-ghc-9.10.1/libHSxhtml-3000.2.2.1-e764-ghc9.10.1.so"),
         },
         "static_libs": [
-            bindist.project("lib/x86_64-linux-ghc-9.10.1/xhtml-3000.2.2.1-e764/libHSxhtml-3000.2.2.1-e764.a")
+            bindist.project("lib/x86_64-linux-ghc-9.10.1/xhtml-3000.2.2.1-e764/libHSxhtml-3000.2.2.1-e764.a"),
         ],
         "profiled_static_libs": [
-            bindist.project("lib/x86_64-linux-ghc-9.10.1/xhtml-3000.2.2.1-e764/libHSxhtml-3000.2.2.1-e764_p.a")
+            bindist.project("lib/x86_64-linux-ghc-9.10.1/xhtml-3000.2.2.1-e764/libHSxhtml-3000.2.2.1-e764_p.a"),
         ],
     })
     return anon_target.promise

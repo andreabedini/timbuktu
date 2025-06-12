@@ -1,0 +1,9 @@
+[env]
+_.file = "env.yaml"
+
+[settings]
+sops.age_recipients = "age19v43x9azjdjttnju2d966tmxl8cmn2pkv3ujhexfk9qs0dng0fpq2th72f"
+sops.age_key_file = "~/.config/sops/age/keys.txt"
+
+[tools]
+"ubi:withered-magic/starpls" = "latest"

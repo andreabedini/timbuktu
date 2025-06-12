@@ -47,7 +47,6 @@ def _get_distribution(
         arch: str,
         os: str,
         os_version: [str, None] = None) -> struct:
-
     if not tool in metadata:
         fail("Unknown tool '{}'. Available tools: {}".format(tool, ", ".join(metadata.keys())))
     t = metadata[tool]
@@ -93,7 +92,6 @@ def download_ghc_distribution(
         arch: [None, str] = None,
         os: [None, str] = None,
         os_version: [None, str] = None):
-
     if not arch:
         arch = host_arch()
 
@@ -107,9 +105,9 @@ def download_ghc_distribution(
         name = archive_name,
         urls = [bindist.url],
         sha256 = bindist.sha256,
-        strip_prefix = bindist.subdir
+        strip_prefix = bindist.subdir,
     )
-    
+
     ghc_distribution(
         name = name,
         archive = ":" + archive_name,
@@ -121,7 +119,7 @@ def download_ghc_distribution(
 
 GhcDistributionInfo = provider(
     # @unsorted-dict-items
-    fields = {      
+    fields = {
         "version": provider_field(typing.Any, default = None),
         "arch": provider_field(typing.Any, default = None),
         "os": provider_field(typing.Any, default = None),
@@ -161,7 +159,6 @@ def download_cabal_distribution(
         arch: [None, str] = None,
         os: [None, str] = None,
         os_version: [None, str] = None):
-
     if not arch:
         arch = host_arch()
 
@@ -193,7 +190,7 @@ CabalDistributionInfo = provider(
         "arch": provider_field(str),
         "os": provider_field(str),
         "os_version": provider_field(typing.Any, default = None),
-        }
+    },
 )
 
 def _cabal_distribution_impl(ctx: AnalysisContext) -> list[Provider]:
