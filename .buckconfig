@@ -16,8 +16,8 @@
   # execution_platforms = root//platforms:platforms
   execution_platforms = prelude//platforms:default
 
-# [external_cells]
-#   prelude = bundled
+[external_cells]
+  prelude = bundled
 
 [parser]
   target_platform_detector_spec = target:root//...->prelude//platforms:default

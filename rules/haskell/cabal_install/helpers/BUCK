@@ -1,21 +1,16 @@
 # buildifier: disable=module-docstring
-load("//rules/haskell:toolchain.bzl", "haskell_toolchain_library")
-
-[
-    haskell_toolchain_library(name = name)
-    for name in ["base", "bytestring", "containers", "filepath", "Cabal"]
-]
+load("//rules/haskell:defs.bzl", "haskell_binary")
 
 haskell_binary(
     name = "setup_simple",
-    deps = [":base", ":bytestring", ":containers", ":filepath", ":Cabal"],
     srcs = {"Main.hs": "setup_simple.hs"},
+    toolchain_libs = ["base", "bytestring", "containers", "filepath", "Cabal", "Cabal-syntax"],
     visibility = ["PUBLIC"],
 )
 
 haskell_binary(
     name = "setup_configure",
-    deps = [":base", ":Cabal"],
     srcs = {"Main.hs": "setup_configure.hs"},
+    toolchain_libs = ["base", "Cabal"],
     visibility = ["PUBLIC"],
 )

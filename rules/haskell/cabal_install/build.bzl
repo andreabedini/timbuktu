@@ -54,13 +54,12 @@ def _build_impl(ctx: AnalysisContext) -> list[Provider]:
 
     installdirs = mkInstallDirs(ctx.actions)
 
-    setup_config = ctx.actions.declare_output("setup-config")
+    # NOTE: the paths of these outputs end up in the setup-config and in the
+    # package conf, so they cannot be content-based.
+    setup_config = ctx.actions.declare_output("setup-config", has_content_based_path = False)
 
-    build = ctx.actions.declare_output("build", dir = True)
+    build = ctx.actions.declare_output("build", dir = True, has_content_based_path = False)
     builddir = cmd_args(build, parent = 1)
-
-    package_db = ctx.actions.declare_output("package.conf.d", dir = True)
-    package_conf = package_db.project("{}.conf".format(ctx.attrs.unit_id))
 
     # configure
 
@@ -164,62 +163,61 @@ def _build_impl(ctx: AnalysisContext) -> list[Provider]:
 
     # register
 
-    register_cmd = cmd_args(
-        env,
-        setup,
-        "register",
-        cmd_args(builddir, format = "--builddir={}"),
-        cmd_args(package_conf.as_output(), format = "--gen-pkg-config={}"),
-        delimiter = " ",
-    )
+    # NOTE: only libraries are registered, other components have no package
+    # conf.
+    is_lib = ctx.attrs.component_name == "lib" or ctx.attrs.component_name.startswith("lib:")
 
-    ghc_cmd = cmd_args(
-        "ghc-pkg",
-        "recache",
-        cmd_args(package_db, format = "--package-db={}"),
-        delimiter = " ",
-    )
+    if is_lib:
+        package_db = ctx.actions.declare_output("package.conf.d", dir = True, has_content_based_path = False)
+        package_conf = package_db.project("{}.conf".format(ctx.attrs.unit_id))
 
-    if ctx.attrs.component_name:
-        register_cmd.add(_component_name(ctx))
+        register_cmd = cmd_args(
+            env,
+            setup,
+            "register",
+            cmd_args(builddir, format = "--builddir={}"),
+            cmd_args(package_conf.as_output(), format = "--gen-pkg-config={}"),
+            delimiter = " ",
+        )
 
-    register_sh_content = cmd_args(
-        "#!/usr/bin/env bash",
-        "set -euo pipefail",
-        cmd_args(srcdir, format = "cd {}"),
-        cmd_args("mkdir", package_db, delimiter = " ", relative_to = srcdir),
-        cmd_args(register_cmd, relative_to = srcdir),
-        cmd_args(ghc_cmd, relative_to = srcdir),
-    )
+        ghc_cmd = cmd_args(
+            ctx.attrs._haskell_toolchain[HaskellToolchainInfo].packager,
+            "recache",
+            cmd_args(package_db, format = "--package-db={}"),
+            delimiter = " ",
+        )
 
-    register_sh = ctx.actions.write(
-        "register.sh",
-        register_sh_content,
-        is_executable = True,
-    )
+        if ctx.attrs.component_name:
+            register_cmd.add(_component_name(ctx))
 
-    ctx.actions.run(
-        cmd_args(register_sh, hidden = [installdirs.prefix, package_db.as_output()]),
-        category = "cabal_register",
-    )
+        register_sh_content = cmd_args(
+            "#!/usr/bin/env bash",
+            "set -euo pipefail",
+            cmd_args(srcdir, format = "cd {}"),
+            cmd_args("mkdir", package_db, delimiter = " ", relative_to = srcdir),
+            cmd_args(register_cmd, relative_to = srcdir),
+            cmd_args(ghc_cmd, relative_to = srcdir),
+        )
+
+        register_sh = ctx.actions.write(
+            "register.sh",
+            register_sh_content,
+            is_executable = True,
+        )
+
+        ctx.actions.run(
+            cmd_args(register_sh, hidden = [installdirs.prefix, package_db.as_output()]),
+            category = "cabal_register",
+        )
 
     # providers
 
     providers = [
         # provider
         DefaultInfo(
-            default_outputs = [installdirs.prefix, package_conf],
+            default_outputs = [installdirs.prefix] + ([package_conf] if is_lib else []),
         ),
     ]
-
-    package_conf_tset = ctx.actions.tset(
-        PackageConfTSet,
-        value = package_conf,
-        children = [
-            dep[UnitInfo].package_conf_tset
-            for dep in ctx.attrs.deps
-        ],
-    )
 
     # shared_libs = {
     #     "libHSCabal-3.12.0.0-7126-ghc9.10.1.so": "lib/x86_64-linux-ghc-9.10.1/libHSCabal-3.12.0.0-7126-ghc9.10.1.so",
@@ -231,8 +229,17 @@ def _build_impl(ctx: AnalysisContext) -> list[Provider]:
     #     "lib/x86_64-linux-ghc-9.10.1/Cabal-3.12.0.0-7126/libHSCabal-3.12.0.0-7126_p.a",
     # ],
 
-    if ctx.attrs.component_name == "lib" or ctx.attrs.component_name.startswith("lib:"):
+    if is_lib:
         lib_name = ctx.attrs.component_name[4:] or None
+
+        package_conf_tset = ctx.actions.tset(
+            PackageConfTSet,
+            value = package_conf,
+            children = [
+                dep[UnitInfo].package_conf_tset
+                for dep in ctx.attrs.deps
+            ],
+        )
 
         providers.extend(mkProviders(ctx, package_db, installdirs))
 

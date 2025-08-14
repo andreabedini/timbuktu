@@ -1,3 +1,5 @@
+load("//rules/haskell:defs.bzl", "haskell_binary")
+
 # load("defs.bzl", "haskell_library")
 
 # git_fetch(
@@ -55,10 +57,9 @@
 
 haskell_binary(
     name = "parse_fields",
-    # srcs = {
-    #     "Main.hs": "parse_fields.hs",
-    # },
-    srcs = ["parse_fields.hs"],
+    srcs = {
+        "Main.hs": "parse_fields.hs",
+    },
     toolchain_libs = [
         "base",
         "bytestring",

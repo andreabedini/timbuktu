@@ -16,10 +16,12 @@ def _secure_repo_package_impl(ctx: AnalysisContext) -> list[Provider]:
     pkg_id = "{}-{}".format(ctx.attrs.pkg_name, ctx.attrs.pkg_version)
     filename = "{}.tar.gz".format(pkg_id)
 
-    repo_uri = ctx.attrs.repo_uri.rstrip("/")
+    # NOTE: plans refer to Hackage over plain http; the tarball is checked
+    # against its sha256 either way.
+    repo_uri = ctx.attrs.repo_uri.rstrip("/").replace("http://hackage.haskell.org", "https://hackage.haskell.org")
     url = "{}/package/{}".format(repo_uri, filename)
 
-    sdist = ctx.actions.download_file(filename, url, sha256 = ctx.attrs.pkg_src_sha256)
+    sdist = ctx.actions.download_file(filename, url, sha256 = ctx.attrs.pkg_src_sha256, has_content_based_path = False)
     srcdir = ctx.actions.declare_output(pkg_id, dir = True)
     filelist = ctx.actions.declare_output("filelist")
 
@@ -43,7 +45,7 @@ def _secure_repo_package_impl(ctx: AnalysisContext) -> list[Provider]:
     if ctx.attrs.pkg_cabal_sha256:
         cabal_file = "{}.cabal".format(ctx.attrs.pkg_name)
         url = "https://casa.stackage.org/{}".format(ctx.attrs.pkg_cabal_sha256)
-        revision = ctx.actions.download_file(cabal_file, url, sha256 = ctx.attrs.pkg_cabal_sha256)
+        revision = ctx.actions.download_file(cabal_file, url, sha256 = ctx.attrs.pkg_cabal_sha256, has_content_based_path = False)
         unpack_sh_content.add(cmd_args("cp", revision, srcdir.as_output(), delimiter = " "))
 
     unpack_sh = ctx.actions.write("unpack.sh", unpack_sh_content, is_executable = True, with_inputs = True)

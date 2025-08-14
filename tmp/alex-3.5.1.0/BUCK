@@ -1,15 +1,16 @@
 load("//rules/haskell/cabal/paths.bzl", "cabal_paths_module")
+load("//rules/haskell:defs.bzl", "haskell_binary")
 
 haskell_binary(
     name = "alex",
-    srcs = glob(["src/**/*.hs"]) + [":alex-paths"],
-    toolchain_libs =
-        [
-            "base",
-            "array",
-            "containers",
-            "directory",
-        ],
+    srcs = {f.removeprefix("src/"): f for f in glob(["src/**/*.hs"])} |
+           {"Paths_alex.hs": ":alex-paths"},
+    toolchain_libs = [
+        "base",
+        "array",
+        "containers",
+        "directory",
+    ],
     compiler_flags = [
         "-XHaskell2010",
         "-XPatternSynonyms",

@@ -2,6 +2,7 @@
 Build rules for legacy packages (i.e. anything other than the simple build-type).
 """
 
+load("@prelude//haskell:toolchain.bzl", "HaskellToolchainInfo")
 load(
     "common.bzl",
     "CabalPackageInfo",
@@ -28,10 +29,10 @@ def _build_legacy_impl(ctx: AnalysisContext) -> list[Provider]:
 
     # configure
 
-    build = ctx.actions.declare_output("build", dir = True)
+    build = ctx.actions.declare_output("build", dir = True, has_content_based_path = False)
     builddir = cmd_args(build, parent = 1)
 
-    package_db = ctx.actions.declare_output("package.conf.d", dir = True)
+    package_db = ctx.actions.declare_output("package.conf.d", dir = True, has_content_based_path = False)
     package_conf = package_db.project("{}.conf".format(ctx.attrs.unit_id))
 
     configure_cmd = cmd_args(
@@ -76,7 +77,7 @@ def _build_legacy_impl(ctx: AnalysisContext) -> list[Provider]:
     )
 
     ghc_cmd = cmd_args(
-        "ghc-pkg",
+        ctx.attrs._haskell_toolchain[HaskellToolchainInfo].packager,
         "recache",
         cmd_args(package_db.as_output(), format = "--package-db={}"),
         delimiter = " ",

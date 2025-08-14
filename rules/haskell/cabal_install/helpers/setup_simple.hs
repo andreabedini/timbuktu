@@ -23,6 +23,7 @@ import Distribution.Types.ComponentLocalBuildInfo
 import Distribution.Types.LocalBuildConfig qualified as LBC
 import Distribution.Types.LocalBuildInfo qualified as LBI
 import Distribution.Utils.Json
+import Distribution.Utils.Path (getSymbolicPath)
 import Distribution.Verbosity
 import System.FilePath
 
@@ -51,7 +52,7 @@ postConf' _args flags pkg_descr lbi = do
             , "components" .= JsonArray (map (mkComponentInfo lbi) activeTargets)
             ]
 
-    LBS.writeFile (distPref </> "local-build-info.json") $ renderJson (JsonObject buildInfoFields)
+    LBS.writeFile (getSymbolicPath distPref </> "local-build-info.json") $ renderJson (JsonObject buildInfoFields)
 
 -- NOTE: From here on is all serivalisation code that could live in a separate module.
 
@@ -69,7 +70,7 @@ mkComponentInfo lbi TargetInfo{targetCLBI = clbi, targetComponent = comp} =
           "includes" .= JsonArray (map (uncurry mkDepend) (componentIncludes clbi))
         , "compiler-args" .= JsonArray (map JsonString (compilerArgs lbi (componentBuildInfo comp) clbi))
         , "modules" .= JsonArray (map displayJ modules)
-        , "src-files" .= JsonArray (map JsonString sourceFiles)
+        , "src-files" .= JsonArray (map (JsonString . getSymbolicPath) sourceFiles)
         , "hs-src-dirs" .= JsonArray (map displayJ $ hsSourceDirs (componentBuildInfo comp))
         ]
             <> cabalFile
@@ -97,7 +98,7 @@ mkComponentInfo lbi TargetInfo{targetCLBI = clbi, targetComponent = comp} =
             BenchmarkExeV10 _ fp -> [fp]
             BenchmarkUnsupported _ -> []
         CFLib _ -> []
-    cabalFile = maybeToList $ (\fp -> ("cabal-file", JsonString fp)) <$> LBC.pkgDescrFile (LBC.packageBuildDescr $ localBuildDescr lbi)
+    cabalFile = maybeToList $ (\fp -> ("cabal-file", JsonString (getSymbolicPath fp))) <$> LBC.pkgDescrFile (LBC.packageBuildDescr $ localBuildDescr lbi)
 
 mkDepend :: OpenUnitId -> ModuleRenaming -> Json
 mkDepend (DefiniteUnitId uid) modr = JsonObject $ ["unit-id" .= displayJ uid] <> mkRenaming modr

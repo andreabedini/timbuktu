@@ -30,6 +30,7 @@ load(
     "LinkStyle",
     "SharedLibLinkable",
 )
+load("@toolchains//ghcup:defs.bzl", "GhcDistributionInfo")
 
 CabalPackageInfo = provider(
     doc = "TODO",
@@ -72,7 +73,7 @@ ExeDependInfo = provider(
 
 haskell_toolchain_attrs = {
     "_haskell_toolchain": attrs.toolchain_dep(
-        providers = [HaskellToolchainInfo, HaskellPlatformInfo, HaskellToolchainLibrariesInfo],
+        providers = [HaskellToolchainInfo, HaskellPlatformInfo, GhcDistributionInfo],
         default = "toolchains//:haskell",
     ),
 }
@@ -95,14 +96,15 @@ def manglePkgName(name: str) -> str:
     return name.replace("-", "_")
 
 def package_db(ctx: AnalysisContext, tset: PackageConfTSet) -> cmd_args:
-    cache = ctx.actions.declare_output("package_db", "package.cache")
+    haskell_toolchain = ctx.attrs._haskell_toolchain[HaskellToolchainInfo]
+    cache = ctx.actions.declare_output("package_db", "package.cache", has_content_based_path = False)
     ctx.actions.run(
         cmd_args(
-            "ghc-pkg",
+            haskell_toolchain.packager,
             "recache",
             cmd_args(cache.as_output(), format = "--package-db={}", parent = 1),
             hidden = [
-                ctx.actions.symlink_file("package_db/{}.conf".format(package_conf.owner.name), package_conf)
+                ctx.actions.symlink_file("package_db/{}.conf".format(package_conf.owner.name), package_conf, has_content_based_path = False)
                 for package_conf in tset.traverse()
             ],
         ),
@@ -181,7 +183,7 @@ InstallDirs = record(
 )
 
 def mkInstallDirs(actions) -> InstallDirs:
-    prefix = actions.declare_output("prefix", dir = True)
+    prefix = actions.declare_output("prefix", dir = True, has_content_based_path = False)
     args = cmd_args(
         cmd_args(prefix, format = "--prefix=$(realpath {})"),
         "--libdir='$prefix/lib'",
@@ -200,8 +202,7 @@ def mkInstallDirs(actions) -> InstallDirs:
     )
 
 def mkProviders(ctx, package_db, installdirs) -> list[Provider]:
-    haskell_toolchain = ctx.attrs._haskell_toolchain[HaskellToolchainInfo]
-    compiler = haskell_toolchain.compiler
+    ghc_version = ctx.attrs._haskell_toolchain[GhcDistributionInfo].version
 
     haskell_infos = []
     for dep in ctx.attrs.deps:
@@ -222,8 +223,7 @@ def mkProviders(ctx, package_db, installdirs) -> list[Provider]:
             libs.append(installdirs.libdir.project("libHS{}.a".format(ctx.attrs.unit_id)))
         elif link_style == LinkStyle("shared"):
             # FIXME extension
-            # HACK ghcx.y.z
-            libs.append(installdirs.libdir.project("libHS{}-{}.so".format(ctx.attrs.unit_id, compiler.replace("ghc-", "ghc"))))
+            libs.append(installdirs.libdir.project("libHS{}-ghc{}.so".format(ctx.attrs.unit_id, ghc_version)))
 
         hlibinfo = HaskellLibraryInfo(
             name = ctx.attrs.pkg_name,
