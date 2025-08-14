@@ -62,9 +62,11 @@ def _haskell_toolchain_impl(ctx: AnalysisContext) -> list[Provider]:
     bindist = ctx.attrs.distribution[DefaultInfo].default_outputs[0]
     bindist_info = ctx.attrs.distribution[GhcDistributionInfo]
 
-    ghc = cmd_args(bindist.project("bin/ghc"))
-    ghc_pkg = cmd_args(bindist.project("bin/ghc-pkg"))
-    haddock = cmd_args(bindist.project("bin/haddock"))
+    ghc = RunInfo(args = cmd_args(bindist.project("bin/ghc")))
+    ghc_pkg = RunInfo(args = cmd_args(bindist.project("bin/ghc-pkg")))
+    haddock = RunInfo(args = cmd_args(bindist.project("bin/haddock")))
+
+    ghc_dir = ctx.actions.write("ghc_dir", bindist.project("lib"))
 
     return [
         ctx.attrs.distribution[DefaultInfo],
@@ -75,6 +77,7 @@ def _haskell_toolchain_impl(ctx: AnalysisContext) -> list[Provider]:
             haddock = haddock,
             compiler_flags = ctx.attrs.compiler_flags,
             linker_flags = ctx.attrs.linker_flags,
+            ghc_dir = ghc_dir,
         ),
         HaskellPlatformInfo(
             name = bindist_info.arch,
@@ -121,8 +124,6 @@ _something_dynamic = dynamic_actions(
         "output": dynattrs.output(),
     },
 )
-
-
 
 def _cabal_toolchain_impl(ctx: AnalysisContext) -> list[Provider]:
     return ctx.attrs.distribution.providers

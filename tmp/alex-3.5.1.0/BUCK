@@ -1,0 +1,31 @@
+load("//rules/haskell/cabal/paths.bzl", "cabal_paths_module")
+
+haskell_binary(
+    name = "alex",
+    srcs = glob(["src/**/*.hs"]) + [":alex-paths"],
+    toolchain_libs =
+        [
+            "base",
+            "array",
+            "containers",
+            "directory",
+        ],
+    compiler_flags = [
+        "-XHaskell2010",
+        "-XPatternSynonyms",
+        "-XScopedTypeVariables",
+        "-XTupleSections",
+    ],
+)
+
+cabal_paths_module(
+    name = "alex-paths",
+    package_name = "alex",
+    package_version = "3.5.1",
+    bindir = "bin",
+    libdir = "lib",
+    dynlibdir = "dynlib",
+    datadir = "data",
+    libexecdir = "libexec",
+    sysconfdir = "sysconf",
+)

@@ -30,10 +30,6 @@ load(
     "LinkStyle",
     "SharedLibLinkable",
 )
-load(
-    "//rules/haskell/toolchain.bzl",
-    "HaskellToolchainLibrariesInfo",
-)
 
 CabalPackageInfo = provider(
     doc = "TODO",

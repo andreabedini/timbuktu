@@ -1,28 +1,28 @@
-load("defs.bzl", "haskell_library")
+# load("defs.bzl", "haskell_library")
 
-git_fetch(
-    name = "ghc-make-deps.git",
-    repo = "https://github.com/andreabedini/ghc-make-deps.git",
-    rev = "208c73052fedcef21ae6ad0b8bce7a40d09d8ac6",
-    sub_targets = ["src"]
-)
+# git_fetch(
+#     name = "ghc-make-deps.git",
+#     repo = "https://github.com/andreabedini/ghc-make-deps.git",
+#     rev = "208c73052fedcef21ae6ad0b8bce7a40d09d8ac6",
+#     sub_targets = ["src"],
+# )
 
-haskell_library(
-    name = "ghc-make-deps",
-    pkg_name = "ghc-make-deps",
-    pkg_version = "0.1.0.0",
-    modules = [
-        "MakeDeps",
-        "MakeDeps.MakeFile",
-        "MakeDeps.MakeFile.JSON",
-    ],
-    srcs = [":ghc-make-deps.git[src]"],
-    deps = [
-    ],
-    visibility = ["PUBLIC"]
-)
+# haskell_library(
+#     name = "ghc-make-deps",
+#     pkg_name = "ghc-make-deps",
+#     pkg_version = "0.1.0.0",
+#     modules = [
+#         "MakeDeps",
+#         "MakeDeps.MakeFile",
+#         "MakeDeps.MakeFile.JSON",
+#     ],
+#     srcs = [":ghc-make-deps.git[src]"],
+#     deps = [
+#     ],
+#     visibility = ["PUBLIC"],
+# )
 
-export_file("import_toolchain.hs")
+# export_file("import_toolchain.hs")
 
 # [
 #     haskell_toolchain_library(name = name)
@@ -53,24 +53,16 @@ export_file("import_toolchain.hs")
 #     ],
 # )
 
-# haskell_binary(
-#     name = "parse_fields",
-#     srcs = {"Main.hs": "parse_fields.hs"},
-#     deps = [
-#         ":base",
-#         ":bytestring",
-#         ":Cabal",
-#     ],
-# )
-
-git_fetch(
-    name = "Cabal-syntax-json-src",
-    repo = "https://github.com/andreabedini/Cabal-syntax-json",
-    rev = "7a80221047fb5dd66a091f4a7248e0afa3bcc248",
-)
-
 haskell_binary(
-    name = "Cabal-syntax-json",
-    compiler_flags = ["-i$(location :Cabal-syntax-json-src)/src"],
-    # srcs = ["{}/app/Main.hs"],
+    name = "parse_fields",
+    # srcs = {
+    #     "Main.hs": "parse_fields.hs",
+    # },
+    srcs = ["parse_fields.hs"],
+    toolchain_libs = [
+        "base",
+        "bytestring",
+        "Cabal",
+        "Cabal-syntax",
+    ],
 )

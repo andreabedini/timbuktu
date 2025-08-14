@@ -1,4 +1,6 @@
-load("//rules/haskell/cabal_install/common.bzl", "manglePkgName")
+def manglePkgName(name: str) -> str:
+    # NOTE: taken from build-env, check with Cabal
+    return name.replace("-", "_")
 
 template = """
 {{-# OPTIONS_GHC -w #-}}
