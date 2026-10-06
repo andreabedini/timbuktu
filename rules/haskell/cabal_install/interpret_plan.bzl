@@ -47,6 +47,8 @@ def interpret_plan(name: str, planjson: str):
                     pkg_src = unit["pkg-src"],
                     pkg_src_sha256 = unit["pkg-src-sha256"],
                     pkg_cabal_sha256 = unit.get("pkg-cabal-sha256"),
+                    pkg_cabal_revision = unit.get("pkg-cabal-revision"),
+                    pkg_cabal_size = unit.get("pkg-cabal-size"),
                 )
 
             is_legacy_build = "components" in unit

@@ -82,7 +82,9 @@ interpret_plan("shake", """
         "base-4.21.0.0-b7a5"
       ],
       "exe-depends": [],
-      "component-name": "lib"
+      "component-name": "lib",
+      "pkg-cabal-revision": 0,
+      "pkg-cabal-size": 4631
     },
     {
       "type": "pre-existing",
@@ -159,7 +161,9 @@ interpret_plan("shake", """
         "unix-2.8.6.0-2805"
       ],
       "exe-depends": [],
-      "component-name": "lib"
+      "component-name": "lib",
+      "pkg-cabal-revision": 0,
+      "pkg-cabal-size": 2738
     },
     {
       "type": "pre-existing",
@@ -212,7 +216,9 @@ interpret_plan("shake", """
         "filepath-1.5.4.0-c656"
       ],
       "exe-depends": [],
-      "component-name": "lib"
+      "component-name": "lib",
+      "pkg-cabal-revision": 0,
+      "pkg-cabal-size": 2454
     },
     {
       "type": "pre-existing",
@@ -284,7 +290,9 @@ interpret_plan("shake", """
         "text-2.1.2-c196"
       ],
       "exe-depends": [],
-      "component-name": "lib"
+      "component-name": "lib",
+      "pkg-cabal-revision": 0,
+      "pkg-cabal-size": 5787
     },
     {
       "type": "configured",
@@ -306,7 +314,9 @@ interpret_plan("shake", """
         "base-4.21.0.0-b7a5"
       ],
       "exe-depends": [],
-      "component-name": "lib"
+      "component-name": "lib",
+      "pkg-cabal-revision": 0,
+      "pkg-cabal-size": 1444
     },
     {
       "type": "configured",
@@ -328,7 +338,9 @@ interpret_plan("shake", """
         "base-4.21.0.0-b7a5"
       ],
       "exe-depends": [],
-      "component-name": "lib"
+      "component-name": "lib",
+      "pkg-cabal-revision": 0,
+      "pkg-cabal-size": 1703
     },
     {
       "type": "configured",
@@ -350,7 +362,9 @@ interpret_plan("shake", """
         "base-4.21.0.0-b7a5"
       ],
       "exe-depends": [],
-      "component-name": "lib"
+      "component-name": "lib",
+      "pkg-cabal-revision": 0,
+      "pkg-cabal-size": 1985
     },
     {
       "type": "configured",
@@ -372,7 +386,9 @@ interpret_plan("shake", """
         "base-4.21.0.0-b7a5"
       ],
       "exe-depends": [],
-      "component-name": "lib"
+      "component-name": "lib",
+      "pkg-cabal-revision": 0,
+      "pkg-cabal-size": 1666
     },
     {
       "type": "pre-existing",
@@ -431,7 +447,9 @@ interpret_plan("shake", """
         "transformers-0.6.1.2-c7d6"
       ],
       "exe-depends": [],
-      "component-name": "lib"
+      "component-name": "lib",
+      "pkg-cabal-revision": 1,
+      "pkg-cabal-size": 3258
     },
     {
       "type": "pre-existing",
@@ -471,7 +489,9 @@ interpret_plan("shake", """
         "transformers-0.6.1.2-c7d6"
       ],
       "exe-depends": [],
-      "component-name": "lib"
+      "component-name": "lib",
+      "pkg-cabal-revision": 0,
+      "pkg-cabal-size": 6004
     },
     {
       "type": "pre-existing",
@@ -525,7 +545,9 @@ interpret_plan("shake", """
         "utf8-string-1.0.2-9ca44a8a130762ad9c3a53868163bbf84da0c4d0d3fd75539327555666ba6d0f"
       ],
       "exe-depends": [],
-      "component-name": "lib"
+      "component-name": "lib",
+      "pkg-cabal-revision": 0,
+      "pkg-cabal-size": 15580
     },
     {
       "type": "configured",
@@ -573,7 +595,9 @@ interpret_plan("shake", """
       ],
       "exe-depends": [],
       "component-name": "exe:shake",
-      "bin-file": "/home/andrea/.local/state/cabal/store/ghc-9.12.2-5327/shake-0.19.9-e-shake-59138ccb836da9a4a51957b5e31580d274045c1319700c4d2c133423e8f272b4/bin/shake"
+      "bin-file": "/home/andrea/.local/state/cabal/store/ghc-9.12.2-5327/shake-0.19.9-e-shake-59138ccb836da9a4a51957b5e31580d274045c1319700c4d2c133423e8f272b4/bin/shake",
+      "pkg-cabal-revision": 0,
+      "pkg-cabal-size": 15580
     },
     {
       "type": "configured",
@@ -598,7 +622,9 @@ interpret_plan("shake", """
         "deepseq-1.5.1.0-58c3"
       ],
       "exe-depends": [],
-      "component-name": "lib"
+      "component-name": "lib",
+      "pkg-cabal-revision": 0,
+      "pkg-cabal-size": 3608
     },
     {
       "type": "pre-existing",
@@ -693,7 +719,9 @@ interpret_plan("shake", """
         "template-haskell-2.23.0.0-1f7b"
       ],
       "exe-depends": [],
-      "component-name": "lib"
+      "component-name": "lib",
+      "pkg-cabal-revision": 2,
+      "pkg-cabal-size": 3987
     },
     {
       "type": "configured",
@@ -716,7 +744,9 @@ interpret_plan("shake", """
         "bytestring-0.12.2.0-d099"
       ],
       "exe-depends": [],
-      "component-name": "lib"
+      "component-name": "lib",
+      "pkg-cabal-revision": 0,
+      "pkg-cabal-size": 1538
     }
   ]
 }

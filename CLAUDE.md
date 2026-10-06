@@ -101,12 +101,18 @@ To refresh a project's plan: build `:plan`, then replace the JSON inside the
   `toolchain_libs` attribute (see "Design rules").
 - `rules/haskell/cabal_install/` — the plan interpreter:
   - `plan.bzl` — runs `cabal build --dry-run` with the toolchain's GHC and
-    cabal; the output is `plan.json`. It reads the Hackage index from the
-    user's cabal directory, so it is not hermetic.
+    cabal, then adds `pkg-cabal-revision` and `pkg-cabal-size` to each unit:
+    the revision number comes from matching `pkg-cabal-sha256` against
+    Hackage's `revisions/.json`, the size from fetching that revision (needs
+    `curl` and `jq`). The output is that annotated `plan.json`. It reads the Hackage
+    index from the user's cabal directory and queries Hackage, so it is not
+    hermetic; everything downstream is pinned by checksum.
   - `interpret_plan.bzl` — macro that decodes a `plan.json` string and emits
     one target per unit, named by unit-id.
   - `pkg_src.bzl` — downloads the sdist from the plan's repo and overlays the
-    revised `.cabal` file fetched from `casa.stackage.org` by its sha256.
+    `.cabal` revision the plan was made with (`revision/<n>.cabal`, checked
+    against the plan's sha256). A plan without `pkg-cabal-revision` and
+    `pkg-cabal-size` fails with a message asking to make it again.
   - `build.bzl` — `build-type: Simple`, one component per target; configure,
     build and copy run as separate actions using the shared
     `helpers:setup_simple` executable, plus register for library components.
@@ -158,10 +164,19 @@ To refresh a project's plan: build `:plan`, then replace the JSON inside the
   `srcs` as a dict from module path to file (`{"Main.hs": "parse_fields.hs"}`,
   `src/` stripped) whenever the two differ.
 - Outputs whose paths get recorded elsewhere (Cabal's build dir, install
-  prefix, package dbs, downloads) are declared with
-  `has_content_based_path = False`. Current buck2 defaults to content-based
-  paths, which cannot be combined with `ignore_artifacts` and are not known
-  when the configure step writes them down.
+  prefix, package dbs) are declared with `has_content_based_path = False`.
+  Current buck2 defaults to content-based paths, which cannot be combined with
+  `ignore_artifacts` and are not known when the configure step writes them
+  down. Fetched sources do not need the opt-out.
+- A download can use a content-based path when buck2 knows its digest and its
+  size up front: a `sha256` is enough for the digest, the size comes from
+  `size_bytes` or the server's `Content-Length`. Hackage reports a size for
+  sdists but not for `.cabal` files, so the plan records the size of each
+  cabal file and `pkg_src.bzl` passes it as `size_bytes`.
+- buck2 does not download a file without a checksum. Anything that has to be
+  looked up in a document that changes over time (such as which revision a
+  cabal file is) belongs in the `plan` step, not in the rules that fetch
+  sources.
 - Package dbs are composed from a transitive set of `.conf` files
   (`PackageConfTSet`) and recached per consumer, starting from
   `--package-db=clear --package-db=global`.
@@ -203,12 +218,17 @@ To refresh a project's plan: build `:plan`, then replace the JSON inside the
 
 - buck2 needs `~/.buck` writable; otherwise it fails with "Error creating
   daemon dir".
+- A sandboxed run leaves `buckd.pid` and `buckd.info` behind in
+  `~/.buck/buckd/<absolute project path>/v2/`, naming a daemon that died with
+  its sandbox. The next run tries to kill that pid, and inside a new sandbox
+  the number can belong to the buck2 client itself: the build then dies at
+  once with exit code 137. Delete those two files and run again.
 - Each sandboxed command gets its own buck2 daemon, and a new daemon re-runs
   every local action. For more than one build, start one long-lived background
   command that executes queued scripts, so they share a daemon.
 - Builds need network access to `downloads.haskell.org` (GHC and cabal
   bindists; buck2 re-checks them with a HEAD request on every new daemon),
-  `hackage.haskell.org` and `casa.stackage.org`. If that check is denied, buck2
+  and `hackage.haskell.org`. If that check is denied, buck2
   discards the 290 MB GHC archive and downloads it again.
 - `buildifier` on `PATH` is a mise stub that tries to install itself and cannot
   inside the sandbox; ask the user to run it.

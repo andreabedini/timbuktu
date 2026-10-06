@@ -21,7 +21,7 @@ def _secure_repo_package_impl(ctx: AnalysisContext) -> list[Provider]:
     repo_uri = ctx.attrs.repo_uri.rstrip("/").replace("http://hackage.haskell.org", "https://hackage.haskell.org")
     url = "{}/package/{}".format(repo_uri, filename)
 
-    sdist = ctx.actions.download_file(filename, url, sha256 = ctx.attrs.pkg_src_sha256, has_content_based_path = False)
+    sdist = ctx.actions.download_file(filename, url, sha256 = ctx.attrs.pkg_src_sha256)
     srcdir = ctx.actions.declare_output(pkg_id, dir = True)
     filelist = ctx.actions.declare_output("filelist")
 
@@ -43,9 +43,15 @@ def _secure_repo_package_impl(ctx: AnalysisContext) -> list[Provider]:
     )
 
     if ctx.attrs.pkg_cabal_sha256:
+        if ctx.attrs.pkg_cabal_revision == None or ctx.attrs.pkg_cabal_size == None:
+            fail("The plan does not say which revision of {}.cabal it uses or how big it is, make it again with the plan rule".format(ctx.attrs.pkg_name))
+
         cabal_file = "{}.cabal".format(ctx.attrs.pkg_name)
-        url = "https://casa.stackage.org/{}".format(ctx.attrs.pkg_cabal_sha256)
-        revision = ctx.actions.download_file(cabal_file, url, sha256 = ctx.attrs.pkg_cabal_sha256, has_content_based_path = False)
+        url = "{}/package/{}/revision/{}.cabal".format(repo_uri, pkg_id, ctx.attrs.pkg_cabal_revision)
+
+        # NOTE: Hackage does not report the size of a cabal file, and a
+        # download to a content-based path needs it up front.
+        revision = ctx.actions.download_file(cabal_file, url, sha256 = ctx.attrs.pkg_cabal_sha256, size_bytes = ctx.attrs.pkg_cabal_size)
         unpack_sh_content.add(cmd_args("cp", revision, srcdir.as_output(), delimiter = " "))
 
     unpack_sh = ctx.actions.write("unpack.sh", unpack_sh_content, is_executable = True, with_inputs = True)
@@ -81,6 +87,8 @@ secure_repo_package = rule(
         "pkg_name": attrs.string(),
         "pkg_version": attrs.string(),
         "pkg_cabal_sha256": attrs.option(attrs.string(), default = None),
+        "pkg_cabal_revision": attrs.option(attrs.int(), default = None),
+        "pkg_cabal_size": attrs.option(attrs.int(), default = None),
         "pkg_src_sha256": attrs.string(),
     },
 )
