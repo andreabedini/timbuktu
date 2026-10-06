@@ -5,6 +5,7 @@ Common definitions for cabal-install plans.
 load(
     "@prelude//cxx:cxx_toolchain_types.bzl",
     "LinkerType",
+    "PicBehavior",
 )
 load(
     "@prelude//haskell:toolchain.bzl",
@@ -28,7 +29,24 @@ load(
     "LinkInfo",
     "LinkInfos",
     "LinkStyle",
+    "LinkedObject",
+    "MergedLinkInfo",
     "SharedLibLinkable",
+    "create_merged_link_info",
+    "default_output_style_for_link_strategy",
+    "to_link_strategy",
+)
+load(
+    "@prelude//linking:linkable_graph.bzl",
+    "create_linkable_graph",
+    "create_linkable_graph_node",
+    "create_linkable_node",
+)
+load(
+    "@prelude//linking:shared_libraries.bzl",
+    "SharedLibraryInfo",
+    "create_shared_libraries",
+    "merge_shared_libraries",
 )
 load("@toolchains//ghcup:defs.bzl", "GhcDistributionInfo")
 
@@ -80,6 +98,7 @@ haskell_toolchain_attrs = {
 
 common_unit_attrs = {
     "deps": attrs.list(attrs.dep(), default = []),
+    "labels": attrs.list(attrs.string(), default = []),
     "pkg_name": attrs.string(),
     "pkg_version": attrs.string(),
     "unit_id": attrs.string(),
@@ -218,18 +237,22 @@ def mkProviders(ctx, package_db, installdirs) -> list[Provider]:
     for link_style in LinkStyle:
         libs = []
         prof_libs = []
-        if link_style == LinkStyle("static"):
-            # FIXME extension
-            libs.append(installdirs.libdir.project("libHS{}.a".format(ctx.attrs.unit_id)))
-        elif link_style == LinkStyle("shared"):
+        if link_style == LinkStyle("shared"):
             # FIXME extension
             libs.append(installdirs.libdir.project("libHS{}-ghc{}.so".format(ctx.attrs.unit_id, ghc_version)))
+        else:
+            # NOTE: Cabal builds one archive, without -fPIC. It is good enough
+            # to link an executable with the static_pic style, not to link a
+            # shared object.
+            # FIXME extension
+            libs.append(installdirs.libdir.project("libHS{}.a".format(ctx.attrs.unit_id)))
 
         hlibinfo = HaskellLibraryInfo(
             name = ctx.attrs.pkg_name,
             db = package_db,
-            # import_dirs = { False: prefix.project("lib"), },
-            import_dirs = {},
+            # NOTE: the package conf points into the prefix, which the prelude
+            # only makes an input of the compiler through this field.
+            import_dirs = {False: installdirs.prefix},
             stub_dirs = [],
             id = ctx.attrs.unit_id,
             libs = libs,
@@ -264,12 +287,9 @@ def mkProviders(ctx, package_db, installdirs) -> list[Provider]:
 
         if link_style == LinkStyle("shared"):
             linkables = [shared_linkable(lib) for lib in libs]
-        elif link_style == LinkStyle("static"):
-            linkables = [archive_linkable(lib) for lib in libs]
-
-        if link_style == LinkStyle("shared"):
             prof_linkables = [shared_linkable(lib) for lib in prof_libs]
-        elif link_style == LinkStyle("static"):
+        else:
+            linkables = [archive_linkable(lib) for lib in libs]
             prof_linkables = [archive_linkable(lib) for lib in prof_libs]
 
         hlibinfos[link_style] = hlibinfo
@@ -314,4 +334,42 @@ def mkProviders(ctx, package_db, installdirs) -> list[Provider]:
         prof_lib = prof_hlibinfos,
     )
 
-    return [haskell_lib_provider, haskell_link_infos]
+    # What the prelude's link step reads: it passes the libraries of its
+    # dependencies to the linker itself, the package db is only used to
+    # compile.
+    def to_lib_output_style(s):
+        return default_output_style_for_link_strategy(to_link_strategy(s))
+
+    merged_link_info = create_merged_link_info(
+        ctx,
+        pic_behavior = PicBehavior("supported"),
+        link_infos = {to_lib_output_style(s): v for s, v in link_infos.items()},
+        exported_deps = [dep[MergedLinkInfo] for dep in ctx.attrs.deps if MergedLinkInfo in dep],
+    )
+
+    soname = "libHS{}-ghc{}.so".format(ctx.attrs.unit_id, ghc_version)
+    so = installdirs.libdir.project(soname)
+    shared_libs = create_shared_libraries(ctx, {soname: LinkedObject(output = so, unstripped_output = so)})
+    shared_library_info = merge_shared_libraries(
+        ctx.actions,
+        shared_libs,
+        [dep[SharedLibraryInfo] for dep in ctx.attrs.deps if SharedLibraryInfo in dep],
+    )
+
+    linkable = [dep for dep in ctx.attrs.deps if MergedLinkInfo in dep]
+    linkable_graph = create_linkable_graph(
+        ctx,
+        node = create_linkable_graph_node(
+            ctx,
+            linkable_node = create_linkable_node(
+                ctx = ctx,
+                exported_deps = linkable,
+                link_infos = {to_lib_output_style(s): v for s, v in link_infos.items()},
+                shared_libs = shared_libs,
+                default_soname = None,
+            ),
+        ),
+        deps = linkable,
+    )
+
+    return [haskell_lib_provider, haskell_link_infos, merged_link_info, shared_library_info, linkable_graph]

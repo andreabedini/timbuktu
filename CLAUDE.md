@@ -49,6 +49,11 @@ Built and run after the cleanup:
 - Plan interpreter: `//projects/shake:plan`, and the whole shake plan; the
   `shake` executable unit builds and prints its version.
 - `buck2 targets //...` parses every package.
+- Prelude rules on top of the plan interpreter: a `haskell_binary` and a
+  `haskell_library` depending on the `utf8-string` unit of the shake plan
+  built and ran with the three link styles (`shared` with `-dynamic` in
+  `linker_flags`). This was checked with throwaway targets; no target in the
+  repository does it.
 
 Known broken or untested:
 
@@ -59,6 +64,24 @@ Known broken or untested:
   one in `projects/c2hs/BUCK` is commented out.
 - `build_legacy.bzl` and the legacy branch of `interpret_plan.bzl` have not
   run since the move to the bundled prelude; shake's plan has no legacy units.
+- Prelude rules depending on a unit of an interpreted plan (see "Design
+  rules" for why):
+  - With the `static` and `static_pic` link styles the link fails with
+    undefined references when the unit needs a package from the global package
+    db that the consumer does not use itself; `-package` in `linker_flags`,
+    hence `toolchain_libs`, does not help. The `-setup` binaries of legacy
+    units with `setup-depends` built from source are untested and can be
+    expected to hit this.
+  - With the `shared` link style, which `system_cxx_toolchain` makes the
+    default, the prelude links a binary without `-dynamic`. With a Haskell
+    library among its dependencies the binary builds and then dies at run time
+    with a symbol lookup error; this happens with prelude libraries alone.
+    Add `-dynamic` to `linker_flags`.
+  - Sublibraries are given the name of their package, not `z-<pkg>-z-<lib>`;
+    untested. There are no profiling libraries.
+- The other direction does not exist: a unit cannot depend on a prelude
+  `haskell_library` (it needs `UnitInfo`), and the `cabal_simple` rules share
+  no provider with the prelude.
 
 ## Commands
 
@@ -115,7 +138,9 @@ To refresh a project's plan: build `:plan`, then replace the JSON inside the
   - `:haskell` (GHC 9.12.2) and `:cabal` (3.14.2.0), for the prelude rules and
     the plan interpreter. `ghcup/defs.bzl` picks a bindist URL and hash out of
     GHCup's metadata for the host OS/arch and wraps it in `http_archive`.
-    `defs.bzl` builds `HaskellToolchainInfo` from the unpacked bindist and
+    `defs.bzl` builds `HaskellToolchainInfo` from the unpacked bindist
+    (`linker` is GHC as well: the prelude's `haskell_library` does not pass
+    analysis without one) and
     exposes the global package db as a dynamic value (`HaskellPackageDbInfo`,
     id/name/version per unit); `something` is a debug rule that prints it.
     Nothing else consumes that value: the `cabal_simple` rules have their own,
@@ -153,8 +178,10 @@ To refresh a project's plan: build `:plan`, then replace the JSON inside the
     carries only a `UnitInfo`.
   - `common.bzl` — providers (`UnitInfo`, `PackageConfTSet`, `CabalPackageInfo`,
     `ExeDependInfo`), configure arguments, install dirs, and `mkProviders`,
-    which adapts a built unit to the prelude's `HaskellLibraryProvider` /
-    `HaskellLinkInfo`.
+    which adapts a built unit to the prelude's Haskell rules:
+    `HaskellLibraryProvider` and `HaskellLinkInfo` to compile against it,
+    `MergedLinkInfo`, `SharedLibraryInfo` and `LinkableGraph` to link it. The
+    last one reads a `labels` attribute, which is why the unit rules have one.
   - `helpers/setup_simple.hs` — `Setup.hs` with a `postConf` hook that dumps
     `local-build-info.json` (components, modules, GHC arguments). Nothing
     reads the dump at the moment; it was made for an experiment that
@@ -208,6 +235,17 @@ To refresh a project's plan: build `:plan`, then replace the JSON inside the
   from the global db are visible to the compiler but missing at link time.
   This selects by name, not unit-id; doing better needs the dynamic package db
   value.
+- The upstream Haskell rules do the linking themselves. A dependency hands
+  over its archives and shared objects through `MergedLinkInfo`,
+  `SharedLibraryInfo` and `LinkableGraph`; its package db is only used to find
+  interface files when compiling, and a direct dependency is exposed with
+  `-package <name>`. A target with `HaskellLibraryProvider` and
+  `HaskellLinkInfo` alone compiles and then fails to link. This also means
+  every package is expected to be a target, the ones that come with the
+  compiler included: GHC puts the `-l` flags of the packages it links on its
+  own before the libraries the prelude passes with `-optl`, so an archive from
+  the global package db is searched before the dependency that needs it.
+  `pre_existing_unit` carries no libraries, and that is the missing piece.
 - The upstream Haskell rules derive object file names from source paths. Give
   `srcs` as a dict from module path to file (`{"Main.hs": "parse_fields.hs"}`,
   `src/` stripped) whenever the two differ.
@@ -296,8 +334,10 @@ To refresh a project's plan: build `:plan`, then replace the JSON inside the
   bindists; buck2 re-checks them with a HEAD request on every new daemon),
   and `hackage.haskell.org`. If that check is denied, buck2
   discards the 290 MB GHC archive and downloads it again.
-- `buildifier` on `PATH` is a mise stub that tries to install itself and cannot
-  inside the sandbox; ask the user to run it.
+- `buildifier` on `PATH` is a mise shim. It runs from the sandbox once mise has
+  installed it (`mise install`, outside the sandbox). Try it before concluding
+  that it does not work: only when it is not installed does the shim try to
+  install it, which the sandbox does not allow.
 - Plain jj commands snapshot the working copy, and in the sandbox that records
   the sandbox's mask files (`.bashrc`, `.zshrc`, `.mcp.json`, …) as additions.
   Pass `--ignore-working-copy` to read-only jj commands.

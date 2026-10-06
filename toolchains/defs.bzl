@@ -71,6 +71,7 @@ def _haskell_toolchain_impl(ctx: AnalysisContext) -> list[Provider]:
         ctx.attrs.distribution[GhcDistributionInfo],
         HaskellToolchainInfo(
             compiler = ghc,
+            linker = ghc,
             packager = ghc_pkg,
             haddock = haddock,
             compiler_flags = ctx.attrs.compiler_flags,
