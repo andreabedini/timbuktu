@@ -46,8 +46,8 @@ Built and run after the cleanup:
   `//examples/hello:hello-test`, `//examples/lexer:exe`, and
   `//examples/cparse:exe` (built, not run), which pulls in alex, happy,
   happy-lib and language-c.
-- Plan interpreter: the whole shake plan; the `shake` executable unit builds
-  and prints its version.
+- Plan interpreter: `//projects/shake:plan`, and the whole shake plan; the
+  `shake` executable unit builds and prints its version.
 - `buck2 targets //...` parses every package.
 
 Known broken or untested:
@@ -59,7 +59,6 @@ Known broken or untested:
   one in `projects/c2hs/BUCK` is commented out.
 - `build_legacy.bzl` and the legacy branch of `interpret_plan.bzl` have not
   run since the move to the bundled prelude; shake's plan has no legacy units.
-- `//projects/shake:plan` was not run again after the cleanup.
 
 ## Commands
 
@@ -110,7 +109,8 @@ To refresh a project's plan: build `:plan`, then replace the JSON inside the
   setup (BuildBuddy) is left commented out; the execution platform it needs
   was deleted.
 - `.buckconfig.local` — `[project] ignore = .git, .jj, .claude`, so that
-  buck2 does not look for packages there. Listed in `.gitignore`.
+  buck2 does not look for packages there. It is ignored by Andrea's global
+  git ignore file (`~/.config/git/ignore`), not by the repository's.
 - `toolchains/` — `BUCK` wires system cxx/python/genrule toolchains plus:
   - `:haskell` (GHC 9.12.2) and `:cabal` (3.14.2.0), for the prelude rules and
     the plan interpreter. `ghcup/defs.bzl` picks a bindist URL and hash out of
