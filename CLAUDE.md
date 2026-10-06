@@ -53,7 +53,7 @@ Known broken or untested:
 ## Commands
 
 ```sh
-mise install                       # buck2 (latest prerelease) and starpls
+mise install                       # buck2 (latest prerelease), buildifier, lefthook
 buck2 targets //projects/shake:    # what parses in one package
 buck2 build //:main                # smallest Haskell target
 buck2 build //projects/shake:plan --show-output   # cabal dry-run -> plan.json
@@ -203,9 +203,7 @@ To refresh a project's plan: build `:plan`, then replace the JSON inside the
 
 ## Environment
 
-- `mise.toml` loads `env.yaml`, which is sops/age-encrypted (it holds
-  `BUILDBUDDY_API_KEY`). Never decrypt, print or rewrite it; it is only needed
-  for the disabled remote-execution setup.
+- `mise.toml` installs buck2, buildifier and lefthook. It sets no environment.
 - GHC, cabal and ghcup from `~/.ghcup` are on `PATH`, but builds go through
   `toolchains//:haskell` and `toolchains//:cabal`.
 - Sibling checkouts under `../`: `buck2-prelude` (jj clone of the prelude fork,
