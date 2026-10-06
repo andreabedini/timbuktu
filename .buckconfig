@@ -13,7 +13,6 @@
   buck = none
 
 [build]
-  # execution_platforms = root//platforms:platforms
   execution_platforms = prelude//platforms:default
 
 [external_cells]
