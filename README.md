@@ -68,4 +68,4 @@ place of `-package`. Now I am back on the prelude that comes with buck2 and the
 situation is mixed. The rules in `rules/haskell/cabal_install` and
 `rules/haskell/cabal` always name a dependency by its unit-id. The targets
 written by hand still name the packages that come with the compiler by package
-name (see `toolchain_libs` in `rules/haskell/defs.bzl`).
+name (see `toolchain_libs` and `haskell_unit` in `rules/haskell/defs.bzl`).

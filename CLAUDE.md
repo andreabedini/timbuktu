@@ -53,8 +53,18 @@ Built and run after the cleanup:
 - Prelude rules on top of the plan interpreter: a `haskell_binary` and a
   `haskell_library` depending on the `utf8-string` unit of the shake plan
   built and ran with the three link styles (`shared` with `-dynamic` in
-  `linker_flags`). This was checked with throwaway targets; no target in the
-  repository does it.
+  `linker_flags`), also when what they use of it needs `bytestring` from the
+  global package db. This was checked with throwaway targets; no target in
+  the repository does it.
+- `haskell_unit`: `//examples/prelude:count` is a prelude binary that gets
+  `base` and `containers` from units alone (`:count-test`), the
+  `cabal_simple` examples take the libraries of the compiler from units, and
+  every pre-existing unit of a plan is one. Checked
+  with throwaway targets: a unit given by id, the three link styles, the
+  errors for an id, a name or a version the package db does not have, and
+  units in a package db other than the compiler's (found by name from a
+  `cabal_simple_library`; given by id, one depending on the other, from a
+  prelude binary linked `static` and `static_pic`).
 - Prelude rules on top of the `cabal_simple` rules: `//examples/prelude:exe`,
   a `haskell_binary` depending on `//examples/prelude:lib`, a
   `haskell_library` which depends on `//examples/hello:lib`, with both
@@ -81,12 +91,8 @@ Known broken or untested:
   run since the move to the bundled prelude; shake's plan has no legacy units.
 - Prelude rules depending on a unit of an interpreted plan (see "Design
   rules" for why):
-  - With the `static` and `static_pic` link styles the link fails with
-    undefined references when the unit needs a package from the global package
-    db that the consumer does not use itself; `-package` in `linker_flags`,
-    hence `toolchain_libs`, does not help. The `-setup` binaries of legacy
-    units with `setup-depends` built from source are untested and can be
-    expected to hit this.
+  - The `-setup` binaries of legacy units with `setup-depends` built from
+    source are untested.
   - With the `shared` link style, which `system_cxx_toolchain` makes the
     default, the prelude links a binary without `-dynamic`. With a Haskell
     library among its dependencies the binary builds and then dies at run time
@@ -111,6 +117,15 @@ Known broken or untested:
 - `haskell_ghci` with `srcs`: the prelude computes their paths relative to a
   cell called `fbcode` and fails analysis in any other. `//examples/prelude:ghci`
   only has `deps`.
+- `haskell_unit`: a prelude target that depends on a unit of another package
+  db with the `shared` link style is untested, and there is nothing to find
+  its shared object at run time. A package db given as an absolute path of
+  the machine is not supported, only one in the source tree or made by a
+  target. `haskell_ghci` asks for `-package <name>-<version>`, so a unit it
+  depends on directly needs its `version` attribute.
+  `prelude//haskell/ide/ide.bxl` does not see the units of the compiler,
+  which is why the targets of `//examples/prelude:ide` still use
+  `toolchain_libs`.
 - `prelude//haskell/ide/ide.bxl` was only run on a file of a project made of
   prelude targets, with HLS nowhere in sight. It takes a file as
   `root//path`, reads `srcs` only when they are a dictionary, and leaves out
@@ -191,7 +206,15 @@ To refresh a project's plan: build `:plan`, then replace the JSON inside the
     toolchain. The prelude does not come with any. Their names have no dot
     because the prelude makes an action category out of them.
 - `rules/haskell/defs.bzl` — `haskell_binary` and `haskell_library` wrappers
-  that add a `toolchain_libs` attribute (see "Design rules").
+  that add a `toolchain_libs` attribute (see "Design rules"), and
+  `haskell_unit`.
+- `rules/haskell/unit.bzl` — `haskell_unit`: a unit that is already in a
+  package db, the compiler's (`db = "global"`, the default) or a directory.
+  It is found by `id` or by the name of its package, when the package db is
+  read in a dynamic action. Every rule set can depend on one; the top of the
+  file says what each gets out of it. It took the place of
+  `cabal_toolchain_library` and `pre_existing_unit`: `interpret_plan` makes
+  one for each pre-existing unit of a plan.
 - `rules/haskell/hackage.bzl` — `hackage_package`: `http_archive` of an sdist
   from Hackage, no cabal-file revisions. Used by `examples/`.
 - `rules/haskell/helpers/` — `parse_fields.hs` prints the fields of a `.cabal`
@@ -216,8 +239,6 @@ To refresh a project's plan: build `:plan`, then replace the JSON inside the
   - `build_legacy.bzl` — every other build type; compiles the package's own
     `Setup.hs` and runs all phases in one action, since its outputs cannot be
     predicted.
-  - `pre_existing_unit.bzl` — units from the compiler's global package db;
-    carries only a `UnitInfo`.
   - `common.bzl` — providers (`UnitInfo`, `PackageConfTSet`, `CabalPackageInfo`,
     `ExeDependInfo`), configure arguments, install dirs, and `mkProviders`,
     which adapts a built unit to the prelude's Haskell rules:
@@ -235,14 +256,14 @@ To refresh a project's plan: build `:plan`, then replace the JSON inside the
     tree (a directory, possibly the output of another rule, or a list of
     files).
   - `simple.bzl` — `cabal_simple_library`, `cabal_simple_executable`,
-    `cabal_simple_test`, `cabal_toolchain_library`. Its docstring describes
+    `cabal_simple_test`. Its docstring describes
     the steps (configure, preprocess, build, register) and what happens in a
     dynamic action. A unit-id is `<package>-<version>[-<component>]-<hash>`,
     the hash being of the label of the configured target, unless the
     `unit_id` attribute of a library gives one.
   - `prelude.bzl` — what the Haskell rules of the prelude need to depend on a
-    `cabal_simple_library` (the same five providers as `mkProviders`) or on a
-    `cabal_toolchain_library` (linker flags only, see "Design rules").
+    `cabal_simple_library` (the same five providers as `mkProviders`), and to
+    link a `haskell_unit` (linker flags only, see "Design rules").
   - `providers.bzl` — `CabalPackageInfo`, `CabalLibraryInfo` (a dynamic
     `CabalUnitInfo` plus a `CabalUnitTSet` of package dbs and artifacts),
     `CabalExecutableInfo`. `CabalPackageInfo` here is not the provider of the
@@ -286,13 +307,22 @@ To refresh a project's plan: build `:plan`, then replace the JSON inside the
   `--exact-configuration`, `--dependency=<pkg>[:<lib>]=<unit-id>`. Never let
   Cabal choose a unit by name there. Both the global package db and
   cabal-install plans speak unit-ids.
-- Hand-written targets name compiler-provided packages with `toolchain_libs`
-  on the `haskell_binary` and `haskell_library` from `rules/haskell/defs.bzl`.
-  It becomes `-hide-all-packages -package <name>` when compiling and
-  `-package <name>` when linking. The upstream prelude has no equivalent:
-  without it, packages from the global db are visible to the compiler but
-  missing at link time. This selects by name, not unit-id; doing better needs
-  the dynamic package db value.
+- Hand-written targets name compiler-provided packages in one of two ways.
+  `toolchain_libs` on the `haskell_binary` and `haskell_library` from
+  `rules/haskell/defs.bzl` becomes `-hide-all-packages -package <name>` when
+  compiling and `-package <name>` when linking. The upstream prelude has no
+  equivalent: without it, packages from the global db are visible to the
+  compiler but missing at link time. A `haskell_unit` among the `deps` does
+  better at linking (see below) and is something other rules can depend on
+  too. Either way a prelude rule selects by name, not unit-id.
+- A `haskell_unit` returns the providers it knows enough for, which depends
+  on which of its attributes are given, since some rules need their facts
+  during analysis and a package db is only read later. The `cabal_simple`
+  rules need nothing ahead of time and always tell GHC the id
+  (`-package-id`), also for a unit given by name. The plan interpreter needs
+  `id` and the name of the package (`UnitInfo`). The prelude needs the name
+  for `-package <name>`; an `id` is of no use to it, except that with a `db`
+  it takes one for the package db to reach the compiler at all.
 - What the prelude's Haskell rules need from a toolchain beyond the compiler
   is not written down anywhere. `haskell_library` needs `linker`.
   `haskell_haddock` needs `use_argsfile`, or it passes GHC's options to
@@ -313,13 +343,13 @@ To refresh a project's plan: build `:plan`, then replace the JSON inside the
   compiler included: GHC puts the `-l` flags of the packages it links on its
   own before the libraries the prelude passes with `-optl`, so an archive from
   the global package db is searched before the dependency that needs it.
-  `pre_existing_unit` carries no libraries, and that is the missing piece in
-  the plan interpreter. In the `cabal_simple` rules a
-  `cabal_toolchain_library` writes the linker options for its package and
-  what it depends on (the run-time system excepted) to a file, and has the
-  prelude pass it to the linker after the libraries that need it
-  (`-Wl,@file`). The compiler still has to be told about those packages with
-  `toolchain_libs`.
+  A `haskell_unit` is how such a package becomes a target: it writes the
+  linker options for its unit and what it depends on (the run-time system
+  excepted) to a file, and has the prelude pass it to the linker after the
+  libraries that need it (`-Wl,@file`). The libraries built by the
+  `cabal_simple` rules and by the plan interpreter depend on units, so a
+  prelude target that depends on them gets those options without doing
+  anything.
 - The prelude can only name a dependency by package name. For a
   `cabal_simple` sublibrary that is not enough, since GHC takes it and the
   main library for the same package, so a sublibrary has a second package db,

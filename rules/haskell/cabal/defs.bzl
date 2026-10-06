@@ -16,7 +16,11 @@ Build rules that reproduce Cabal's `build-type: Simple`.
         default_language = "Haskell2010",
     )
 
-    cabal_toolchain_library(name = "base")
+    haskell_unit(name = "base")
+
+`haskell_unit` is not one of these rules: it is for whatever is already in a
+package db, here a library that comes with the compiler. Load it from
+root//rules/haskell:defs.bzl.
 """
 
 load(":package.bzl", _cabal_package = "cabal_package")
@@ -25,11 +29,9 @@ load(
     _cabal_simple_executable = "cabal_simple_executable",
     _cabal_simple_library = "cabal_simple_library",
     _cabal_simple_test = "cabal_simple_test",
-    _cabal_toolchain_library = "cabal_toolchain_library",
 )
 
 cabal_package = _cabal_package
 cabal_simple_library = _cabal_simple_library
 cabal_simple_executable = _cabal_simple_executable
 cabal_simple_test = _cabal_simple_test
-cabal_toolchain_library = _cabal_toolchain_library

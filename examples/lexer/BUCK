@@ -1,4 +1,5 @@
-load("@root//rules/haskell/cabal:defs.bzl", "cabal_package", "cabal_simple_executable", "cabal_simple_library", "cabal_toolchain_library")
+load("@root//rules/haskell:defs.bzl", "haskell_unit")
+load("@root//rules/haskell/cabal:defs.bzl", "cabal_package", "cabal_simple_executable", "cabal_simple_library")
 
 # A transcription of lexer.cabal. Lexer.x goes through alex, which is itself
 # built from source (see //examples/alex).
@@ -41,6 +42,6 @@ cabal_simple_executable(
     default_language = "Haskell2010",
 )
 
-cabal_toolchain_library(name = "array")
+haskell_unit(name = "array")
 
-cabal_toolchain_library(name = "base")
+haskell_unit(name = "base")

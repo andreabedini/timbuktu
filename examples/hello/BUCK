@@ -1,10 +1,10 @@
+load("@root//rules/haskell:defs.bzl", "haskell_unit")
 load(
     "@root//rules/haskell/cabal:defs.bzl",
     "cabal_package",
     "cabal_simple_executable",
     "cabal_simple_library",
     "cabal_simple_test",
-    "cabal_toolchain_library",
 )
 
 # A transcription of hello.cabal
@@ -93,6 +93,6 @@ cabal_simple_test(
 
 # What comes with the compiler
 
-cabal_toolchain_library(name = "base")
+haskell_unit(name = "base")
 
-cabal_toolchain_library(name = "template-haskell")
+haskell_unit(name = "template-haskell")

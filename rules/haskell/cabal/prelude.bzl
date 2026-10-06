@@ -194,25 +194,30 @@ def prelude_library_providers(
         ),
     ]
 
-def prelude_toolchain_library_providers(
+def prelude_unit_link_providers(
         ctx: AnalysisContext,
         link_static: Artifact,
-        link_shared: Artifact) -> list[Provider]:
-    """Describe a library that comes with the compiler to the linking of the prelude.
+        link_shared: Artifact,
+        inputs: list[Artifact] = [],
+        deps: list[Dependency] = []) -> list[Provider]:
+    """Describe a unit that is already in a package db to the linking of the prelude.
 
     GHC links the libraries it is told about with `-package`, but it puts
     them before the libraries the prelude passes: a linker that reads its
     arguments once does not go back to them for what a later library needs.
     Here they are given again, by the library that needs them.
 
-    The prelude does not learn about the library as a Haskell package: it has
-    to be visible to the compiler by other means (`toolchain_libs`).
+    This is the linking alone. See root//rules/haskell:unit.bzl for how the
+    compiler gets to know about the unit.
 
     Args:
-      ctx: the context of the library's rule
-      link_static: a file with the linker options to link the library
+      ctx: the context of the unit's rule
+      link_static: a file with the linker options to link the unit
         statically, one per line
       link_shared: the same, to link it dynamically
+      inputs: the libraries those options refer to, when they are not part of
+        the compiler
+      deps: the units this one depends on
     Returns:
       the providers `haskell_binary` and `haskell_library` look for in `deps`
     """
@@ -224,15 +229,17 @@ def prelude_toolchain_library_providers(
             default = LinkInfo(
                 # NOTE: the linker reads the file. GHC would take a plain
                 # @file for a file of its own options.
-                post_flags = [cmd_args(args, format = "-Wl,@{}")],
+                post_flags = [cmd_args(args, format = "-Wl,@{}", hidden = inputs)],
             ),
         )
 
+    linkable_deps = [dep for dep in deps if MergedLinkInfo in dep]
     return [
         create_merged_link_info(
             ctx,
             pic_behavior = PicBehavior("supported"),
             link_infos = link_infos,
+            exported_deps = [dep[MergedLinkInfo] for dep in linkable_deps],
         ),
         create_linkable_graph(
             ctx,
@@ -240,9 +247,11 @@ def prelude_toolchain_library_providers(
                 ctx,
                 linkable_node = create_linkable_node(
                     ctx = ctx,
+                    exported_deps = linkable_deps,
                     link_infos = link_infos,
                     default_soname = None,
                 ),
             ),
+            deps = linkable_deps,
         ),
     ]

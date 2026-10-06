@@ -9,6 +9,9 @@ visible.
 """
 
 load("@prelude//rules.bzl", _haskell_binary = "haskell_binary", _haskell_library = "haskell_library")
+load(":unit.bzl", _haskell_unit = "haskell_unit")
+
+haskell_unit = _haskell_unit
 
 def _package_flags(toolchain_libs: list[str]) -> list[str]:
     flags = []

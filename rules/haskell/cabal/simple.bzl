@@ -10,7 +10,8 @@ Cabal's build goes through a few steps, and so do we:
 configure
   Query the compiler and resolve build-depends to units. The libraries that
   come with the compiler are only known by name during analysis: their version
-  and unit-id come from the global package db (see ghc_toolchain.bzl).
+  and unit-id come from the global package db (see ghc_toolchain.bzl and
+  root//rules/haskell:unit.bzl).
 
 preprocess
   Find the source of each module in hs-source-dirs and run alex, happy and
@@ -45,7 +46,7 @@ load("@prelude//decls:toolchains_common.bzl", "toolchains_common")
 load(":ghc_toolchain.bzl", "GhcDynamicInfo", "GhcToolchainInfo", "ghc_toolchain_attrs")
 load(":macros.bzl", "CabalMacroContext", "Versioned", "cabal_macros_gen")
 load(":paths.bzl", "PathsModuleCtx", "mk_package_info_module", "mk_paths_module")
-load(":prelude.bzl", "prelude_library_attrs", "prelude_library_providers", "prelude_toolchain_library_providers")
+load(":prelude.bzl", "prelude_library_attrs", "prelude_library_providers")
 load(
     ":providers.bzl",
     "CabalExecutableInfo",
@@ -920,7 +921,7 @@ def _executable(ctx: AnalysisContext, exe_name: str) -> list[Provider]:
 
     # The executable finds the data-files of its package, and of the
     # libraries it is made of, through the environment.
-    env = dict([unit.data_dir for unit in _dep_units(ctx).traverse()] + [_data_dir_env(pkg)])
+    env = dict([unit.data_dir for unit in _dep_units(ctx).traverse() if unit.data_dir] + [_data_dir_env(pkg)])
 
     return [
         DefaultInfo(default_output = exe),
@@ -969,125 +970,4 @@ cabal_simple_test = rule(
         "type": attrs.string(default = "exitcode-stdio-1.0"),
         "main_is": attrs.string(),
     } | _build_info_attrs,
-)
-
-def _parse_exposed_modules(unit_id: str, text: str) -> dict[str, (str, str)]:
-    """The exposed-modules of a registration: `A B` or `A, B from unit-id:C`"""
-    exposed = {}
-    for item in text.split(",") if "," in text else text.split():
-        words = item.split()
-        if len(words) == 3 and words[1] == "from":
-            defining_unit, _, original = words[2].rpartition(":")
-            exposed[words[0]] = (defining_unit, original)
-        elif len(words) == 1:
-            exposed[words[0]] = (unit_id, words[0])
-    return exposed
-
-def _toolchain_unit_impl(
-        actions: AnalysisActions,
-        ghc: ResolvedDynamicValue,
-        label: Label,
-        name: str,
-        link_static: OutputArtifact,
-        link_shared: OutputArtifact) -> list[Provider]:
-    ghc_info = ghc.providers[GhcDynamicInfo]
-    if name not in ghc_info.by_name:
-        fail("{}: GHC {} does not come with a package called `{}`".format(label, ghc_info.version, name))
-    pkg = ghc_info.packages[ghc_info.by_name[name]]
-
-    # This package and what it depends on, each one after what it depends on.
-    closure = []
-    seen = {}
-    todo = [(pkg.id, False)]
-    steps = 2
-    for p in ghc_info.packages.values():
-        steps += 2 + 2 * len(p.depends)
-    for _ in range(steps):
-        if not todo:
-            break
-        id, visited = todo.pop()
-        if visited:
-            closure.append(ghc_info.packages[id])
-        elif id not in seen and id in ghc_info.packages:
-            seen[id] = None
-            todo.append((id, True))
-            todo.extend([(d, False) for d in ghc_info.packages[id].depends])
-
-    # Headers of this package and of what it depends on
-    include_dirs = {}
-    for p in closure:
-        for d in p.include_dirs:
-            include_dirs[d] = None
-
-    # What a linker needs to link against this package, for the sake of rules
-    # that do not leave linking to GHC (see prelude.bzl). A linker wants a
-    # library after what needs it. The run-time system is left out: it comes
-    # in several flavours and GHC picks one.
-    static = []
-    shared = []
-    for p in reversed(closure):
-        if p.name == "rts":
-            continue
-        static += ["-L" + d for d in p.library_dirs]
-        static += ["-l" + lib for lib in p.hs_libraries]
-        shared += ["-L" + d for d in p.dynamic_library_dirs]
-        shared += ["-l{}-ghc{}".format(lib, ghc_info.version) for lib in p.hs_libraries]
-        for flags in (static, shared):
-            flags.extend(["-l" + lib for lib in p.extra_libraries])
-            flags.extend(p.ld_options)
-    actions.write(link_static, static)
-    actions.write(link_shared, shared)
-
-    return [
-        CabalUnitInfo(
-            id = pkg.id,
-            name = pkg.name,
-            version = pkg.version,
-            exposed_modules = _parse_exposed_modules(pkg.id, pkg.exposed_modules),
-            global_include_dirs = list(include_dirs.keys()),
-        ),
-    ]
-
-_toolchain_unit = dynamic_actions(
-    impl = _toolchain_unit_impl,
-    attrs = {
-        "ghc": dynattrs.dynamic_value(),
-        "label": dynattrs.value(Label),
-        "link_shared": dynattrs.output(),
-        "link_static": dynattrs.output(),
-        "name": dynattrs.value(str),
-    },
-)
-
-def _cabal_toolchain_library_impl(ctx: AnalysisContext) -> list[Provider]:
-    name = ctx.attrs.package_name or ctx.label.name
-    link_static = ctx.actions.declare_output("link-static.args")
-    link_shared = ctx.actions.declare_output("link-shared.args")
-    return [
-        DefaultInfo(sub_targets = {
-            "link-shared": [DefaultInfo(default_output = link_shared)],
-            "link-static": [DefaultInfo(default_output = link_static)],
-        }),
-        CabalLibraryInfo(
-            name = name,
-            unit = ctx.actions.dynamic_output_new(_toolchain_unit(
-                ghc = ctx.attrs._ghc[GhcToolchainInfo].dynamic,
-                label = ctx.label,
-                link_shared = link_shared.as_output(),
-                link_static = link_static.as_output(),
-                name = name,
-            )),
-            units = ctx.actions.tset(CabalUnitTSet),
-        ),
-    ] + prelude_toolchain_library_providers(ctx, link_static, link_shared)
-
-cabal_toolchain_library = rule(
-    doc = """A library that comes with the compiler, e.g. `base`.
-
-    Whichever version is in the global package db of the toolchain is used.
-    """,
-    impl = _cabal_toolchain_library_impl,
-    attrs = {
-        "package_name": attrs.option(attrs.string(), default = None),
-    } | ghc_toolchain_attrs | prelude_library_attrs,
 )

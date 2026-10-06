@@ -1,5 +1,5 @@
 load("@prelude//rules.bzl", "haskell_ghci", "haskell_haddock", "haskell_ide", "sh_test")
-load("//rules/haskell:defs.bzl", "haskell_binary", "haskell_library")
+load("//rules/haskell:defs.bzl", "haskell_binary", "haskell_library", "haskell_unit")
 
 # The Haskell rules of the prelude on top of a library built by the
 # cabal_simple rules.
@@ -18,6 +18,29 @@ haskell_binary(
     link_style = "static",
     toolchain_libs = ["base"],
     deps = [":lib"],
+)
+
+# The packages of the compiler as targets, in place of `toolchain_libs`: the
+# compiler is told about them, and the linker gets their libraries after what
+# needs them.
+haskell_unit(name = "base")
+
+haskell_unit(name = "containers")
+
+haskell_binary(
+    name = "count",
+    srcs = {"Main.hs": "Count.hs"},
+    link_style = "static",
+    deps = [
+        ":base",
+        ":containers",
+    ],
+)
+
+sh_test(
+    name = "count-test",
+    args = ["$(location :count)"],
+    test = "tests/count.sh",
 )
 
 # buck2 run //examples/prelude:ghci

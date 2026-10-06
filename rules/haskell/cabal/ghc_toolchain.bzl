@@ -83,14 +83,17 @@ def parse_installed_package_infos(text: str) -> list[dict[str, str]]:
         pkgs.append(fields)
     return pkgs
 
-def _ghc_dynamic_info_impl(
-        actions: AnalysisActions,
-        version: ArtifactValue,
-        global_package_db: ArtifactValue) -> list[Provider]:
-    _unused = actions  # buildifier: disable=unused-variable
+def ghc_packages(text: str) -> (dict[str, GhcPackage], dict[str, str]):
+    """Read the units of a package db off the output of `ghc-pkg dump`.
+
+    Args:
+      text: a sequence of InstalledPackageInfo separated by `---`
+    Returns:
+      the units by id, and the id of the unit of each package by name
+    """
     packages = {}
     by_name = {}
-    for fields in parse_installed_package_infos(global_package_db.read_string()):
+    for fields in parse_installed_package_infos(text):
         pkg = GhcPackage(
             id = fields["id"],
             name = fields["name"],
@@ -106,6 +109,14 @@ def _ghc_dynamic_info_impl(
         )
         packages[pkg.id] = pkg
         by_name[pkg.name] = pkg.id
+    return packages, by_name
+
+def _ghc_dynamic_info_impl(
+        actions: AnalysisActions,
+        version: ArtifactValue,
+        global_package_db: ArtifactValue) -> list[Provider]:
+    _unused = actions  # buildifier: disable=unused-variable
+    packages, by_name = ghc_packages(global_package_db.read_string())
     return [
         GhcDynamicInfo(
             version = version.read_string().strip(),

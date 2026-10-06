@@ -19,17 +19,20 @@ CabalPackageInfo = provider(
     },
 )
 
-# What a built library leaves behind for its dependents.
+# What a library that is not in the package db of the compiler takes to be
+# used.
 CabalUnit = record(
-    id = str,
-    # A package db containing only this unit.
+    # None when it takes reading the package db to know.
+    id = str | None,
+    # A package db with this unit: one of its own for a library we built.
     package_db = Artifact,
     # What the registration in the package db refers to: interface files,
     # libraries, headers.
     artifacts = list[Artifact],
     # Where the data-files of its package are, for the sake of Paths_<pkg>:
-    # the name of the environment variable and its value.
-    data_dir = (str, cmd_args),
+    # the name of the environment variable and its value. None for a unit we
+    # did not build.
+    data_dir = [(str, cmd_args), None],
 )
 
 def _project_package_db(unit: CabalUnit) -> cmd_args:
@@ -73,13 +76,15 @@ CabalLibraryInfo = provider(
     doc = "A library that can be listed in build-depends.",
     # @unsorted-dict-items
     fields = {
-        # Package name.
-        "name": provider_field(str),
+        # Package name. None for a unit only known by its id (see
+        # root//rules/haskell:unit.bzl).
+        "name": provider_field(str | None),
         # None for the main library, the name of the sublibrary otherwise.
         "lib_name": provider_field(str | None, default = None),
         # Resolves to CabalUnitInfo
         "unit": provider_field(DynamicValue),
-        # The units built from source this library needs, itself included.
+        # The units this library needs that are not in the package db of the
+        # compiler, itself included.
         "units": provider_field(CabalUnitTSet),
     },
 )

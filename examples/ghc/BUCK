@@ -1,10 +1,10 @@
-load("@root//rules/haskell/cabal:defs.bzl", "cabal_toolchain_library")
+load("@root//rules/haskell:defs.bzl", "haskell_unit")
 
 # The libraries that come with GHC, for the examples to depend on. Which
 # version one gets depends on the toolchain.
 
 [
-    cabal_toolchain_library(
+    haskell_unit(
         name = name,
         visibility = ["PUBLIC"],
     )
