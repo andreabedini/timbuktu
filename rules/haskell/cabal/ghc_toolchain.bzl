@@ -1,12 +1,17 @@
 """
-The GHC toolchain used by the cabal_simple rules.
+The GHC toolchain.
+
+One toolchain serves the cabal_simple rules, the plan interpreter and the
+Haskell rules of the prelude, so that they all use the same compiler. The
+first two read GhcToolchainInfo, the prelude HaskellToolchainInfo.
 
 Cabal's configure step asks the compiler what it is and what it comes with
 (`ghc --numeric-version`, `ghc-pkg dump`). We do the same, and since the answer
 is only known after running those commands, it is exposed as a dynamic value.
 """
 
-load("@toolchains//ghcup:defs.bzl", "GhcDistributionInfo")
+load("@prelude//haskell:toolchain.bzl", "HaskellPlatformInfo", "HaskellToolchainInfo")
+load("@toolchains//ghcup:defs.bzl", "GhcDistributionInfo", "host_arch")
 
 GhcPackage = record(
     id = str,
@@ -42,7 +47,6 @@ GhcToolchainInfo = provider(
         "ghc": provider_field(RunInfo),
         "ghc_pkg": provider_field(RunInfo),
         "hsc2hs": provider_field(RunInfo),
-        "ar": provider_field(RunInfo),
         # The version of GHC when it is known without running it, i.e. for a
         # binary distribution. The name of a shared library has it in it, and
         # the prelude wants file names during analysis (see prelude.bzl).
@@ -134,8 +138,11 @@ def ghc_toolchain_providers(
         ghc: RunInfo,
         ghc_pkg: RunInfo,
         hsc2hs: RunInfo,
-        ar: RunInfo,
-        static_version: str | None = None) -> list[Provider]:
+        haddock: RunInfo,
+        platform: str,
+        static_version: str | None = None,
+        default_outputs: list[Artifact] = [],
+        ghci: dict[str, typing.Any] = {}) -> list[Provider]:
     version = _capture(ctx, "version", cmd_args(ghc, "--numeric-version"))
     global_package_db = _capture(
         ctx,
@@ -143,15 +150,36 @@ def ghc_toolchain_providers(
         cmd_args(ghc_pkg, "dump", "--global", "--expand-pkgroot"),
     )
     return [
-        DefaultInfo(sub_targets = {
-            "global-package-db": [DefaultInfo(default_output = global_package_db)],
-            "version": [DefaultInfo(default_output = version)],
-        }),
+        DefaultInfo(
+            default_outputs = default_outputs,
+            sub_targets = {
+                "global-package-db": [DefaultInfo(default_output = global_package_db)],
+                "version": [DefaultInfo(default_output = version)],
+            },
+        ),
+        # What the Haskell rules of the prelude know a toolchain by.
+        HaskellToolchainInfo(
+            compiler = ghc,
+            packager = ghc_pkg,
+            linker = ghc,
+            haddock = haddock,
+            compiler_flags = [],
+            linker_flags = [],
+            # NOTE: without it haskell_haddock passes the options meant for
+            # GHC to haddock as they are, and no sources.
+            use_argsfile = True,
+            # haskell_ide wants these as paths.
+            ghci_binutils_path = ctx.attrs.binutils,
+            ghci_cc_path = ctx.attrs.cc,
+            ghci_cpp_path = ctx.attrs.cpp,
+            ghci_cxx_path = ctx.attrs.cxx,
+            **ghci
+        ),
+        HaskellPlatformInfo(name = platform),
         GhcToolchainInfo(
             ghc = ghc,
             ghc_pkg = ghc_pkg,
             hsc2hs = hsc2hs,
-            ar = ar,
             version = static_version,
             dynamic = ctx.actions.dynamic_output_new(_ghc_dynamic_info(
                 version = version,
@@ -166,16 +194,25 @@ def _system_ghc_toolchain_impl(ctx: AnalysisContext) -> list[Provider]:
         ghc = RunInfo(args = [ctx.attrs.ghc]),
         ghc_pkg = RunInfo(args = [ctx.attrs.ghc_pkg]),
         hsc2hs = RunInfo(args = [ctx.attrs.hsc2hs]),
-        ar = RunInfo(args = [ctx.attrs.ar]),
+        haddock = RunInfo(args = [ctx.attrs.haddock]),
+        platform = host_arch(),
     )
 
+# Where the C toolchain is, for haskell_ghci and haskell_ide.
+_c_tools_attrs = {
+    "binutils": attrs.string(default = "/usr/bin"),
+    "cc": attrs.string(default = "/usr/bin/gcc"),
+    "cpp": attrs.string(default = "/usr/bin/cpp"),
+    "cxx": attrs.string(default = "/usr/bin/g++"),
+}
+
 system_ghc_toolchain = rule(
-    doc = "Use the GHC found in PATH. Not hermetic.",
+    doc = "Use the GHC found in PATH. Not hermetic, and without what haskell_ghci needs.",
     impl = _system_ghc_toolchain_impl,
-    attrs = {
-        "ar": attrs.string(default = "ar"),
+    attrs = _c_tools_attrs | {
         "ghc": attrs.string(default = "ghc"),
         "ghc_pkg": attrs.string(default = "ghc-pkg"),
+        "haddock": attrs.string(default = "haddock"),
         "hsc2hs": attrs.string(default = "hsc2hs"),
     },
     is_toolchain_rule = True,
@@ -183,32 +220,50 @@ system_ghc_toolchain = rule(
 
 def _bindist_ghc_toolchain_impl(ctx: AnalysisContext) -> list[Provider]:
     bindist = ctx.attrs.distribution[DefaultInfo].default_outputs[0]
-    info = ctx.attrs.distribution.get(GhcDistributionInfo)
+    info = ctx.attrs.distribution[GhcDistributionInfo]
     return ghc_toolchain_providers(
         ctx,
         ghc = RunInfo(args = [bindist.project("bin/ghc")]),
         ghc_pkg = RunInfo(args = [bindist.project("bin/ghc-pkg")]),
         hsc2hs = RunInfo(args = [bindist.project("bin/hsc2hs")]),
-        ar = RunInfo(args = [ctx.attrs.ar]),
-        static_version = info.version if info else None,
+        haddock = RunInfo(args = [bindist.project("bin/haddock")]),
+        platform = info.arch,
+        static_version = info.version,
+        default_outputs = [bindist],
+        # haskell_ghci wants these as dependencies, not as commands.
+        ghci = {
+            "ghci_ghc_path": ctx.attrs.distribution.sub_target("bin/ghc"),
+            "ghci_iserv_path": ctx.attrs.distribution.sub_target("bin/ghc-iserv"),
+            "ghci_iserv_prof_path": ctx.attrs.distribution.sub_target("bin/ghc-iserv-prof"),
+            "ghci_iserv_template": ctx.attrs.ghci_iserv_template,
+            "ghci_lib_path": ctx.attrs.distribution.sub_target("lib"),
+            "ghci_packager": ctx.attrs.distribution.sub_target("bin/ghc-pkg"),
+            "ghci_script_template": ctx.attrs.ghci_script_template,
+            "script_template_processor": ctx.attrs._script_template_processor,
+        } if ctx.attrs.ghci_script_template else {},
     )
 
 bindist_ghc_toolchain = rule(
     doc = "Use an unpacked GHC binary distribution, e.g. one from toolchains//ghcup.",
     impl = _bindist_ghc_toolchain_impl,
-    attrs = {
-        "ar": attrs.string(default = "ar"),
-        "distribution": attrs.exec_dep(),
+    attrs = _c_tools_attrs | {
+        "distribution": attrs.exec_dep(providers = [GhcDistributionInfo]),
+        # The scripts haskell_ghci makes its own from, see toolchains//ghci.
+        "ghci_iserv_template": attrs.option(attrs.source(), default = None),
+        "ghci_script_template": attrs.option(attrs.source(), default = None),
+        "_script_template_processor": attrs.default_only(attrs.exec_dep(
+            providers = [RunInfo],
+            default = "prelude//haskell/tools:script_template_processor",
+        )),
     },
     is_toolchain_rule = True,
 )
 
-# Which toolchain to use can be changed in .buckconfig or on the command line:
-#
-#   buck2 build --config cabal.ghc_toolchain=toolchains//:ghc-9.12.2-bindist ...
+# The same target the Haskell rules of the prelude take their toolchain from.
+# What it is an alias of is decided in toolchains//BUCK.
 ghc_toolchain_attrs = {
     "_ghc": attrs.toolchain_dep(
-        default = read_root_config("cabal", "ghc_toolchain", "toolchains//:ghc"),
+        default = "toolchains//:haskell",
         providers = [GhcToolchainInfo],
     ),
 }

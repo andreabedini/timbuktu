@@ -86,6 +86,14 @@ def _get_distribution(
 ## GHC
 ##
 
+GHC_DISTRIBUTION_SUB_TARGETS = [
+    "bin/ghc",
+    "bin/ghc-iserv",
+    "bin/ghc-iserv-prof",
+    "bin/ghc-pkg",
+    "lib",
+]
+
 def download_ghc_distribution(
         name: str,
         version: str,
@@ -106,6 +114,8 @@ def download_ghc_distribution(
         urls = [bindist.url],
         sha256 = bindist.sha256,
         strip_prefix = bindist.subdir,
+        # What haskell_ghci wants as targets of their own.
+        sub_targets = GHC_DISTRIBUTION_SUB_TARGETS,
     )
 
     ghc_distribution(

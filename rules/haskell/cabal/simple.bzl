@@ -40,6 +40,8 @@ have a different idea of what a library is: see prelude.bzl.
 """
 
 load("@prelude//:paths.bzl", "paths")
+load("@prelude//cxx:cxx_toolchain_types.bzl", "CxxToolchainInfo")
+load("@prelude//decls:toolchains_common.bzl", "toolchains_common")
 load(":ghc_toolchain.bzl", "GhcDynamicInfo", "GhcToolchainInfo", "ghc_toolchain_attrs")
 load(":macros.bzl", "CabalMacroContext", "Versioned", "cabal_macros_gen")
 load(":paths.bzl", "PathsModuleCtx", "mk_package_info_module", "mk_paths_module")
@@ -596,7 +598,7 @@ def _build_library(actions: AnalysisActions, arg, outputs: dict[str, OutputArtif
 
         actions.run(
             cmd_args(
-                tc.ar,
+                arg.ar,
                 "rcs",
                 outputs["static_lib"],
                 [cmd_args(objs, format = "{}/" + o + ".o") for o in module_objs],
@@ -832,6 +834,9 @@ def _cabal_simple_library_impl(ctx: AnalysisContext) -> list[Provider]:
         modules = modules,
         outputs = outputs,
         lib_name = lib_name,
+        # The archiver is the one the C and C++ rules use, and the Haskell
+        # rules of the prelude with them.
+        ar = ctx.attrs._cxx_toolchain[CxxToolchainInfo].linker_info.archiver,
         exposed_modules = ctx.attrs.exposed_modules,
         reexported_modules = ctx.attrs.reexported_modules,
         visibility = ctx.attrs.library_visibility or ("private" if lib_name else "public"),
@@ -889,6 +894,7 @@ cabal_simple_library = rule(
         # description: cabal-install makes one up, and so do we when it is
         # not given (see _unit_id).
         "unit_id": attrs.option(attrs.string(), default = None),
+        "_cxx_toolchain": toolchains_common.cxx(),
         "exposed_modules": _strings(),
         "reexported_modules": _strings(),
         "signatures": _strings(),

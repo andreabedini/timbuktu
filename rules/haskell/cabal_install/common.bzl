@@ -48,7 +48,7 @@ load(
     "create_shared_libraries",
     "merge_shared_libraries",
 )
-load("@toolchains//ghcup:defs.bzl", "GhcDistributionInfo")
+load("//rules/haskell/cabal:ghc_toolchain.bzl", "GhcToolchainInfo")
 
 CabalPackageInfo = provider(
     doc = "TODO",
@@ -91,7 +91,7 @@ ExeDependInfo = provider(
 
 haskell_toolchain_attrs = {
     "_haskell_toolchain": attrs.toolchain_dep(
-        providers = [HaskellToolchainInfo, HaskellPlatformInfo, GhcDistributionInfo],
+        providers = [HaskellToolchainInfo, HaskellPlatformInfo, GhcToolchainInfo],
         default = "toolchains//:haskell",
     ),
 }
@@ -221,7 +221,10 @@ def mkInstallDirs(actions) -> InstallDirs:
     )
 
 def mkProviders(ctx, package_db, installdirs) -> list[Provider]:
-    ghc_version = ctx.attrs._haskell_toolchain[GhcDistributionInfo].version
+    # NOTE: the name of the shared library has the version of GHC in it,
+    # which is not known here for the GHC in PATH. The archive is all the
+    # prelude gets then.
+    ghc_version = ctx.attrs._haskell_toolchain[GhcToolchainInfo].version
 
     haskell_infos = []
     for dep in ctx.attrs.deps:
@@ -237,7 +240,7 @@ def mkProviders(ctx, package_db, installdirs) -> list[Provider]:
     for link_style in LinkStyle:
         libs = []
         prof_libs = []
-        if link_style == LinkStyle("shared"):
+        if link_style == LinkStyle("shared") and ghc_version:
             # FIXME extension
             libs.append(installdirs.libdir.project("libHS{}-ghc{}.so".format(ctx.attrs.unit_id, ghc_version)))
         else:
@@ -285,7 +288,7 @@ def mkProviders(ctx, package_db, installdirs) -> list[Provider]:
                 lib = lib,
             )
 
-        if link_style == LinkStyle("shared"):
+        if link_style == LinkStyle("shared") and ghc_version:
             linkables = [shared_linkable(lib) for lib in libs]
             prof_linkables = [shared_linkable(lib) for lib in prof_libs]
         else:
@@ -347,9 +350,12 @@ def mkProviders(ctx, package_db, installdirs) -> list[Provider]:
         exported_deps = [dep[MergedLinkInfo] for dep in ctx.attrs.deps if MergedLinkInfo in dep],
     )
 
-    soname = "libHS{}-ghc{}.so".format(ctx.attrs.unit_id, ghc_version)
-    so = installdirs.libdir.project(soname)
-    shared_libs = create_shared_libraries(ctx, {soname: LinkedObject(output = so, unstripped_output = so)})
+    solibs = {}
+    if ghc_version:
+        soname = "libHS{}-ghc{}.so".format(ctx.attrs.unit_id, ghc_version)
+        so = installdirs.libdir.project(soname)
+        solibs[soname] = LinkedObject(output = so, unstripped_output = so)
+    shared_libs = create_shared_libraries(ctx, solibs)
     shared_library_info = merge_shared_libraries(
         ctx.actions,
         shared_libs,

@@ -1,0 +1,11 @@
+#!/bin/sh
+# What `buck2 run` executes for a haskell_ghci target. The prelude fills in
+# the <macros> (prelude//haskell/tools/script_template_processor.py); the
+# files it refers to are next to this script.
+#
+# haskell_ghci loads the libraries of the prelude built the static way. The
+# GHC of a binary distribution is linked dynamically and can only load code
+# built the dynamic way, so the code runs in an external interpreter which
+# is not.
+DIR=$(cd "$(dirname "$0")" && pwd)
+exec <user_ghci_path> --interactive -package-env=- -fexternal-interpreter -pgmi "${DIR}/<iserv_path>" <package_dbs> <exposed_packages> <compiler_flags> -ghci-script "${DIR}/<start_ghci>" <srcs> "$@"

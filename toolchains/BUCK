@@ -1,11 +1,11 @@
+load("@prelude//tests:test_toolchain.bzl", "noop_test_toolchain")
 load("@prelude//toolchains:cxx.bzl", "system_cxx_toolchain")
 load("@prelude//toolchains:genrule.bzl", "system_genrule_toolchain")
 load("@prelude//toolchains:python.bzl", "system_python_bootstrap_toolchain", "system_python_toolchain")
-load("defs.bzl", "cabal_toolchain", "haskell_toolchain", "something")
-load("ghcup/defs.bzl", "download_cabal_distribution", "download_ghc_distribution")
+load("@prelude//toolchains:remote_test_execution.bzl", "remote_test_execution_toolchain")
 load("@root//rules/haskell/cabal:ghc_toolchain.bzl", "bindist_ghc_toolchain", "system_ghc_toolchain")
-
-something(name = "something")
+load("defs.bzl", "cabal_toolchain")
+load("ghcup/defs.bzl", "download_cabal_distribution", "download_ghc_distribution")
 
 system_cxx_toolchain(
     name = "cxx",
@@ -27,14 +27,46 @@ system_python_bootstrap_toolchain(
     visibility = ["PUBLIC"],
 )
 
+# For sh_test
+noop_test_toolchain(
+    name = "test",
+    visibility = ["PUBLIC"],
+)
+
+remote_test_execution_toolchain(
+    name = "remote_test_execution",
+    visibility = ["PUBLIC"],
+)
+
 download_ghc_distribution(
     name = "ghc-9.12.2",
     version = "9.12.2",
 )
 
-haskell_toolchain(
+# The GHC of every Haskell rule: the ones of the prelude, the plan interpreter
+# and the cabal_simple rules (see root//rules/haskell/cabal:ghc_toolchain.bzl).
+# The default is the binary distribution. To use the GHC in PATH instead:
+#
+#   buck2 build --config haskell.toolchain=toolchains//:ghc ...
+toolchain_alias(
     name = "haskell",
+    actual = read_root_config("haskell", "toolchain", "toolchains//:ghc-9.12.2-bindist"),
+    visibility = ["PUBLIC"],
+)
+
+bindist_ghc_toolchain(
+    name = "ghc-9.12.2-bindist",
     distribution = ":ghc-9.12.2",
+    # NOTE: the prelude makes the name of an action out of these file names,
+    # which rules out a dot.
+    ghci_iserv_template = "ghci/iserv_script",
+    ghci_script_template = "ghci/ghci_script",
+    visibility = ["PUBLIC"],
+)
+
+# Whatever GHC is in PATH. Not hermetic.
+system_ghc_toolchain(
+    name = "ghc",
     visibility = ["PUBLIC"],
 )
 
@@ -46,20 +78,5 @@ download_cabal_distribution(
 cabal_toolchain(
     name = "cabal",
     distribution = ":cabal-3.14.2.0",
-    visibility = ["PUBLIC"],
-)
-
-# The toolchain of the cabal_simple rules (see root//rules/haskell/cabal).
-# This one uses whatever GHC is in PATH.
-system_ghc_toolchain(
-    name = "ghc",
-    visibility = ["PUBLIC"],
-)
-
-# The same from a binary distribution, to select with
-# `--config cabal.ghc_toolchain=toolchains//:ghc-9.12.2-bindist`
-bindist_ghc_toolchain(
-    name = "ghc-9.12.2-bindist",
-    distribution = ":ghc-9.12.2",
     visibility = ["PUBLIC"],
 )

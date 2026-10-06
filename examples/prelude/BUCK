@@ -1,24 +1,58 @@
-load("@prelude//rules.bzl", "haskell_library")
-load("//rules/haskell:defs.bzl", "haskell_binary")
+load("@prelude//rules.bzl", "haskell_ghci", "haskell_haddock", "haskell_ide", "sh_test")
+load("//rules/haskell:defs.bzl", "haskell_binary", "haskell_library")
 
-# A library and an executable built by the Haskell rules of the prelude, on
-# top of a library built by the cabal_simple rules.
-#
-# Both have to use the same compiler. The prelude rules use toolchains//:haskell,
-# so the cabal_simple library has to be built with the same binary distribution:
-#
-#   buck2 run --config cabal.ghc_toolchain=toolchains//:ghc-9.12.2-bindist //examples/prelude:exe
+# The Haskell rules of the prelude on top of a library built by the
+# cabal_simple rules.
 
+# NOTE: prelude//haskell/ide/ide.bxl only reads `srcs` given as a dictionary.
 haskell_library(
     name = "lib",
-    srcs = ["Report.hs"],
+    srcs = {"Report.hs": "Report.hs"},
+    toolchain_libs = ["base"],
     deps = ["//examples/hello:lib"],
 )
 
 haskell_binary(
     name = "exe",
-    srcs = ["Main.hs"],
+    srcs = {"Main.hs": "Main.hs"},
     link_style = "static",
     toolchain_libs = ["base"],
     deps = [":lib"],
+)
+
+# buck2 run //examples/prelude:ghci
+haskell_ghci(
+    name = "ghci",
+    deps = [":lib"],
+)
+
+sh_test(
+    name = "ghci-test",
+    args = ["$(location :ghci)"],
+    test = "tests/ghci.sh",
+)
+
+haskell_haddock(
+    name = "haddock",
+    deps = [":lib"],
+)
+
+sh_test(
+    name = "haddock-test",
+    args = ["$(location :haddock)"],
+    test = "tests/haddock.sh",
+)
+
+# A project for an IDE. The rule does nothing, a bxl script reads its
+# attributes:
+#
+#   buck2 bxl prelude//haskell/ide/ide.bxl:ide_for_file -- --bios true --file root//examples/prelude/Report.hs
+haskell_ide(
+    name = "ide",
+    deps_query = "kind('haskell_(binary|library)', deps(//examples/prelude:exe))",
+    include_projects = [
+        ":exe",
+        ":lib",
+    ],
+    link_style = "static",
 )

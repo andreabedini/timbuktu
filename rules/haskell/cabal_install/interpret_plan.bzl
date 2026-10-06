@@ -21,7 +21,7 @@ def interpret_plan(name: str, planjson: str):
     plan = json.decode(planjson)
     units = map(_normalise_legacy_unit, plan["install-plan"])
 
-    # NOTE: every unit uses the default toolchain (toolchains//:haskell), which
+    # NOTE: every unit uses the toolchain (toolchains//:haskell), which
     # has to be the compiler the plan was made with (plan["compiler-id"]).
 
     # Pre-existing units come from the compiler's global package db and are

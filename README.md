@@ -32,8 +32,6 @@ $ mise install
 You also need:
 
 - a C compiler and a linker, since buck2 uses the ones on your system;
-- a `ghc` in path for the targets in `examples/` (see below for how to use the
-  downloaded one instead);
 - `curl`, `jq` and a Hackage index downloaded with `cabal update`, only to
   make a build plan (e.g. `buck2 build //projects/shake:plan`).
 
@@ -49,9 +47,9 @@ The last one builds shake and everything it depends on. Each unit of the build
 plan is a target named after its unit-id, `buck2 targets //projects/shake:`
 lists them.
 
-The rules in `rules/haskell/cabal` use the `ghc` in path by default. To use the
-downloaded one pass
-`--config cabal.ghc_toolchain=toolchains//:ghc-9.12.2-bindist`.
+Everything is built with a GHC that buck2 downloads. To use the `ghc` in path
+instead pass `--config haskell.toolchain=toolchains//:ghc`; the build plan of
+shake is made for the downloaded one and will not build.
 
 # Notes and rants
 

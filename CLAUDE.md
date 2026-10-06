@@ -35,13 +35,14 @@ only in the history.
 
 The repository runs on the upstream prelude bundled with buck2, with a
 downloaded GHC 9.12.2. It used to depend on the Mercury fork of the prelude;
-that dependency is gone.
+that dependency is gone. There is one GHC toolchain, `toolchains//:haskell`,
+for the prelude rules, the plan interpreter and the `cabal_simple` rules.
 
 Built and run after the cleanup:
 
 - Prelude rules: `//:main`, `//rules/haskell/helpers:parse_fields`,
   `//rules/haskell/cabal_install/helpers:setup_simple` and `:setup_configure`,
-  `//tmp/alex-3.5.1.0:alex` (prints its version), `toolchains//:something`.
+  `//tmp/alex-3.5.1.0:alex` (prints its version).
 - `cabal_simple` rules: `//examples/hello:exe` with both toolchains,
   `//examples/hello:hello-test`, `//examples/lexer:exe`, and
   `//examples/cparse:exe` (built, not run), which pulls in alex, happy,
@@ -56,11 +57,18 @@ Built and run after the cleanup:
   repository does it.
 - Prelude rules on top of the `cabal_simple` rules: `//examples/prelude:exe`,
   a `haskell_binary` depending on `//examples/prelude:lib`, a
-  `haskell_library` which depends on `//examples/hello:lib`, with the bindist
-  toolchain (it cannot work with another GHC, see "Commands"). It is linked
-  with the `static` style; `static_pic` and `shared` (with `-dynamic` in
-  `linker_flags`) were checked with throwaway targets, and so was a
-  `haskell_binary` depending on `//examples/hello:lib` directly.
+  `haskell_library` which depends on `//examples/hello:lib`, with both
+  toolchains. It is linked with the `static` style; `static_pic` and `shared`
+  (with `-dynamic` in `linker_flags`) were checked with throwaway targets, and
+  so was a `haskell_binary` depending on `//examples/hello:lib` directly.
+- The other Haskell rules of the prelude, in `examples/prelude` and with the
+  bindist toolchain: `:ghci` (`haskell_ghci`; `:ghci-test` loads the library
+  in it and calls it), `:haddock` (`haskell_haddock`; `:haddock-test` looks at
+  what it wrote) and `:ide` (`haskell_ide`; `tests/ide.sh`, run by hand, gives
+  what `prelude//haskell/ide/ide.bxl` answers to GHC).
+- With the GHC in `PATH` (9.12.4), `--config haskell.toolchain=toolchains//:ghc`:
+  `//:main`, `//examples/hello:exe`, `:hello-test`, `//examples/prelude:exe`,
+  `:haddock-test`, and the analysis of a unit of the shake plan.
 
 Known broken or untested:
 
@@ -96,6 +104,18 @@ Known broken or untested:
   `ld-options` are passed on but no example has them. A library built with
   the GHC in `PATH` has no shared object as far as the prelude knows, and its
   archive is used for the `shared` link style too.
+- With the GHC in `PATH`: the shake plan does not build (it names the units
+  of GHC 9.12.2), `haskell_ghci` fails analysis inside the prelude with an
+  error about `NoneType` (that toolchain has nothing of what it needs), and
+  the IDE script is untested (`tests/ide.sh` takes GHC from the bindist).
+- `haskell_ghci` with `srcs`: the prelude computes their paths relative to a
+  cell called `fbcode` and fails analysis in any other. `//examples/prelude:ghci`
+  only has `deps`.
+- `prelude//haskell/ide/ide.bxl` was only run on a file of a project made of
+  prelude targets, with HLS nowhere in sight. It takes a file as
+  `root//path`, reads `srcs` only when they are a dictionary, and leaves out
+  the global package db, which the wrappers in `rules/haskell/defs.bzl` put
+  back.
 
 ## Commands
 
@@ -103,10 +123,12 @@ Known broken or untested:
 mise install                       # buck2 (latest prerelease), buildifier, lefthook
 buck2 targets //projects/shake:    # what parses in one package
 buck2 build //:main                # smallest Haskell target
-buck2 run //examples/hello:exe     # cabal_simple rules, GHC from PATH
+buck2 run //examples/hello:exe     # cabal_simple rules
 buck2 test //examples/hello:hello-test
-# prelude rules on top of a cabal_simple library: both need the same GHC
-buck2 run --config cabal.ghc_toolchain=toolchains//:ghc-9.12.2-bindist //examples/prelude:exe
+buck2 run //examples/prelude:exe   # prelude rules on top of a cabal_simple library
+buck2 test //examples/prelude:     # haskell_ghci and haskell_haddock
+buck2 run //examples/prelude:ghci  # a GHCi with //examples/prelude:lib
+sh examples/prelude/tests/ide.sh   # what the IDE script answers, given to GHC
 buck2 build //projects/shake:plan --show-output   # cabal dry-run -> plan.json
 buck2 build toolchains//:haskell   # downloads the GHC bindist (about 290 MB)
 buildifier BUCK path/to/file.bzl   # format Starlark
@@ -117,20 +139,22 @@ Units of an interpreted plan are targets named by unit-id, for example
 `//projects/shake:shake-0.19.9-e-shake-<hash>`; `buck2 run <target> -- --version`
 runs an executable unit.
 
-The `cabal_simple` rules take their compiler from the `cabal.ghc_toolchain`
-config value. The default, `toolchains//:ghc`, is whatever GHC is in `PATH`;
-pass `--config cabal.ghc_toolchain=toolchains//:ghc-9.12.2-bindist` for the
-downloaded one. The prelude rules always use the downloaded one
-(`toolchains//:haskell`), so a prelude target that depends on a `cabal_simple`
-library only builds with that option; with another GHC the compiler rejects
-the library's registration ("unusable due to missing dependencies").
+Every Haskell rule takes its compiler from `toolchains//:haskell`, an alias
+of what the `haskell.toolchain` config value names. The default is
+`toolchains//:ghc-9.12.2-bindist`, the downloaded GHC; pass
+`--config haskell.toolchain=toolchains//:ghc` for whatever GHC is in `PATH`.
+The choice is for the whole build: two compilers in one build do not mix (a
+library built by one is "unusable due to missing dependencies" for the
+other).
 
 `//...` needs `.buckconfig.local` (see "Layout"): without it buck2 walks into
 `.jj/` and `.claude/worktrees/`, which hold other copies of the tree, and
 fails to parse them. The file is not under version control, so a new checkout
 or workspace has to be given its own.
 
-There are no tests of the rules; "does it build and run" is the check.
+"Does it build and run" is the check for the rules. The few tests there are
+(`//examples/hello:hello-test`, `//examples/prelude:ghci-test` and
+`:haddock-test`) are examples of test rules more than a test suite.
 
 `toolchains/ghcup/metadata.bzl` (about 16.8k lines) is generated, never edit it
 by hand:
@@ -153,22 +177,21 @@ To refresh a project's plan: build `:plan`, then replace the JSON inside the
 - `.buckconfig.local` — `[project] ignore = .git, .jj, .claude`, so that
   buck2 does not look for packages there. It is ignored by Andrea's global
   git ignore file (`~/.config/git/ignore`), not by the repository's.
-- `toolchains/` — `BUCK` wires system cxx/python/genrule toolchains plus:
-  - `:haskell` (GHC 9.12.2) and `:cabal` (3.14.2.0), for the prelude rules and
-    the plan interpreter. `ghcup/defs.bzl` picks a bindist URL and hash out of
-    GHCup's metadata for the host OS/arch and wraps it in `http_archive`.
-    `defs.bzl` builds `HaskellToolchainInfo` from the unpacked bindist
-    (`linker` is GHC as well: the prelude's `haskell_library` does not pass
-    analysis without one) and
-    exposes the global package db as a dynamic value (`HaskellPackageDbInfo`,
-    id/name/version per unit); `something` is a debug rule that prints it.
-    Nothing else consumes that value: the `cabal_simple` rules have their own,
-    richer one (`GhcDynamicInfo`).
-  - `:ghc` and `:ghc-9.12.2-bindist`, for the `cabal_simple` rules (see
-    `rules/haskell/cabal/ghc_toolchain.bzl`). The first uses the GHC in
-    `PATH`, the second the same bindist as `:haskell`.
-- `rules/haskell/defs.bzl` — `haskell_binary` wrapper that adds a
-  `toolchain_libs` attribute (see "Design rules").
+- `toolchains/` — `BUCK` wires system cxx/python/genrule toolchains, the
+  no-op test toolchains `sh_test` asks for, plus:
+  - `:haskell`, the GHC of every Haskell rule: a `toolchain_alias` of
+    `:ghc-9.12.2-bindist` or, with `--config haskell.toolchain=toolchains//:ghc`,
+    of `:ghc` (the GHC in `PATH`). Both are instances of the rules in
+    `rules/haskell/cabal/ghc_toolchain.bzl`. `ghcup/defs.bzl` picks a bindist
+    URL and hash out of GHCup's metadata for the host OS/arch and wraps it in
+    `http_archive`.
+  - `:cabal` (3.14.2.0), cabal-install for the `plan` rule; `defs.bzl` has its
+    rule.
+  - `ghci/` — the two script templates `haskell_ghci` needs from the
+    toolchain. The prelude does not come with any. Their names have no dot
+    because the prelude makes an action category out of them.
+- `rules/haskell/defs.bzl` — `haskell_binary` and `haskell_library` wrappers
+  that add a `toolchain_libs` attribute (see "Design rules").
 - `rules/haskell/hackage.bzl` — `hackage_package`: `http_archive` of an sdist
   from Hackage, no cabal-file revisions. Used by `examples/`.
 - `rules/haskell/helpers/` — `parse_fields.hs` prints the fields of a `.cabal`
@@ -224,10 +247,15 @@ To refresh a project's plan: build `:plan`, then replace the JSON inside the
     `CabalUnitInfo` plus a `CabalUnitTSet` of package dbs and artifacts),
     `CabalExecutableInfo`. `CabalPackageInfo` here is not the provider of the
     same name in `cabal_install/common.bzl`.
-  - `ghc_toolchain.bzl` — `GhcToolchainInfo`, with the GHC version and the
-    global package db (`ghc-pkg dump`) as a dynamic value. The bindist
-    toolchain also knows its version during analysis (`version`), which is
-    what it takes to name a shared library for the prelude.
+  - `ghc_toolchain.bzl` — the toolchain rules, `bindist_ghc_toolchain` and
+    `system_ghc_toolchain`. Despite where the file is they serve every rule
+    set: they return `GhcToolchainInfo`, with the GHC version and the global
+    package db (`ghc-pkg dump`) as a dynamic value, for the `cabal_simple`
+    rules and the plan interpreter, and the prelude's `HaskellToolchainInfo`
+    and `HaskellPlatformInfo`. The bindist toolchain also knows its version
+    during analysis (`version`), which is what it takes to name a shared
+    library for the prelude, and is the only one with what `haskell_ghci`
+    needs.
   - `macros.bzl`, `paths.bzl` — `cabal_macros.h`, `Paths_<pkg>` and
     `PackageInfo_<pkg>`, after Cabal's templates. `paths.bzl` also has the
     `cabal_paths_module` rule, used by `tmp/alex-3.5.1.0/BUCK`.
@@ -240,8 +268,10 @@ To refresh a project's plan: build `:plan`, then replace the JSON inside the
   (build-tool-depends on alex), `alex`, `happy`, `happy-lib` and `language-c`
   from their Hackage sdists, `cparse` (an executable using language-c), and
   `ghc` (the libraries that come with the compiler). `prelude` is not a
-  transcription: it is a `haskell_library` and a `haskell_binary` of the
-  prelude on top of the library of `hello`.
+  transcription: it has one target for each Haskell rule of the prelude
+  (`haskell_library`, `haskell_binary`, `haskell_ghci`, `haskell_haddock`,
+  `haskell_ide`) on top of the library of `hello`, and the scripts that check
+  the last three in `tests/`.
 - `projects/<name>/` — a `cabal.project` pinned by `index-state`, plus a `BUCK`
   with a `plan(...)` target and, where a plan has been pasted in, an
   `interpret_plan(...)` call. The embedded plans make some `BUCK` files
@@ -257,12 +287,22 @@ To refresh a project's plan: build `:plan`, then replace the JSON inside the
   Cabal choose a unit by name there. Both the global package db and
   cabal-install plans speak unit-ids.
 - Hand-written targets name compiler-provided packages with `toolchain_libs`
-  on the `haskell_binary` from `rules/haskell/defs.bzl`. It becomes
-  `-hide-all-packages -package <name>` when compiling and `-package <name>`
-  when linking. The upstream prelude has no equivalent: without it, packages
-  from the global db are visible to the compiler but missing at link time.
-  This selects by name, not unit-id; doing better needs the dynamic package db
-  value.
+  on the `haskell_binary` and `haskell_library` from `rules/haskell/defs.bzl`.
+  It becomes `-hide-all-packages -package <name>` when compiling and
+  `-package <name>` when linking. The upstream prelude has no equivalent:
+  without it, packages from the global db are visible to the compiler but
+  missing at link time. This selects by name, not unit-id; doing better needs
+  the dynamic package db value.
+- What the prelude's Haskell rules need from a toolchain beyond the compiler
+  is not written down anywhere. `haskell_library` needs `linker`.
+  `haskell_haddock` needs `use_argsfile`, or it passes GHC's options to
+  haddock as they are. `haskell_ide` needs the `ghci_*_path` of the C tools.
+  `haskell_ghci` needs two script templates, the GHC programs as dependencies
+  (subtargets of the bindist archive) and
+  `prelude//haskell/tools:script_template_processor`. It loads prelude
+  libraries built the static way, which a dynamically linked GHC can only do
+  in an external interpreter: that is what `toolchains/ghci/ghci_script` asks
+  for.
 - The upstream Haskell rules do the linking themselves. A dependency hands
   over its archives and shared objects through `MergedLinkInfo`,
   `SharedLibraryInfo` and `LinkableGraph`; its package db is only used to find
@@ -310,11 +350,12 @@ To refresh a project's plan: build `:plan`, then replace the JSON inside the
   (`cd <srcdir>` then a command made relative with `relative_to = srcdir`) and
   declare inputs/outputs through `hidden`. The `cabal_simple` rules use
   `tools/run.sh` for the same purpose.
-- In the plan interpreter and the hand-written targets, tools come from the
-  toolchain (`HaskellToolchainInfo.compiler`, `.packager`), not from `PATH`.
-  The `cabal_simple` rules do not hold to this yet: their default toolchain is
-  the GHC in `PATH`, `ar` is always taken from `PATH`, and a preprocessor that
-  is not in `build_tool_depends` is looked up in `PATH` as Cabal would.
+- Tools come from the toolchain (`HaskellToolchainInfo.compiler`,
+  `.packager`, `GhcToolchainInfo`), not from `PATH`, and the archiver from the
+  cxx toolchain, as for the prelude's rules. One exception is left in the
+  `cabal_simple` rules: a preprocessor that is not in `build_tool_depends` is
+  looked up in `PATH` as Cabal would. (The system cxx toolchain and
+  `toolchains//:ghc` are of course `PATH` under another name.)
 - The `cabal_simple` rules keep Cabal's semantics (steps, flags) but
   not its file layout: no `dist` directory, no copy step, no install prefix.
   Interface files, static library and shared library are separate artifacts,
@@ -347,9 +388,9 @@ To refresh a project's plan: build `:plan`, then replace the JSON inside the
 ## Environment
 
 - `mise.toml` installs buck2, buildifier and lefthook. It sets no environment.
-- GHC, cabal and ghcup from `~/.ghcup` are on `PATH`. Builds go through
-  `toolchains//:haskell` and `toolchains//:cabal`, except for the
-  `cabal_simple` rules, which use the GHC on `PATH` unless told otherwise.
+- GHC (9.12.4), cabal and ghcup from `~/.ghcup` are on `PATH`. Builds go
+  through `toolchains//:haskell` and `toolchains//:cabal`, which are the
+  downloaded ones unless told otherwise.
 - Sibling checkouts under `../`: `buck2-prelude` (jj clone of the prelude fork,
   remotes `origin`, `MercuryTechnologies`, `upstream`; its branch
   `timbuktu-prelude` is the fork as this repository last used it, mid-2025,
