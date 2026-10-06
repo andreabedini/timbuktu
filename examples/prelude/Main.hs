@@ -1,9 +1,6 @@
 module Main (main) where
 
-import Hello (answer, embedded, spliced)
+import Report (report)
 
 main :: IO ()
-main = do
-  putStrLn ("The answer is " ++ show answer)
-  putStrLn spliced
-  putStrLn ("Embedded: " ++ embedded)
+main = mapM_ putStrLn report

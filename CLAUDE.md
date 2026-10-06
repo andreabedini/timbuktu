@@ -55,10 +55,12 @@ Built and run after the cleanup:
   `linker_flags`). This was checked with throwaway targets; no target in the
   repository does it.
 - Prelude rules on top of the `cabal_simple` rules: `//examples/prelude:exe`,
-  a `haskell_binary` depending on `//examples/hello:lib`, with the bindist
+  a `haskell_binary` depending on `//examples/prelude:lib`, a
+  `haskell_library` which depends on `//examples/hello:lib`, with the bindist
   toolchain (it cannot work with another GHC, see "Commands"). It is linked
   with the `static` style; `static_pic` and `shared` (with `-dynamic` in
-  `linker_flags`) were checked with throwaway targets.
+  `linker_flags`) were checked with throwaway targets, and so was a
+  `haskell_binary` depending on `//examples/hello:lib` directly.
 
 Known broken or untested:
 
@@ -89,9 +91,8 @@ Known broken or untested:
 - The other direction does not exist: neither a unit of a plan nor a
   `cabal_simple` component can depend on a prelude `haskell_library` (they
   need `UnitInfo` and `CabalLibraryInfo`).
-- Prelude rules depending on a `cabal_simple` library: a prelude
-  `haskell_library` as the dependent is untested (only `haskell_binary` was
-  built). The linker flags of `extra-libraries`, `extra-lib-dirs` and
+- Prelude rules depending on a `cabal_simple` library: the linker flags of
+  `extra-libraries`, `extra-lib-dirs` and
   `ld-options` are passed on but no example has them. A library built with
   the GHC in `PATH` has no shared object as far as the prelude knows, and its
   archive is used for the `shared` link style too.
@@ -239,8 +240,8 @@ To refresh a project's plan: build `:plan`, then replace the JSON inside the
   (build-tool-depends on alex), `alex`, `happy`, `happy-lib` and `language-c`
   from their Hackage sdists, `cparse` (an executable using language-c), and
   `ghc` (the libraries that come with the compiler). `prelude` is not a
-  transcription: it is a `haskell_binary` of the prelude that depends on the
-  library of `hello`.
+  transcription: it is a `haskell_library` and a `haskell_binary` of the
+  prelude on top of the library of `hello`.
 - `projects/<name>/` — a `cabal.project` pinned by `index-state`, plus a `BUCK`
   with a `plan(...)` target and, where a plan has been pasted in, an
   `interpret_plan(...)` call. The embedded plans make some `BUCK` files
