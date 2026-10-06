@@ -3,9 +3,9 @@ load("@prelude//toolchains:cxx.bzl", "system_cxx_toolchain")
 load("@prelude//toolchains:genrule.bzl", "system_genrule_toolchain")
 load("@prelude//toolchains:python.bzl", "system_python_bootstrap_toolchain", "system_python_toolchain")
 load("@prelude//toolchains:remote_test_execution.bzl", "remote_test_execution_toolchain")
-load("@root//rules/haskell/cabal:ghc_toolchain.bzl", "bindist_ghc_toolchain", "system_ghc_toolchain")
-load("defs.bzl", "cabal_toolchain")
-load("ghcup/defs.bzl", "download_cabal_distribution", "download_ghc_distribution")
+load("@root//rules/haskell:toolchain.bzl", "bindist_ghc_toolchain", "system_ghc_toolchain")
+load("@root//rules/haskell/cabal_install:cabal_toolchain.bzl", "cabal_toolchain")
+load("@root//rules/haskell/ghcup:defs.bzl", "download_cabal_distribution", "download_ghc_distribution")
 
 system_cxx_toolchain(
     name = "cxx",
@@ -44,7 +44,7 @@ download_ghc_distribution(
 )
 
 # The GHC of every Haskell rule: the ones of the prelude, the plan interpreter
-# and the cabal_simple rules (see root//rules/haskell/cabal:ghc_toolchain.bzl).
+# and the cabal_simple rules (see root//rules/haskell:toolchain.bzl).
 # The default is the binary distribution. To use the GHC in PATH instead:
 #
 #   buck2 build --config haskell.toolchain=toolchains//:ghc ...
@@ -57,10 +57,6 @@ toolchain_alias(
 bindist_ghc_toolchain(
     name = "ghc-9.12.2-bindist",
     distribution = ":ghc-9.12.2",
-    # NOTE: the prelude makes the name of an action out of these file names,
-    # which rules out a dot.
-    ghci_iserv_template = "ghci/iserv_script",
-    ghci_script_template = "ghci/ghci_script",
     visibility = ["PUBLIC"],
 )
 

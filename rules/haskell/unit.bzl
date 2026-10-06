@@ -29,16 +29,16 @@ Every rule set can depend on one, each one looking at what it understands:
 load("@prelude//haskell:library_info.bzl", "HaskellLibraryInfo", "HaskellLibraryInfoTSet", "HaskellLibraryProvider")
 load("@prelude//haskell:link_info.bzl", "HaskellLinkInfo")
 load("@prelude//linking:link_info.bzl", "LinkStyle")
+load("//rules/haskell/cabal:prelude.bzl", "prelude_library_attrs", "prelude_unit_link_providers")
+load("//rules/haskell/cabal:providers.bzl", "CabalLibraryInfo", "CabalUnit", "CabalUnitInfo", "CabalUnitTSet")
+load("//rules/haskell/cabal_install:common.bzl", "PackageConfTSet", "UnitInfo")
 load(
-    "//rules/haskell/cabal:ghc_toolchain.bzl",
+    ":toolchain.bzl",
     "GhcDynamicInfo",
     "GhcToolchainInfo",
     "ghc_packages",
     "ghc_toolchain_attrs",
 )
-load("//rules/haskell/cabal:prelude.bzl", "prelude_library_attrs", "prelude_unit_link_providers")
-load("//rules/haskell/cabal:providers.bzl", "CabalLibraryInfo", "CabalUnit", "CabalUnitInfo", "CabalUnitTSet")
-load("//rules/haskell/cabal_install:common.bzl", "PackageConfTSet", "UnitInfo")
 
 def _parse_exposed_modules(unit_id: str, text: str) -> dict[str, (str, str)]:
     """The exposed-modules of a registration: `A B` or `A, B from unit-id:C`"""

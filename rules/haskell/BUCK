@@ -1,0 +1,16 @@
+# The scripts haskell_ghci makes its own from, for the toolchain rule (see
+# toolchain.bzl). The prelude does not come with any.
+#
+# NOTE: the prelude makes the name of an action out of the names of these
+# files, which rules out a dot.
+export_file(
+    name = "ghci_script",
+    src = "ghci/ghci_script",
+    visibility = ["PUBLIC"],
+)
+
+export_file(
+    name = "iserv_script",
+    src = "ghci/iserv_script",
+    visibility = ["PUBLIC"],
+)

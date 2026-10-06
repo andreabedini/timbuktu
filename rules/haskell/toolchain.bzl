@@ -11,7 +11,7 @@ is only known after running those commands, it is exposed as a dynamic value.
 """
 
 load("@prelude//haskell:toolchain.bzl", "HaskellPlatformInfo", "HaskellToolchainInfo")
-load("@toolchains//ghcup:defs.bzl", "GhcDistributionInfo", "host_arch")
+load("//rules/haskell/ghcup:defs.bzl", "GhcDistributionInfo", "host_arch")
 
 GhcPackage = record(
     id = str,
@@ -246,22 +246,25 @@ def _bindist_ghc_toolchain_impl(ctx: AnalysisContext) -> list[Provider]:
             "ghci_ghc_path": ctx.attrs.distribution.sub_target("bin/ghc"),
             "ghci_iserv_path": ctx.attrs.distribution.sub_target("bin/ghc-iserv"),
             "ghci_iserv_prof_path": ctx.attrs.distribution.sub_target("bin/ghc-iserv-prof"),
-            "ghci_iserv_template": ctx.attrs.ghci_iserv_template,
+            "ghci_iserv_template": ctx.attrs.ghci_iserv_template[DefaultInfo].default_outputs[0],
             "ghci_lib_path": ctx.attrs.distribution.sub_target("lib"),
             "ghci_packager": ctx.attrs.distribution.sub_target("bin/ghc-pkg"),
-            "ghci_script_template": ctx.attrs.ghci_script_template,
+            "ghci_script_template": ctx.attrs.ghci_script_template[DefaultInfo].default_outputs[0],
             "script_template_processor": ctx.attrs._script_template_processor,
-        } if ctx.attrs.ghci_script_template else {},
+        },
     )
 
 bindist_ghc_toolchain = rule(
-    doc = "Use an unpacked GHC binary distribution, e.g. one from toolchains//ghcup.",
+    doc = "Use an unpacked GHC binary distribution, e.g. one from root//rules/haskell/ghcup.",
     impl = _bindist_ghc_toolchain_impl,
     attrs = _c_tools_attrs | {
         "distribution": attrs.exec_dep(providers = [GhcDistributionInfo]),
-        # The scripts haskell_ghci makes its own from, see toolchains//ghci.
-        "ghci_iserv_template": attrs.option(attrs.source(), default = None),
-        "ghci_script_template": attrs.option(attrs.source(), default = None),
+        # The scripts haskell_ghci makes its own from.
+        # NOTE: they are targets, and as plain sources a toolchain built on
+        # its own (`buck2 build toolchains//:haskell`) would have no platform
+        # to give them.
+        "ghci_iserv_template": attrs.exec_dep(default = "root//rules/haskell:iserv_script"),
+        "ghci_script_template": attrs.exec_dep(default = "root//rules/haskell:ghci_script"),
         "_script_template_processor": attrs.default_only(attrs.exec_dep(
             providers = [RunInfo],
             default = "prelude//haskell/tools:script_template_processor",

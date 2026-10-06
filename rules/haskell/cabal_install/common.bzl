@@ -48,7 +48,7 @@ load(
     "create_shared_libraries",
     "merge_shared_libraries",
 )
-load("//rules/haskell/cabal:ghc_toolchain.bzl", "GhcToolchainInfo")
+load("//rules/haskell:toolchain.bzl", "GhcToolchainInfo")
 
 CabalPackageInfo = provider(
     doc = "TODO",

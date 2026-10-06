@@ -10,8 +10,8 @@ Cabal's build goes through a few steps, and so do we:
 configure
   Query the compiler and resolve build-depends to units. The libraries that
   come with the compiler are only known by name during analysis: their version
-  and unit-id come from the global package db (see ghc_toolchain.bzl and
-  root//rules/haskell:unit.bzl).
+  and unit-id come from the global package db (see toolchain.bzl and unit.bzl
+  in root//rules/haskell).
 
 preprocess
   Find the source of each module in hs-source-dirs and run alex, happy and
@@ -43,7 +43,7 @@ have a different idea of what a library is: see prelude.bzl.
 load("@prelude//:paths.bzl", "paths")
 load("@prelude//cxx:cxx_toolchain_types.bzl", "CxxToolchainInfo")
 load("@prelude//decls:toolchains_common.bzl", "toolchains_common")
-load(":ghc_toolchain.bzl", "GhcDynamicInfo", "GhcToolchainInfo", "ghc_toolchain_attrs")
+load("//rules/haskell:toolchain.bzl", "GhcDynamicInfo", "GhcToolchainInfo", "ghc_toolchain_attrs")
 load(":macros.bzl", "CabalMacroContext", "Versioned", "cabal_macros_gen")
 load(":paths.bzl", "PathsModuleCtx", "mk_package_info_module", "mk_paths_module")
 load(":prelude.bzl", "prelude_library_attrs", "prelude_library_providers")

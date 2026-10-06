@@ -171,11 +171,11 @@ or workspace has to be given its own.
 (`//examples/hello:hello-test`, `//examples/prelude:ghci-test` and
 `:haddock-test`) are examples of test rules more than a test suite.
 
-`toolchains/ghcup/metadata.bzl` (about 16.8k lines) is generated, never edit it
-by hand:
+`rules/haskell/ghcup/metadata.bzl` (about 16.8k lines) is generated, never
+edit it by hand:
 
 ```sh
-yq .ghcupDownloads ~/.ghcup/cache/ghcup-0.0.9.yaml -o json | sed 's/null/None/' > toolchains/ghcup/metadata.bzl
+yq .ghcupDownloads ~/.ghcup/cache/ghcup-0.0.9.yaml -o json | sed 's/null/None/' > rules/haskell/ghcup/metadata.bzl
 ```
 
 To refresh a project's plan: build `:plan`, then replace the JSON inside the
@@ -192,19 +192,29 @@ To refresh a project's plan: build `:plan`, then replace the JSON inside the
 - `.buckconfig.local` — `[project] ignore = .git, .jj, .claude`, so that
   buck2 does not look for packages there. It is ignored by Andrea's global
   git ignore file (`~/.config/git/ignore`), not by the repository's.
-- `toolchains/` — `BUCK` wires system cxx/python/genrule toolchains, the
-  no-op test toolchains `sh_test` asks for, plus:
+- `toolchains/` — a `BUCK` and nothing else: it is where toolchains are
+  chosen, their rules are under `rules/`. It wires system cxx/python/genrule
+  toolchains, the no-op test toolchains `sh_test` asks for, plus:
   - `:haskell`, the GHC of every Haskell rule: a `toolchain_alias` of
     `:ghc-9.12.2-bindist` or, with `--config haskell.toolchain=toolchains//:ghc`,
-    of `:ghc` (the GHC in `PATH`). Both are instances of the rules in
-    `rules/haskell/cabal/ghc_toolchain.bzl`. `ghcup/defs.bzl` picks a bindist
-    URL and hash out of GHCup's metadata for the host OS/arch and wraps it in
-    `http_archive`.
-  - `:cabal` (3.14.2.0), cabal-install for the `plan` rule; `defs.bzl` has its
-    rule.
-  - `ghci/` — the two script templates `haskell_ghci` needs from the
-    toolchain. The prelude does not come with any. Their names have no dot
-    because the prelude makes an action category out of them.
+    of `:ghc` (the GHC in `PATH`).
+  - `:cabal` (3.14.2.0), cabal-install for the `plan` rule.
+- `rules/haskell/toolchain.bzl` — the GHC toolchain rules,
+  `bindist_ghc_toolchain` and `system_ghc_toolchain`, for every rule set. They
+  return `GhcToolchainInfo`, with the GHC version and the global package db
+  (`ghc-pkg dump`) as a dynamic value, for the `cabal_simple` rules and the
+  plan interpreter, and the prelude's `HaskellToolchainInfo` and
+  `HaskellPlatformInfo`. The bindist toolchain also knows its version during
+  analysis (`version`), which is what it takes to name a shared library for
+  the prelude, and is the only one with what `haskell_ghci` needs.
+- `rules/haskell/ghcup/` — `defs.bzl` picks a bindist URL and hash for GHC or
+  cabal-install out of GHCup's metadata (`metadata.bzl`) for the host OS/arch
+  and wraps it in `http_archive`. buildifier cannot parse a type annotation
+  in `defs.bzl`.
+- `rules/haskell/ghci/` — the two script templates `haskell_ghci` needs from
+  the toolchain, exported by `rules/haskell/BUCK` and the default of
+  `bindist_ghc_toolchain`. The prelude does not come with any. Their names
+  have no dot because the prelude makes an action category out of them.
 - `rules/haskell/defs.bzl` — `haskell_binary` and `haskell_library` wrappers
   that add a `toolchain_libs` attribute (see "Design rules"), and
   `haskell_unit`.
@@ -227,6 +237,8 @@ To refresh a project's plan: build `:plan`, then replace the JSON inside the
     `curl` and `jq`). The output is that annotated `plan.json`. It reads the Hackage
     index from the user's cabal directory and queries Hackage, so it is not
     hermetic; everything downstream is pinned by checksum.
+  - `cabal_toolchain.bzl` — the rule of `toolchains//:cabal`, the
+    cabal-install `plan.bzl` runs.
   - `interpret_plan.bzl` — macro that decodes a `plan.json` string and emits
     one target per unit, named by unit-id.
   - `pkg_src.bzl` — downloads the sdist from the plan's repo and overlays the
@@ -268,15 +280,6 @@ To refresh a project's plan: build `:plan`, then replace the JSON inside the
     `CabalUnitInfo` plus a `CabalUnitTSet` of package dbs and artifacts),
     `CabalExecutableInfo`. `CabalPackageInfo` here is not the provider of the
     same name in `cabal_install/common.bzl`.
-  - `ghc_toolchain.bzl` — the toolchain rules, `bindist_ghc_toolchain` and
-    `system_ghc_toolchain`. Despite where the file is they serve every rule
-    set: they return `GhcToolchainInfo`, with the GHC version and the global
-    package db (`ghc-pkg dump`) as a dynamic value, for the `cabal_simple`
-    rules and the plan interpreter, and the prelude's `HaskellToolchainInfo`
-    and `HaskellPlatformInfo`. The bindist toolchain also knows its version
-    during analysis (`version`), which is what it takes to name a shared
-    library for the prelude, and is the only one with what `haskell_ghci`
-    needs.
   - `macros.bzl`, `paths.bzl` — `cabal_macros.h`, `Paths_<pkg>` and
     `PackageInfo_<pkg>`, after Cabal's templates. `paths.bzl` also has the
     `cabal_paths_module` rule, used by `tmp/alex-3.5.1.0/BUCK`.
@@ -331,8 +334,14 @@ To refresh a project's plan: build `:plan`, then replace the JSON inside the
   (subtargets of the bindist archive) and
   `prelude//haskell/tools:script_template_processor`. It loads prelude
   libraries built the static way, which a dynamically linked GHC can only do
-  in an external interpreter: that is what `toolchains/ghci/ghci_script` asks
-  for.
+  in an external interpreter: that is what `rules/haskell/ghci/ghci_script`
+  asks for.
+- A toolchain rule takes what it needs from other targets as `exec_dep`,
+  files included. A toolchain built on its own
+  (`buck2 build toolchains//:haskell`) has no target platform, and a
+  `source` or `dep` attribute that names a target fails there with "Platform
+  is not bound"; as a dependency of a configured target it would work, which
+  hides the mistake.
 - The upstream Haskell rules do the linking themselves. A dependency hands
   over its archives and shared objects through `MergedLinkInfo`,
   `SharedLibraryInfo` and `LinkableGraph`; its package db is only used to find
