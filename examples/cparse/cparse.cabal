@@ -1,0 +1,12 @@
+cabal-version:      3.0
+name:               cparse
+version:            0.1.0.0
+synopsis:           An example of depending on a library built from Hackage
+build-type:         Simple
+
+executable cparse
+  main-is:          Main.hs
+  hs-source-dirs:   app
+  build-depends:    base, language-c
+  ghc-options:      -Wall
+  default-language: Haskell2010

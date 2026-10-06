@@ -1,0 +1,120 @@
+load("@root//rules/haskell:hackage.bzl", "hackage_package")
+load("@root//rules/haskell/cabal:defs.bzl", "cabal_package", "cabal_simple_library")
+
+# language-c, straight from its sdist: a transcription of language-c.cabal,
+# except for its test-suite. Its lexer and its parser go through alex and
+# happy, both built from source.
+#
+# The conditionals are resolved for the default value of the flags:
+#
+#   flag usebytestrings (default: True)
+#   flag iecfpextension (default: True)
+
+hackage_package(
+    name = "language-c-0.10.2",
+    sha256 = "f1135edda4a2d263fed8c12cae166e547da095200a026e65e1f5e134c855f522",
+)
+
+cabal_package(
+    name = "language-c",
+    version = "0.10.2",
+    srcs = ":language-c-0.10.2",
+    cabal_version = "2.2",
+    license = "BSD-3-Clause",
+    license_file = "LICENSE",
+    copyright = "LICENSE",
+    author = "AUTHORS",
+    maintainer = "language.c@monoid.al",
+    bug_reports = "https://github.com/visq/language-c/issues/",
+    homepage = "https://visq.github.io/language-c/",
+    synopsis = "Analysis and generation of C code",
+    category = "Language",
+    build_type = "Simple",
+    visibility = ["PUBLIC"],
+)
+
+cabal_simple_library(
+    name = "lib",
+    package = ":language-c",
+    exposed_modules = [
+        "Language.C",
+        "Language.C.Data",
+        "Language.C.Data.Position",
+        "Language.C.Data.Ident",
+        "Language.C.Data.Error",
+        "Language.C.Data.Name",
+        "Language.C.Data.Node",
+        "Language.C.Data.InputStream",
+        "Language.C.Syntax",
+        "Language.C.Syntax.AST",
+        "Language.C.Syntax.Constants",
+        "Language.C.Syntax.Ops",
+        "Language.C.Syntax.Utils",
+        "Language.C.Parser",
+        "Language.C.Pretty",
+        "Language.C.System.Preprocess",
+        "Language.C.System.GCC",
+        "Language.C.Analysis",
+        "Language.C.Analysis.ConstEval",
+        "Language.C.Analysis.Builtins",
+        "Language.C.Analysis.SemError",
+        "Language.C.Analysis.SemRep",
+        "Language.C.Analysis.DefTable",
+        "Language.C.Analysis.TravMonad",
+        "Language.C.Analysis.AstAnalysis",
+        "Language.C.Analysis.DeclAnalysis",
+        "Language.C.Analysis.Debug",
+        "Language.C.Analysis.TypeCheck",
+        "Language.C.Analysis.TypeConversions",
+        "Language.C.Analysis.TypeUtils",
+        "Language.C.Analysis.NameSpaceMap",
+        "Language.C.Analysis.MachineDescs",
+        "Language.C.Analysis.Export",
+    ],
+    build_tool_depends = [
+        "//examples/happy:exe",
+        "//examples/alex:exe",
+    ],
+    hs_source_dirs = ["src"],
+    other_modules = [
+        "Language.C.Data.RList",
+        "Language.C.Parser.Builtin",
+        "Language.C.Parser.Lexer",
+        "Language.C.Parser.ParserMonad",
+        "Language.C.Parser.Tokens",
+        "Language.C.Parser.Parser",
+    ],
+    default_language = "Haskell2010",
+    default_extensions = [
+        "CPP",
+        "DeriveDataTypeable",
+        "DeriveGeneric",
+        "PatternGuards",
+        "BangPatterns",
+        "ExistentialQuantification",
+        "GeneralizedNewtypeDeriving",
+        "ScopedTypeVariables",
+    ],
+    ghc_options = [
+        "-Wall",
+        "-Wno-redundant-constraints",
+    ],
+    build_depends = [
+        "//examples/ghc:base",
+        "//examples/ghc:array",
+        "//examples/ghc:containers",
+        "//examples/ghc:deepseq",
+        "//examples/ghc:directory",
+        "//examples/ghc:filepath",
+        "//examples/ghc:mtl",
+        "//examples/ghc:pretty",
+        "//examples/ghc:process",
+        # if flag(usebytestrings)
+        "//examples/ghc:bytestring",
+    ],
+    cpp_options = [
+        # if flag(iecfpextension)
+        "-DIEC_60559_TYPES_EXT",
+    ],
+    visibility = ["PUBLIC"],
+)

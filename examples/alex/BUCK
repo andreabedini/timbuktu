@@ -1,0 +1,98 @@
+load("@root//rules/haskell:hackage.bzl", "hackage_package")
+load("@root//rules/haskell/cabal:defs.bzl", "cabal_package", "cabal_simple_executable", "cabal_toolchain_library")
+
+# alex, straight from its sdist. The targets below are a transcription of
+# alex.cabal; to see it as JSON:
+#
+#   runghc rules/haskell/helpers/parse_fields.hs $(buck2 build :alex-3.5.1.0 --show-full-output | cut -d' ' -f2)/alex.cabal
+
+hackage_package(
+    name = "alex-3.5.1.0",
+    sha256 = "c92efe86f8eb959ee03be6c04ee57ebc7e4abc75a6c4b26551215d7443e92a07",
+)
+
+cabal_package(
+    name = "alex",
+    version = "3.5.1.0",
+    srcs = ":alex-3.5.1.0",
+    cabal_version = ">= 1.10",
+    license = "BSD3",
+    license_file = "LICENSE",
+    copyright = "(c) Chis Dornan, Simon Marlow",
+    author = "Chris Dornan and Simon Marlow",
+    maintainer = "https://github.com/haskell/alex",
+    bug_reports = "https://github.com/haskell/alex/issues",
+    stability = "stable",
+    homepage = "http://www.haskell.org/alex/",
+    synopsis = "Alex is a tool for generating lexical analysers in Haskell",
+    category = "Development",
+    build_type = "Simple",
+    data_dir = "data/",
+    data_files = [
+        "AlexTemplate.hs",
+        "AlexWrappers.hs",
+    ],
+)
+
+cabal_simple_executable(
+    name = "exe",
+    package = ":alex",
+    executable_name = "alex",
+    hs_source_dirs = ["src"],
+    main_is = "Main.hs",
+    build_depends = [
+        ":base",
+        ":array",
+        ":containers",
+        ":directory",
+    ],
+    default_language = "Haskell2010",
+    default_extensions = [
+        "PatternSynonyms",
+        "ScopedTypeVariables",
+        "TupleSections",
+    ],
+    other_extensions = [
+        "CPP",
+        "FlexibleContexts",
+        "MagicHash",
+        "NondecreasingIndentation",
+        "OverloadedLists",
+    ],
+    ghc_options = [
+        "-Wall",
+        "-Wcompat",
+        "-rtsopts",
+    ],
+    other_modules = [
+        "AbsSyn",
+        "CharSet",
+        "DFA",
+        "DFAMin",
+        "DFS",
+        "Info",
+        "NFA",
+        "Output",
+        "Paths_alex",
+        "Parser",
+        "ParseMonad",
+        "Scan",
+        "Util",
+        "UTF8",
+        "Data.Ranged",
+        "Data.Ranged.Boundaries",
+        "Data.Ranged.RangedSet",
+        "Data.Ranged.Ranges",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+[
+    cabal_toolchain_library(name = name)
+    for name in [
+        "array",
+        "base",
+        "containers",
+        "directory",
+    ]
+]

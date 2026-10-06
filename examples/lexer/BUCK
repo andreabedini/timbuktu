@@ -1,0 +1,46 @@
+load("@root//rules/haskell/cabal:defs.bzl", "cabal_package", "cabal_simple_executable", "cabal_simple_library", "cabal_toolchain_library")
+
+# A transcription of lexer.cabal. Lexer.x goes through alex, which is itself
+# built from source (see //examples/alex).
+
+cabal_package(
+    name = "lexer",
+    version = "0.1.0.0",
+    srcs = glob(
+        ["**"],
+        exclude = ["BUCK", "dist-newstyle/**"],
+    ),
+    cabal_version = "3.0",
+    synopsis = "An example of build-tool-depends for the cabal_simple rules",
+    build_type = "Simple",
+)
+
+cabal_simple_library(
+    name = "lib",
+    package = ":lexer",
+    exposed_modules = ["Lexer"],
+    hs_source_dirs = ["src"],
+    build_depends = [
+        ":base",
+        ":array",
+    ],
+    build_tool_depends = ["//examples/alex:exe"],
+    default_language = "Haskell2010",
+)
+
+cabal_simple_executable(
+    name = "exe",
+    package = ":lexer",
+    executable_name = "lex",
+    main_is = "Main.hs",
+    hs_source_dirs = ["app"],
+    build_depends = [
+        ":base",
+        ":lib",
+    ],
+    default_language = "Haskell2010",
+)
+
+cabal_toolchain_library(name = "array")
+
+cabal_toolchain_library(name = "base")

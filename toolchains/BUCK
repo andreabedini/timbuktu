@@ -3,6 +3,7 @@ load("@prelude//toolchains:genrule.bzl", "system_genrule_toolchain")
 load("@prelude//toolchains:python.bzl", "system_python_bootstrap_toolchain", "system_python_toolchain")
 load("defs.bzl", "cabal_toolchain", "haskell_toolchain", "something")
 load("ghcup/defs.bzl", "download_cabal_distribution", "download_ghc_distribution")
+load("@root//rules/haskell/cabal:ghc_toolchain.bzl", "bindist_ghc_toolchain", "system_ghc_toolchain")
 
 something(name = "something")
 
@@ -45,5 +46,20 @@ download_cabal_distribution(
 cabal_toolchain(
     name = "cabal",
     distribution = ":cabal-3.14.2.0",
+    visibility = ["PUBLIC"],
+)
+
+# The toolchain of the cabal_simple rules (see root//rules/haskell/cabal).
+# This one uses whatever GHC is in PATH.
+system_ghc_toolchain(
+    name = "ghc",
+    visibility = ["PUBLIC"],
+)
+
+# The same from a binary distribution, to select with
+# `--config cabal.ghc_toolchain=toolchains//:ghc-9.12.2-bindist`
+bindist_ghc_toolchain(
+    name = "ghc-9.12.2-bindist",
+    distribution = ":ghc-9.12.2",
     visibility = ["PUBLIC"],
 )

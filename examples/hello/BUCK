@@ -1,0 +1,97 @@
+load(
+    "@root//rules/haskell/cabal:defs.bzl",
+    "cabal_package",
+    "cabal_simple_executable",
+    "cabal_simple_library",
+    "cabal_simple_test",
+    "cabal_toolchain_library",
+)
+
+# A transcription of hello.cabal
+
+cabal_package(
+    name = "hello",
+    version = "0.1.0.0",
+    srcs = glob(
+        ["**"],
+        exclude = ["BUCK", "dist-newstyle/**"],
+    ),
+    cabal_version = "3.0",
+    synopsis = "An example for the cabal_simple rules",
+    license = "BSD-3-Clause",
+    build_type = "Simple",
+    data_dir = "data",
+    data_files = ["greeting.txt"],
+)
+
+cabal_simple_library(
+    name = "lib",
+    package = ":hello",
+    exposed_modules = [
+        "Hello",
+        "Hello.Sizes",
+    ],
+    other_modules = [
+        "Hello.Internal",
+        "Paths_hello",
+    ],
+    autogen_modules = ["Paths_hello"],
+    hs_source_dirs = ["src"],
+    build_depends = [
+        ":base",
+        ":internal",
+    ],
+    c_sources = ["cbits/hello.c"],
+    include_dirs = ["include"],
+    cpp_options = ["-DGREETING_SUFFIX=\"!\""],
+    ghc_options = ["-Wall"],
+    default_language = "Haskell2010",
+)
+
+cabal_simple_library(
+    name = "internal",
+    package = ":hello",
+    library_name = "internal",
+    exposed_modules = ["Hello.TH"],
+    hs_source_dirs = ["internal"],
+    build_depends = [
+        ":base",
+        ":template-haskell",
+    ],
+    ghc_options = ["-Wall"],
+    default_language = "Haskell2010",
+)
+
+cabal_simple_executable(
+    name = "exe",
+    package = ":hello",
+    executable_name = "hello",
+    main_is = "Main.hs",
+    hs_source_dirs = ["app"],
+    build_depends = [
+        ":base",
+        ":lib",
+    ],
+    ghc_options = ["-Wall"],
+    default_language = "Haskell2010",
+)
+
+cabal_simple_test(
+    name = "hello-test",
+    package = ":hello",
+    type = "exitcode-stdio-1.0",
+    main_is = "Main.hs",
+    hs_source_dirs = ["test"],
+    build_depends = [
+        ":base",
+        ":lib",
+    ],
+    ghc_options = ["-Wall"],
+    default_language = "Haskell2010",
+)
+
+# What comes with the compiler
+
+cabal_toolchain_library(name = "base")
+
+cabal_toolchain_library(name = "template-haskell")

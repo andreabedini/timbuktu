@@ -1,0 +1,30 @@
+load("@root//rules/haskell/cabal:defs.bzl", "cabal_package", "cabal_simple_executable")
+
+# A transcription of cparse.cabal. It depends on language-c, which is built
+# from its sdist with alex and happy (see //examples/language-c).
+
+cabal_package(
+    name = "cparse",
+    version = "0.1.0.0",
+    srcs = glob(
+        ["**"],
+        exclude = ["BUCK", "dist-newstyle/**"],
+    ),
+    cabal_version = "3.0",
+    synopsis = "An example of depending on a library built from Hackage",
+    build_type = "Simple",
+)
+
+cabal_simple_executable(
+    name = "exe",
+    package = ":cparse",
+    executable_name = "cparse",
+    main_is = "Main.hs",
+    hs_source_dirs = ["app"],
+    build_depends = [
+        "//examples/ghc:base",
+        "//examples/language-c:lib",
+    ],
+    ghc_options = ["-Wall"],
+    default_language = "Haskell2010",
+)

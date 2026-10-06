@@ -1,0 +1,252 @@
+load("@root//rules/haskell:hackage.bzl", "hackage_package")
+load("@root//rules/haskell/cabal:defs.bzl", "cabal_package", "cabal_simple_library")
+
+# happy-lib, straight from its sdist: a transcription of happy-lib.cabal.
+#
+# The `common-stanza` it imports everywhere is inlined. The main library has
+# no code of its own: it only reexports the modules of the sublibraries.
+
+hackage_package(
+    name = "happy-lib-2.2",
+    sha256 = "d2e0662b12b52008787c380b94acd4f6ed0a0af04bb0d433ed8c4ac00f1e3003",
+)
+
+cabal_package(
+    name = "happy-lib",
+    version = "2.2",
+    srcs = ":happy-lib-2.2",
+    cabal_version = "3.0",
+    license = "BSD-2-Clause",
+    copyright = "(c) Andy Gill, Simon Marlow",
+    author = "Andy Gill and Simon Marlow",
+    maintainer = "https://github.com/haskell/happy",
+    bug_reports = "https://github.com/haskell/happy/issues",
+    stability = "stable",
+    homepage = "https://www.haskell.org/happy/",
+    synopsis = "Happy is a parser generator for Haskell implemented using this library",
+    category = "Development",
+    build_type = "Simple",
+    data_dir = "data",
+    data_files = [
+        "HappyTemplate.hs",
+        "GLR_Base.hs",
+        "GLR_Lib.hs",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cabal_simple_library(
+    name = "grammar",
+    package = ":happy-lib",
+    library_name = "grammar",
+    default_language = "Haskell98",
+    default_extensions = [
+        "CPP",
+        "MagicHash",
+        "FlexibleContexts",
+        "NamedFieldPuns",
+        "PatternGuards",
+    ],
+    ghc_options = [
+        "-Wall",
+        "-Wno-incomplete-uni-patterns",
+    ],
+    hs_source_dirs = ["grammar/src"],
+    exposed_modules = [
+        "Happy.Grammar",
+        "Happy.Grammar.ExpressionWithHole",
+    ],
+    build_depends = [
+        "//examples/ghc:base",
+        "//examples/ghc:array",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cabal_simple_library(
+    name = "frontend",
+    package = ":happy-lib",
+    library_name = "frontend",
+    default_language = "Haskell98",
+    default_extensions = [
+        "CPP",
+        "MagicHash",
+        "FlexibleContexts",
+        "NamedFieldPuns",
+        "PatternGuards",
+    ],
+    ghc_options = [
+        "-Wall",
+        "-Wno-incomplete-uni-patterns",
+    ],
+    hs_source_dirs = ["frontend/src"],
+    exposed_modules = [
+        "Happy.Frontend",
+        "Happy.Frontend.AbsSyn",
+        "Happy.Frontend.Mangler",
+        "Happy.Frontend.PrettyGrammar",
+    ],
+    build_depends = [
+        "//examples/ghc:base",
+        "//examples/ghc:array",
+        "//examples/ghc:transformers",
+        "//examples/ghc:containers",
+        "//examples/ghc:mtl",
+        ":grammar",
+    ],
+    other_modules = [
+        "Happy.Frontend.ParseMonad",
+        "Happy.Frontend.ParseMonad.Class",
+        "Happy.Frontend.Mangler.Monad",
+        "Happy.Frontend.Parser",
+        "Happy.Frontend.Lexer",
+        "Happy.Frontend.ParamRules",
+        "Happy.Frontend.AttrGrammar",
+        "Happy.Frontend.AttrGrammar.Parser",
+        "Happy.Frontend.AttrGrammar.Mangler",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cabal_simple_library(
+    name = "tabular",
+    package = ":happy-lib",
+    library_name = "tabular",
+    default_language = "Haskell98",
+    default_extensions = [
+        "CPP",
+        "MagicHash",
+        "FlexibleContexts",
+        "NamedFieldPuns",
+        "PatternGuards",
+    ],
+    ghc_options = [
+        "-Wall",
+        "-Wno-incomplete-uni-patterns",
+    ],
+    hs_source_dirs = ["tabular/src"],
+    exposed_modules = [
+        "Happy.Tabular",
+        "Happy.Tabular.First",
+        "Happy.Tabular.Info",
+        "Happy.Tabular.LALR",
+        "Happy.Tabular.NameSet",
+        "Paths_happy_lib",
+    ],
+    reexported_modules = ["Paths_happy_lib as Happy.Paths"],
+    autogen_modules = ["Paths_happy_lib"],
+    build_depends = [
+        "//examples/ghc:base",
+        "//examples/ghc:array",
+        "//examples/ghc:containers",
+        ":grammar",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cabal_simple_library(
+    name = "backend-lalr",
+    package = ":happy-lib",
+    library_name = "backend-lalr",
+    default_language = "Haskell98",
+    default_extensions = [
+        "CPP",
+        "MagicHash",
+        "FlexibleContexts",
+        "NamedFieldPuns",
+        "PatternGuards",
+    ],
+    ghc_options = [
+        "-Wall",
+        "-Wno-incomplete-uni-patterns",
+    ],
+    hs_source_dirs = ["backend-lalr/src"],
+    exposed_modules = [
+        "Happy.Backend.LALR",
+        "Happy.Backend.LALR.ProduceCode",
+    ],
+    build_depends = [
+        "//examples/ghc:base",
+        "//examples/ghc:array",
+        ":grammar",
+        ":tabular",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cabal_simple_library(
+    name = "backend-glr",
+    package = ":happy-lib",
+    library_name = "backend-glr",
+    default_language = "Haskell98",
+    default_extensions = [
+        "CPP",
+        "MagicHash",
+        "FlexibleContexts",
+        "NamedFieldPuns",
+        "PatternGuards",
+    ],
+    ghc_options = [
+        "-Wall",
+        "-Wno-incomplete-uni-patterns",
+    ],
+    hs_source_dirs = ["backend-glr/src"],
+    exposed_modules = [
+        "Happy.Backend.GLR",
+        "Happy.Backend.GLR.ProduceCode",
+    ],
+    build_depends = [
+        "//examples/ghc:base",
+        "//examples/ghc:array",
+        ":grammar",
+        ":tabular",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cabal_simple_library(
+    name = "lib",
+    package = ":happy-lib",
+    default_language = "Haskell98",
+    default_extensions = [
+        "CPP",
+        "MagicHash",
+        "FlexibleContexts",
+        "NamedFieldPuns",
+        "PatternGuards",
+    ],
+    ghc_options = [
+        "-Wall",
+        "-Wno-incomplete-uni-patterns",
+    ],
+    reexported_modules = [
+        "Happy.Grammar",
+        "Happy.Grammar.ExpressionWithHole",
+        "Happy.Frontend",
+        "Happy.Frontend.AbsSyn",
+        "Happy.Frontend.Mangler",
+        "Happy.Frontend.PrettyGrammar",
+        "Happy.Tabular",
+        "Happy.Tabular.First",
+        "Happy.Tabular.Info",
+        "Happy.Tabular.LALR",
+        "Happy.Tabular.NameSet",
+        "Happy.Backend.LALR",
+        "Happy.Backend.LALR.ProduceCode",
+        "Happy.Backend.GLR",
+        "Happy.Backend.GLR.ProduceCode",
+    ],
+    build_depends = [
+        "//examples/ghc:base",
+        "//examples/ghc:array",
+        "//examples/ghc:containers",
+        "//examples/ghc:transformers",
+        "//examples/ghc:mtl",
+        ":grammar",
+        ":tabular",
+        ":frontend",
+        ":backend-lalr",
+        ":backend-glr",
+    ],
+    visibility = ["PUBLIC"],
+)

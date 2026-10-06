@@ -1,0 +1,18 @@
+cabal-version:      3.0
+name:               lexer
+version:            0.1.0.0
+synopsis:           An example of build-tool-depends for the cabal_simple rules
+build-type:         Simple
+
+library
+  exposed-modules:    Lexer
+  hs-source-dirs:     src
+  build-depends:      base, array
+  build-tool-depends: alex:alex
+  default-language:   Haskell2010
+
+executable lex
+  main-is:            Main.hs
+  hs-source-dirs:     app
+  build-depends:      base, lexer
+  default-language:   Haskell2010

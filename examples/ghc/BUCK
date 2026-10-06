@@ -1,0 +1,25 @@
+load("@root//rules/haskell/cabal:defs.bzl", "cabal_toolchain_library")
+
+# The libraries that come with GHC, for the examples to depend on. Which
+# version one gets depends on the toolchain.
+
+[
+    cabal_toolchain_library(
+        name = name,
+        visibility = ["PUBLIC"],
+    )
+    for name in [
+        "array",
+        "base",
+        "bytestring",
+        "containers",
+        "deepseq",
+        "directory",
+        "filepath",
+        "mtl",
+        "pretty",
+        "process",
+        "template-haskell",
+        "transformers",
+    ]
+]

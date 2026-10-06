@@ -1,0 +1,47 @@
+cabal-version: 3.0
+name:          hello
+version:       0.1.0.0
+synopsis:      An example for the cabal_simple rules
+license:       BSD-3-Clause
+build-type:    Simple
+data-dir:      data
+data-files:    greeting.txt
+
+-- BUCK is a transcription of this file. `cabal build` works here too, which
+-- is handy to compare what the two do.
+
+library
+  exposed-modules:  Hello
+                    Hello.Sizes
+  other-modules:    Hello.Internal
+                    Paths_hello
+  autogen-modules:  Paths_hello
+  hs-source-dirs:   src
+  build-depends:    base, hello:internal
+  c-sources:        cbits/hello.c
+  include-dirs:     include
+  cpp-options:      -DGREETING_SUFFIX="!"
+  ghc-options:      -Wall
+  default-language: Haskell2010
+
+library internal
+  exposed-modules:  Hello.TH
+  hs-source-dirs:   internal
+  build-depends:    base, template-haskell
+  ghc-options:      -Wall
+  default-language: Haskell2010
+
+executable hello
+  main-is:          Main.hs
+  hs-source-dirs:   app
+  build-depends:    base, hello
+  ghc-options:      -Wall
+  default-language: Haskell2010
+
+test-suite hello-test
+  type:             exitcode-stdio-1.0
+  main-is:          Main.hs
+  hs-source-dirs:   test
+  build-depends:    base, hello
+  ghc-options:      -Wall
+  default-language: Haskell2010

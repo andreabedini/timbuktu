@@ -1,0 +1,54 @@
+load("@root//rules/haskell:hackage.bzl", "hackage_package")
+load("@root//rules/haskell/cabal:defs.bzl", "cabal_package", "cabal_simple_executable")
+
+# happy, straight from its sdist: a transcription of happy.cabal, except for
+# its test-suite.
+
+hackage_package(
+    name = "happy-2.2",
+    sha256 = "2e9345c99a61bc29b5a1b9d5c1ea791cbea219499a4c01ed71f33c3af34a5eb0",
+)
+
+cabal_package(
+    name = "happy",
+    version = "2.2",
+    srcs = ":happy-2.2",
+    cabal_version = "1.18",
+    license = "BSD2",
+    license_file = "LICENSE",
+    copyright = "(c) Andy Gill, Simon Marlow",
+    author = "Andy Gill and Simon Marlow",
+    maintainer = "https://github.com/haskell/happy",
+    bug_reports = "https://github.com/haskell/happy/issues",
+    stability = "stable",
+    homepage = "https://www.haskell.org/happy/",
+    synopsis = "Happy is a parser generator for Haskell",
+    category = "Development",
+    build_type = "Simple",
+    visibility = ["PUBLIC"],
+)
+
+cabal_simple_executable(
+    name = "exe",
+    package = ":happy",
+    executable_name = "happy",
+    hs_source_dirs = ["app"],
+    main_is = "Main.lhs",
+    build_depends = [
+        "//examples/ghc:base",
+        "//examples/happy-lib:lib",
+    ],
+    default_language = "Haskell98",
+    default_extensions = [
+        "CPP",
+        "MagicHash",
+        "FlexibleContexts",
+        "NamedFieldPuns",
+    ],
+    ghc_options = [
+        "-Wall",
+        "-Wno-incomplete-uni-patterns",
+    ],
+    other_modules = ["Paths_happy"],
+    visibility = ["PUBLIC"],
+)
