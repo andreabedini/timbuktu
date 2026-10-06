@@ -34,12 +34,16 @@ value that the components depending on it wait for.
 Like Cabal, we run the tools from the root of the package, so relative paths
 in the package description (and in Template Haskell splices) mean what the
 package author expects.
+
+A library can also be a dependency of the Haskell rules of the prelude, which
+have a different idea of what a library is: see prelude.bzl.
 """
 
 load("@prelude//:paths.bzl", "paths")
 load(":ghc_toolchain.bzl", "GhcDynamicInfo", "GhcToolchainInfo", "ghc_toolchain_attrs")
 load(":macros.bzl", "CabalMacroContext", "Versioned", "cabal_macros_gen")
 load(":paths.bzl", "PathsModuleCtx", "mk_package_info_module", "mk_paths_module")
+load(":prelude.bzl", "prelude_library_attrs", "prelude_library_providers", "prelude_toolchain_library_providers")
 load(
     ":providers.bzl",
     "CabalExecutableInfo",
@@ -128,6 +132,25 @@ def _check_supported(ctx: AnalysisContext, fields: list[str]):
 ##
 ## Analysis: what is known from the package description alone
 ##
+
+def _unit_id(ctx: AnalysisContext, pkg: CabalPackageInfo, component: str | None) -> str:
+    """Make up the unit-id of a component.
+
+    A unit-id has to tell a unit from every other unit that can end up in the
+    same package db. cabal-install gets there by hashing what goes into the
+    build; here buck2 already tells builds apart, and the label of the
+    configured target (the target and the configuration it is built in) is
+    what identifies one.
+
+    Args:
+      ctx: the context of the component's rule
+      pkg: its package
+      component: the name of the component, None for the main library
+    Returns:
+      <package>-<version>[-<component>]-<hash>
+    """
+    parts = [pkg.name, pkg.version] + ([component] if component else [])
+    return "-".join(parts + [sha256(str(ctx.label))[:8]])
 
 def _find_modules(ctx: AnalysisContext, srcdir: Artifact, source_dirs: list[str], modules: list[str], main_is: str | None) -> Artifact:
     located = ctx.actions.declare_output("modules.json")
@@ -465,23 +488,54 @@ def _resolve_reexports(arg, deps: list[CabalUnitInfo]) -> dict[str, (str, str)]:
         exposed[name] = candidates[0]
     return exposed
 
-def _registration(arg, deps: list[CabalUnitInfo], exposed: dict[str, (str, str)]) -> cmd_args:
+def _prelude_package_name(pkg_name: str, lib_name: str | None) -> str:
+    """The package name a library has for the Haskell rules of the prelude.
+
+    They name a dependency by package (`-package <name>`), and for GHC a
+    sublibrary goes by the name of its package like the main library does: it
+    would pick one of the two. So for the prelude a sublibrary is a package of
+    its own. Its name cannot be the munged one of its registration
+    (z-<package>-z-<library>), which ghc-pkg takes apart again.
+
+    Args:
+      pkg_name: the name of the package
+      lib_name: the name of the sublibrary, None for the main library
+    Returns:
+      what `-package` selects the library and nothing else with
+    """
+    return "{}-z-{}".format(pkg_name, lib_name) if lib_name else pkg_name
+
+def _registration(arg, deps: list[CabalUnitInfo], exposed: dict[str, (str, str)], for_prelude: bool = False) -> cmd_args:
     """The InstalledPackageInfo of a library, see Distribution.Simple.Register
 
     Like the registration Cabal makes for a package it built in place, it
     refers to the outputs of the build where they are.
+
+    Args:
+      arg: the component
+      deps: the units it depends on
+      exposed: the modules it exposes
+      for_prelude: register a sublibrary as a package of its own, see
+        _prelude_package_name
+    Returns:
+      the lines of the registration
     """
     pkg = arg.pkg
     bi = arg.bi
     artifacts = arg.artifacts
 
     fields = []
-    if arg.lib_name:
+    if arg.lib_name and not for_prelude:
         fields += [
             ("name", "z-{}-z-{}".format(pkg.name, arg.lib_name)),
             ("version", pkg.version),
             ("package-name", pkg.name),
             ("lib-name", arg.lib_name),
+        ]
+    elif arg.lib_name:
+        fields += [
+            ("name", _prelude_package_name(pkg.name, arg.lib_name)),
+            ("version", pkg.version),
         ]
     else:
         fields += [
@@ -613,6 +667,15 @@ def _build_library(actions: AnalysisActions, arg, outputs: dict[str, OutputArtif
         category = "cabal_register",
         identifier = "package db",
     )
+
+    # A sublibrary has a second registration, see _prelude_package_name.
+    if "prelude_package_db" in outputs:
+        prelude_conf = actions.write("prelude-registration.conf", _registration(arg, deps, exposed, for_prelude = True))
+        actions.run(
+            cmd_args("sh", arg.register, outputs["prelude_package_db"], arg.unit_id, prelude_conf, abi_hash, tc.ghc_pkg),
+            category = "cabal_register",
+            identifier = "package db for the prelude",
+        )
     return exposed
 
 def _build_executable(actions: AnalysisActions, arg, outputs: dict[str, OutputArtifact], ghc_args: cmd_args, extra_objs: list[Artifact], main: Artifact | str):
@@ -733,8 +796,7 @@ def _cabal_simple_library_impl(ctx: AnalysisContext) -> list[Provider]:
     pkg = ctx.attrs.package[CabalPackageInfo]
     lib_name = ctx.attrs.library_name
 
-    # This is what cabal-install calls an inplace unit.
-    unit_id = "{}-{}-inplace".format(pkg.name, pkg.version) + ("-" + lib_name if lib_name else "")
+    unit_id = ctx.attrs.unit_id or _unit_id(ctx, pkg, lib_name)
 
     modules = _dedupe(ctx.attrs.exposed_modules + ctx.attrs.other_modules)
 
@@ -760,6 +822,9 @@ def _cabal_simple_library_impl(ctx: AnalysisContext) -> list[Provider]:
         outputs["dynlib"] = ctx.actions.declare_output("dynlib", dir = True)
         artifacts += [outputs["static_lib"], outputs["dynlib"]]
 
+    if lib_name:
+        outputs["prelude_package_db"] = ctx.actions.declare_output("prelude", "package.conf.d", dir = True)
+
     unit = _component(
         ctx,
         kind = "lib",
@@ -771,6 +836,14 @@ def _cabal_simple_library_impl(ctx: AnalysisContext) -> list[Provider]:
         reexported_modules = ctx.attrs.reexported_modules,
         visibility = ctx.attrs.library_visibility or ("private" if lib_name else "public"),
     )
+
+    # The name of the shared library is only known here when the version of
+    # GHC is.
+    shared_lib = None
+    ghc_version = ctx.attrs._ghc[GhcToolchainInfo].version
+    if "dynlib" in outputs and ghc_version:
+        soname = "libHS{}-ghc{}.so".format(unit_id, ghc_version)
+        shared_lib = (soname, outputs["dynlib"].project(soname))
 
     return [
         DefaultInfo(
@@ -788,7 +861,22 @@ def _cabal_simple_library_impl(ctx: AnalysisContext) -> list[Provider]:
                 data_dir = _data_dir_env(pkg),
             )),
         ),
-    ]
+    ] + prelude_library_providers(
+        ctx,
+        name = _prelude_package_name(pkg.name, lib_name),
+        version = pkg.version,
+        unit_id = unit_id,
+        package_db = outputs.get("prelude_package_db", package_db),
+        hi = hi,
+        inputs = artifacts[1:],
+        static_lib = outputs.get("static_lib"),
+        shared_lib = shared_lib,
+        linker_flags =
+            ctx.attrs.ld_options +
+            [cmd_args("-L", d if paths.is_absolute(d) else cmd_args(pkg.srcdir, "/", d, delimiter = ""), delimiter = "") for d in ctx.attrs.extra_lib_dirs] +
+            ["-l" + lib for lib in ctx.attrs.extra_libraries],
+        deps = ctx.attrs.build_depends,
+    )
 
 cabal_simple_library = rule(
     doc = "A `library` stanza of a package with `build-type: Simple`.",
@@ -797,12 +885,16 @@ cabal_simple_library = rule(
     attrs = {
         # The name of a sublibrary, None for the main library of the package.
         "library_name": attrs.option(attrs.string(), default = None),
+        # What GHC knows the library by. Not a field of a package
+        # description: cabal-install makes one up, and so do we when it is
+        # not given (see _unit_id).
+        "unit_id": attrs.option(attrs.string(), default = None),
         "exposed_modules": _strings(),
         "reexported_modules": _strings(),
         "signatures": _strings(),
         # The `visibility` field; buck2 has its own idea of what visibility is.
         "library_visibility": attrs.option(attrs.enum(["public", "private"]), default = None),
-    } | _build_info_attrs,
+    } | _build_info_attrs | prelude_library_attrs,
 )
 
 def _executable(ctx: AnalysisContext, exe_name: str) -> list[Provider]:
@@ -814,7 +906,7 @@ def _executable(ctx: AnalysisContext, exe_name: str) -> list[Provider]:
     _component(
         ctx,
         kind = "exe",
-        unit_id = "{}-{}-inplace-{}".format(pkg.name, pkg.version, exe_name),
+        unit_id = _unit_id(ctx, pkg, exe_name),
         modules = _dedupe(ctx.attrs.other_modules),
         outputs = {"exe": exe},
         main_is = ctx.attrs.main_is,
@@ -885,27 +977,60 @@ def _parse_exposed_modules(unit_id: str, text: str) -> dict[str, (str, str)]:
             exposed[words[0]] = (unit_id, words[0])
     return exposed
 
-def _toolchain_unit_impl(actions: AnalysisActions, ghc: ResolvedDynamicValue, label: Label, name: str) -> list[Provider]:
-    _unused = actions  # buildifier: disable=unused-variable
+def _toolchain_unit_impl(
+        actions: AnalysisActions,
+        ghc: ResolvedDynamicValue,
+        label: Label,
+        name: str,
+        link_static: OutputArtifact,
+        link_shared: OutputArtifact) -> list[Provider]:
     ghc_info = ghc.providers[GhcDynamicInfo]
     if name not in ghc_info.by_name:
         fail("{}: GHC {} does not come with a package called `{}`".format(label, ghc_info.version, name))
     pkg = ghc_info.packages[ghc_info.by_name[name]]
 
-    # Headers of this package and of what it depends on
-    include_dirs = {}
+    # This package and what it depends on, each one after what it depends on.
+    closure = []
     seen = {}
-    todo = [pkg.id]
-    for _ in range(len(ghc_info.packages) + 1):
+    todo = [(pkg.id, False)]
+    steps = 2
+    for p in ghc_info.packages.values():
+        steps += 2 + 2 * len(p.depends)
+    for _ in range(steps):
         if not todo:
             break
-        id = todo.pop()
-        if id in seen or id not in ghc_info.packages:
-            continue
-        seen[id] = None
-        for d in ghc_info.packages[id].include_dirs:
+        id, visited = todo.pop()
+        if visited:
+            closure.append(ghc_info.packages[id])
+        elif id not in seen and id in ghc_info.packages:
+            seen[id] = None
+            todo.append((id, True))
+            todo.extend([(d, False) for d in ghc_info.packages[id].depends])
+
+    # Headers of this package and of what it depends on
+    include_dirs = {}
+    for p in closure:
+        for d in p.include_dirs:
             include_dirs[d] = None
-        todo.extend(ghc_info.packages[id].depends)
+
+    # What a linker needs to link against this package, for the sake of rules
+    # that do not leave linking to GHC (see prelude.bzl). A linker wants a
+    # library after what needs it. The run-time system is left out: it comes
+    # in several flavours and GHC picks one.
+    static = []
+    shared = []
+    for p in reversed(closure):
+        if p.name == "rts":
+            continue
+        static += ["-L" + d for d in p.library_dirs]
+        static += ["-l" + lib for lib in p.hs_libraries]
+        shared += ["-L" + d for d in p.dynamic_library_dirs]
+        shared += ["-l{}-ghc{}".format(lib, ghc_info.version) for lib in p.hs_libraries]
+        for flags in (static, shared):
+            flags.extend(["-l" + lib for lib in p.extra_libraries])
+            flags.extend(p.ld_options)
+    actions.write(link_static, static)
+    actions.write(link_shared, shared)
 
     return [
         CabalUnitInfo(
@@ -922,24 +1047,33 @@ _toolchain_unit = dynamic_actions(
     attrs = {
         "ghc": dynattrs.dynamic_value(),
         "label": dynattrs.value(Label),
+        "link_shared": dynattrs.output(),
+        "link_static": dynattrs.output(),
         "name": dynattrs.value(str),
     },
 )
 
 def _cabal_toolchain_library_impl(ctx: AnalysisContext) -> list[Provider]:
     name = ctx.attrs.package_name or ctx.label.name
+    link_static = ctx.actions.declare_output("link-static.args")
+    link_shared = ctx.actions.declare_output("link-shared.args")
     return [
-        DefaultInfo(),
+        DefaultInfo(sub_targets = {
+            "link-shared": [DefaultInfo(default_output = link_shared)],
+            "link-static": [DefaultInfo(default_output = link_static)],
+        }),
         CabalLibraryInfo(
             name = name,
             unit = ctx.actions.dynamic_output_new(_toolchain_unit(
                 ghc = ctx.attrs._ghc[GhcToolchainInfo].dynamic,
                 label = ctx.label,
+                link_shared = link_shared.as_output(),
+                link_static = link_static.as_output(),
                 name = name,
             )),
             units = ctx.actions.tset(CabalUnitTSet),
         ),
-    ]
+    ] + prelude_toolchain_library_providers(ctx, link_static, link_shared)
 
 cabal_toolchain_library = rule(
     doc = """A library that comes with the compiler, e.g. `base`.
@@ -949,5 +1083,5 @@ cabal_toolchain_library = rule(
     impl = _cabal_toolchain_library_impl,
     attrs = {
         "package_name": attrs.option(attrs.string(), default = None),
-    } | ghc_toolchain_attrs,
+    } | ghc_toolchain_attrs | prelude_library_attrs,
 )

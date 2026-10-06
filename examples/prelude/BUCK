@@ -1,0 +1,17 @@
+load("//rules/haskell:defs.bzl", "haskell_binary")
+
+# An executable built by the Haskell rules of the prelude, using a library
+# built by the cabal_simple rules.
+#
+# Both have to use the same compiler. The prelude rules use toolchains//:haskell,
+# so the library has to be built with the same binary distribution:
+#
+#   buck2 run --config cabal.ghc_toolchain=toolchains//:ghc-9.12.2-bindist //examples/prelude:exe
+
+haskell_binary(
+    name = "exe",
+    srcs = ["Main.hs"],
+    link_style = "static",
+    toolchain_libs = ["base"],
+    deps = ["//examples/hello:lib"],
+)

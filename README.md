@@ -14,7 +14,8 @@ There are three approaches side by side:
   moment only `projects/shake` has a plan made with the current GHC.
 - In `examples/` I transcribe `.cabal` files stanza by stanza into targets that
   do what Cabal does for `build-type: Simple`, without Setup.hs. The rules are
-  in `rules/haskell/cabal`.
+  in `rules/haskell/cabal`. `examples/prelude` is an executable built by the
+  rules of the prelude on top of one of these libraries.
 
 Not everything works at the moment and I keep reworking the code significantly.
 

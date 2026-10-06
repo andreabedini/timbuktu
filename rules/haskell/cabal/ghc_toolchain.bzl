@@ -6,6 +6,8 @@ Cabal's configure step asks the compiler what it is and what it comes with
 is only known after running those commands, it is exposed as a dynamic value.
 """
 
+load("@toolchains//ghcup:defs.bzl", "GhcDistributionInfo")
+
 GhcPackage = record(
     id = str,
     name = str,
@@ -14,6 +16,12 @@ GhcPackage = record(
     include_dirs = list[str],
     # As in the registration: `A B` or `A, B from unit-id:C`
     exposed_modules = str,
+    # What linking against it takes
+    library_dirs = list[str],
+    dynamic_library_dirs = list[str],
+    hs_libraries = list[str],
+    extra_libraries = list[str],
+    ld_options = list[str],
 )
 
 GhcDynamicInfo = provider(
@@ -35,6 +43,10 @@ GhcToolchainInfo = provider(
         "ghc_pkg": provider_field(RunInfo),
         "hsc2hs": provider_field(RunInfo),
         "ar": provider_field(RunInfo),
+        # The version of GHC when it is known without running it, i.e. for a
+        # binary distribution. The name of a shared library has it in it, and
+        # the prelude wants file names during analysis (see prelude.bzl).
+        "version": provider_field(str | None, default = None),
         # Resolves to GhcDynamicInfo
         "dynamic": provider_field(DynamicValue),
     },
@@ -82,6 +94,11 @@ def _ghc_dynamic_info_impl(
             depends = fields.get("depends", "").split(),
             include_dirs = fields.get("include-dirs", "").split(),
             exposed_modules = fields.get("exposed-modules", ""),
+            library_dirs = fields.get("library-dirs", "").split(),
+            dynamic_library_dirs = fields.get("dynamic-library-dirs", "").split(),
+            hs_libraries = fields.get("hs-libraries", "").split(),
+            extra_libraries = fields.get("extra-libraries", "").split(),
+            ld_options = fields.get("ld-options", "").split(),
         )
         packages[pkg.id] = pkg
         by_name[pkg.name] = pkg.id
@@ -117,7 +134,8 @@ def ghc_toolchain_providers(
         ghc: RunInfo,
         ghc_pkg: RunInfo,
         hsc2hs: RunInfo,
-        ar: RunInfo) -> list[Provider]:
+        ar: RunInfo,
+        static_version: str | None = None) -> list[Provider]:
     version = _capture(ctx, "version", cmd_args(ghc, "--numeric-version"))
     global_package_db = _capture(
         ctx,
@@ -134,6 +152,7 @@ def ghc_toolchain_providers(
             ghc_pkg = ghc_pkg,
             hsc2hs = hsc2hs,
             ar = ar,
+            version = static_version,
             dynamic = ctx.actions.dynamic_output_new(_ghc_dynamic_info(
                 version = version,
                 global_package_db = global_package_db,
@@ -164,12 +183,14 @@ system_ghc_toolchain = rule(
 
 def _bindist_ghc_toolchain_impl(ctx: AnalysisContext) -> list[Provider]:
     bindist = ctx.attrs.distribution[DefaultInfo].default_outputs[0]
+    info = ctx.attrs.distribution.get(GhcDistributionInfo)
     return ghc_toolchain_providers(
         ctx,
         ghc = RunInfo(args = [bindist.project("bin/ghc")]),
         ghc_pkg = RunInfo(args = [bindist.project("bin/ghc-pkg")]),
         hsc2hs = RunInfo(args = [bindist.project("bin/hsc2hs")]),
         ar = RunInfo(args = [ctx.attrs.ar]),
+        static_version = info.version if info else None,
     )
 
 bindist_ghc_toolchain = rule(

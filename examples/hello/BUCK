@@ -27,6 +27,7 @@ cabal_package(
 cabal_simple_library(
     name = "lib",
     package = ":hello",
+    visibility = ["PUBLIC"],
     exposed_modules = [
         "Hello",
         "Hello.Sizes",
