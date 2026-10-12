@@ -1,6 +1,7 @@
 # buildifier: disable=module-docstring
 load("@prelude//rules.bzl", "sh_test")
 load("//rules/haskell:defs.bzl", "haskell_binary")
+load("//rules/haskell/cabal:defs.bzl", "cabal_package", "cabal_simple_executable")
 load("//rules/haskell/cabal_install/interpret_plan.bzl", "interpret_plan")
 load("//rules/haskell/cabal_install/plan.bzl", "plan")
 
@@ -26,6 +27,34 @@ haskell_binary(
 sh_test(
     name = "socketpair-test",
     args = ["$(location :socketpair)"],
+    test = "tests/socketpair.sh",
+)
+
+# The same program by the cabal_simple rules, which take the network unit and
+# the libraries of the compiler from the plan as well.
+cabal_package(
+    name = "socketpair-pkg",
+    version = "0",
+    srcs = ["Main.hs"],
+    build_type = "Simple",
+)
+
+cabal_simple_executable(
+    name = "socketpair-simple",
+    package = ":socketpair-pkg",
+    executable_name = "socketpair",
+    main_is = "Main.hs",
+    build_depends = [
+        ":base-4.21.0.0-b7a5",
+        ":bytestring-0.12.2.0-d099",
+        ":network-3.2.8.0-45b36a0521ce805c00b8b1146c37ec03566790448134019f13c2181b666d8f63",
+    ],
+    default_language = "Haskell2010",
+)
+
+sh_test(
+    name = "socketpair-simple-test",
+    args = ["$(location :socketpair-simple)"],
     test = "tests/socketpair.sh",
 )
 

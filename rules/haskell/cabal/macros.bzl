@@ -2,7 +2,7 @@
 The cabal_macros.h header, see Distribution.Simple.Build.Macros.
 """
 
-load(":providers.bzl", "mangle")
+load("//rules/haskell:providers.bzl", "mangle")
 
 Versioned = record(name = str, version = str)
 

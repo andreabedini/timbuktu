@@ -6,11 +6,11 @@ load("@prelude//haskell:toolchain.bzl", "HaskellToolchainInfo")
 load(
     "common.bzl",
     "CabalPackageInfo",
-    "PackageConfTSet",
-    "UnitInfo",
     "build_env",
     "common_unit_attrs",
     "configure_args",
+    "dep_units",
+    "library_info",
     "mkInstallDirs",
     "mkProviders",
     "source_unit_attrs",
@@ -109,21 +109,13 @@ def _build_legacy_impl(ctx: AnalysisContext) -> list[Provider]:
             hidden = [
                 srcdir,
                 setup,
+                dep_units(ctx).project_as_args("artifacts"),
                 build.as_output(),
                 installdirs.prefix.as_output(),
                 package_db.as_output(),
             ],
         ),
         category = "cabal_build_legacy",
-    )
-
-    package_conf_tset = ctx.actions.tset(
-        PackageConfTSet,
-        value = package_conf,
-        children = [
-            dep[UnitInfo].package_conf_tset
-            for dep in ctx.attrs.deps
-        ],
     )
 
     providers = [
@@ -133,13 +125,9 @@ def _build_legacy_impl(ctx: AnalysisContext) -> list[Provider]:
                 package_conf,
             ],
         ),
-        UnitInfo(
-            id = ctx.attrs.unit_id,
-            name = ctx.attrs.pkg_name,
-            version = ctx.attrs.pkg_version,
-            package_conf = package_conf,
-            package_conf_tset = package_conf_tset,
-        ),
+        # NOTE: the library of the package. What Setup.hs builds besides is
+        # not available to dependents.
+        library_info(ctx, package_db, installdirs, None),
     ]
 
     providers.extend(mkProviders(ctx, package_db, installdirs))

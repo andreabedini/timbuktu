@@ -43,9 +43,18 @@ A plan is made for one compiler (`compiler-id`) and names the units of its
 global package db: it only builds with the toolchain it was made with, the
 downloaded GHC 9.12.2.
 
-## Using a unit from the prelude rules
+## Using a unit elsewhere
 
-A library unit can be a dependency of a prelude `haskell_binary` or
+A unit hands its dependents the same providers as a library or an executable
+of the `cabal_simple` rules (`rules/haskell/providers.bzl`): a library unit
+can be in the `build_depends` of a `cabal_simple` component, an executable
+unit in its `build_tool_depends`, and the other way round a unit built by
+`Setup.hs` can depend on a `cabal_simple` library or use a `cabal_simple`
+executable. `interpret_plan` always takes a unit's dependencies from the
+plan, though: putting a `cabal_simple` library in place of one of them means
+writing the unit's `build` target by hand.
+
+A library unit can also be a dependency of a prelude `haskell_binary` or
 `haskell_library`, as in [`network`](network). Link with
 `link_style = "static"` (or `"static_pic"`); with the default `shared` style
 the prelude forgets `-dynamic` and the binary dies at run time, unless

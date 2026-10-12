@@ -27,16 +27,16 @@ load(
     "LinkStyle",
     "SharedLibLinkable",
 )
+load("//rules/haskell:providers.bzl", "CabalExecutableInfo", "mangle")
 load(
     "common.bzl",
     "CabalPackageInfo",
-    "ExeDependInfo",
-    "PackageConfTSet",
-    "UnitInfo",
     "build_env",
     "common_unit_attrs",
     "configure_args",
-    "manglePkgName",
+    "data_dir",
+    "dep_units",
+    "library_info",
     "mkInstallDirs",
     "mkProviders",
     "source_unit_attrs",
@@ -126,7 +126,7 @@ def _build_impl(ctx: AnalysisContext) -> list[Provider]:
     )
 
     ctx.actions.run(
-        cmd_args(build_sh, hidden = [setup_config, build.as_output()]),
+        cmd_args(build_sh, hidden = [setup_config, build.as_output(), dep_units(ctx).project_as_args("artifacts")]),
         category = "cabal_build",
     )
 
@@ -233,39 +233,18 @@ def _build_impl(ctx: AnalysisContext) -> list[Provider]:
     if is_lib:
         lib_name = ctx.attrs.component_name[4:] or None
 
-        package_conf_tset = ctx.actions.tset(
-            PackageConfTSet,
-            value = package_conf,
-            children = [
-                dep[UnitInfo].package_conf_tset
-                for dep in ctx.attrs.deps
-            ],
-        )
-
         providers.extend(mkProviders(ctx, package_db, installdirs))
-
-        providers.append(
-            UnitInfo(
-                id = ctx.attrs.unit_id,
-                name = ctx.attrs.pkg_name,
-                version = ctx.attrs.pkg_version,
-                lib_name = lib_name,
-                #
-                package_conf = package_conf,
-                package_conf_tset = package_conf_tset,
-            ),
-        )
+        providers.append(library_info(ctx, package_db, installdirs, lib_name))
 
     if ctx.attrs.component_name.startswith("exe:"):
         exe_name = ctx.attrs.component_name[4:]
         exe = installdirs.prefix.project(paths.join("bin", exe_name))
         providers.extend([
             RunInfo(args = exe),
-            # NOTE: this is an artifact not cmd_args
-            ExeDependInfo(
-                mangledPkgName = manglePkgName(ctx.attrs.pkg_name),
+            CabalExecutableInfo(
+                name = exe_name,
                 exe = exe,
-                datadir = installdirs.prefix.project("data"),
+                env = {mangle(ctx.attrs.pkg_name) + "_datadir": data_dir(installdirs)},
             ),
         ])
 

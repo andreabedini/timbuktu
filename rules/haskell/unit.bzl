@@ -10,7 +10,8 @@ otherwise. The unit is found there by its id when one is given, by the name of
 its package otherwise; either way GHC is told its id whenever we are the ones
 calling it.
 
-Every rule set can depend on one, each one looking at what it understands:
+Every rule set can depend on one, each one looking at what it understands
+of the CabalLibraryInfo it returns (see providers.bzl):
 
 - The cabal_simple rules wait for a dynamic value: the registration of the
   unit is read off the package db when it is needed. Nothing has to be known
@@ -18,7 +19,8 @@ Every rule set can depend on one, each one looking at what it understands:
 
 - The plan interpreter gives `--dependency=<name>=<id>` to Setup.hs, and
   builds its command lines during analysis: it needs both as attributes,
-  which a plan has.
+  which a plan has, and a package db other than the compiler's is given to
+  Setup.hs as well.
 
 - The Haskell rules of the prelude can only say `-package <name>`, so they
   need the name of the package as an attribute and have no use for the id.
@@ -30,8 +32,7 @@ load("@prelude//haskell:library_info.bzl", "HaskellLibraryInfo", "HaskellLibrary
 load("@prelude//haskell:link_info.bzl", "HaskellLinkInfo")
 load("@prelude//linking:link_info.bzl", "LinkStyle")
 load("//rules/haskell/cabal:prelude.bzl", "prelude_library_attrs", "prelude_unit_link_providers")
-load("//rules/haskell/cabal:providers.bzl", "CabalLibraryInfo", "CabalUnit", "CabalUnitInfo", "CabalUnitTSet")
-load("//rules/haskell/cabal_install:common.bzl", "PackageConfTSet", "UnitInfo")
+load(":providers.bzl", "CabalLibraryInfo", "CabalUnit", "CabalUnitInfo", "CabalUnitTSet")
 load(
     ":toolchain.bzl",
     "GhcDynamicInfo",
@@ -151,25 +152,35 @@ _resolve = dynamic_actions(
     },
 )
 
-def _haskell_unit_impl(ctx: AnalysisContext) -> list[Provider]:
-    toolchain = ctx.attrs._ghc[GhcToolchainInfo]
-    id = ctx.attrs.id
-    version = ctx.attrs.version
-    inputs = ctx.attrs.inputs
-    deps = ctx.attrs.deps
+def resolve_unit(
+        actions: AnalysisActions,
+        toolchain: GhcToolchainInfo,
+        label: Label,
+        db: Artifact | None,
+        id: str | None,
+        name: str | None,
+        version: str | None) -> struct:
+    """Find a unit in a package db, in a dynamic action.
 
-    # A unit given by id has the name of a package only if it is told.
-    name = ctx.attrs.package_name or (None if id else ctx.label.name)
-
-    db = None if ctx.attrs.db == "global" else ctx.attrs.db
-    if inputs and not db:
-        fail("{}: `inputs` are what the registrations of `db` refer to, and there is no `db`".format(ctx.label))
+    Args:
+      actions: where to declare the actions
+      toolchain: the GHC toolchain
+      label: the target the unit is for, for error messages
+      db: a package db with the unit, None for the one of the compiler
+      id: the unit-id, if known
+      name: the name of its package, required without an id
+      version: what the version has to be, if anything
+    Returns:
+      a struct with the DynamicValue that resolves to CabalUnitInfo (`unit`)
+      and the files with the linker options for the prelude (`link_static`,
+      `link_shared`)
+    """
 
     # What is in the package db, when it is not the one the toolchain already
     # knows about.
     dump = []
     if db:
-        out = ctx.actions.declare_output("package-db")
+        out = actions.declare_output("unit", "package-db")
         cmd = cmd_args(
             toolchain.ghc_pkg,
             "dump",
@@ -182,7 +193,7 @@ def _haskell_unit_impl(ctx: AnalysisContext) -> list[Provider]:
             out.as_output(),
             delimiter = " ",
         )
-        ctx.actions.run(
+        actions.run(
             cmd_args("sh", "-c", cmd),
             category = "ghc_info",
             identifier = "package-db",
@@ -191,18 +202,36 @@ def _haskell_unit_impl(ctx: AnalysisContext) -> list[Provider]:
         )
         dump.append(out)
 
-    link_static = ctx.actions.declare_output("link-static.args")
-    link_shared = ctx.actions.declare_output("link-shared.args")
-    unit = ctx.actions.dynamic_output_new(_resolve(
+    link_static = actions.declare_output("unit", "link-static.args")
+    link_shared = actions.declare_output("unit", "link-shared.args")
+    unit = actions.dynamic_output_new(_resolve(
         ghc = toolchain.dynamic,
         db = dump,
-        label = ctx.label,
+        label = label,
         id = id,
         name = name,
         version = version,
         link_shared = link_shared.as_output(),
         link_static = link_static.as_output(),
     ))
+    return struct(unit = unit, link_static = link_static, link_shared = link_shared)
+
+def _haskell_unit_impl(ctx: AnalysisContext) -> list[Provider]:
+    id = ctx.attrs.id
+    version = ctx.attrs.version
+    inputs = ctx.attrs.inputs
+    deps = ctx.attrs.deps
+
+    # A unit given by id has the name of a package only if it is told.
+    name = ctx.attrs.package_name or (None if id else ctx.label.name)
+
+    db = None if ctx.attrs.db == "global" else ctx.attrs.db
+    if inputs and not db:
+        fail("{}: `inputs` are what the registrations of `db` refer to, and there is no `db`".format(ctx.label))
+
+    resolved = resolve_unit(ctx.actions, ctx.attrs._ghc[GhcToolchainInfo], ctx.label, db, id, name, version)
+    link_static = resolved.link_static
+    link_shared = resolved.link_shared
 
     # The package db, for whoever is told the unit by id: the units of the
     # compiler need none.
@@ -224,25 +253,15 @@ def _haskell_unit_impl(ctx: AnalysisContext) -> list[Provider]:
         # For the cabal_simple rules
         CabalLibraryInfo(
             name = name,
-            unit = unit,
+            lib_name = ctx.attrs.lib_name,
+            id = id,
+            unit = resolved.unit,
             units = units,
         ),
     ]
 
     # For the linking of the prelude
     providers += prelude_unit_link_providers(ctx, link_static, link_shared, inputs, deps)
-
-    # For the plan interpreter, which finds the units of the compiler by
-    # itself and only wants to hear how they are called.
-    if id and name and not db:
-        providers.append(UnitInfo(
-            id = id,
-            name = name,
-            version = version or "",
-            lib_name = ctx.attrs.lib_name,
-            package_conf = None,
-            package_conf_tset = ctx.actions.tset(PackageConfTSet),
-        ))
 
     # For the compiling of the prelude: `-package <name>`
     if name:
@@ -307,7 +326,7 @@ haskell_unit = rule(
         "package_name": attrs.option(attrs.string(), default = None),
         # When given, it has to be the version the unit turns out to have.
         "version": attrs.option(attrs.string(), default = None),
-        # The name of the sublibrary, for the sake of the plan interpreter.
+        # The name of the sublibrary, if it is one.
         "lib_name": attrs.option(attrs.string(), default = None),
         # The units it depends on. A unit of the compiler needs none: what it
         # depends on is in the same package db. A unit of another package db

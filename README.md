@@ -6,8 +6,11 @@ starting from their sources: a directory with a `.cabal` file, or an sdist
 from Hackage.
 
 There are three approaches side by side, each with its own examples. All of
-them build with the same GHC and can depend on each other's libraries to some
-extent (see [`examples/interop`](examples/interop)).
+them build with the same GHC. A library or an executable of a build plan and
+one of the `cabal_simple` rules hand their dependents the same providers, so
+the two depend on each other freely; the prelude rules can use both (see
+[`examples/interop`](examples/interop) and
+[`examples/plan/network`](examples/plan/network)).
 
 | Approach | Rules | Examples |
 | --- | --- | --- |
@@ -40,7 +43,7 @@ Not everything works and I keep reworking the code significantly.
 | --- | --- |
 | [`prelude/alex`](examples/prelude/alex) | alex from its sdist with `haskell_binary` |
 | [`plan/shake`](examples/plan/shake) | shake and its dependencies from a build plan, all `build-type: Simple` |
-| [`plan/network`](examples/plan/network) | network (`build-type: Configure`) from a build plan, used by a prelude binary |
+| [`plan/network`](examples/plan/network) | network (`build-type: Configure`) from a build plan, used by a prelude binary and by a `cabal_simple` executable |
 | [`cabal_simple/hello`](examples/cabal_simple/hello) | a local package: sublibrary, C sources, hsc2hs, Template Haskell, data files, a test suite |
 | [`cabal_simple/lexer`](examples/cabal_simple/lexer) | `build-tool-depends` on alex |
 | [`cabal_simple/cparse`](examples/cabal_simple/cparse) | a local package depending on a library from Hackage |

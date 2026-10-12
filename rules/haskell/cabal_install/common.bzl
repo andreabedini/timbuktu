@@ -48,7 +48,9 @@ load(
     "create_shared_libraries",
     "merge_shared_libraries",
 )
+load("//rules/haskell:providers.bzl", "CabalExecutableInfo", "CabalLibraryInfo", "CabalUnit", "CabalUnitTSet", "mangle")
 load("//rules/haskell:toolchain.bzl", "GhcToolchainInfo")
+load("//rules/haskell:unit.bzl", "resolve_unit")
 
 CabalPackageInfo = provider(
     doc = "TODO",
@@ -61,34 +63,6 @@ CabalPackageInfo = provider(
     },
 )
 
-def project_as_package_conf(package_conf):
-    return package_conf
-
-# buildifier: disable=name-conventions
-PackageConfTSet = transitive_set(
-    args_projections = {
-        "package_conf": project_as_package_conf,
-    },
-)
-
-UnitInfo = provider(
-    doc = "TODO",
-    # @unsorted-dict-items
-    fields = {
-        "id": provider_field(str),
-        "name": provider_field(str),
-        "version": provider_field(str),
-        "lib_name": provider_field(str | None, default = None),
-        "package_conf": provider_field(Artifact | None, default = None),
-        "package_conf_tset": provider_field(PackageConfTSet),
-    },
-)
-
-ExeDependInfo = provider(
-    doc = "TODO",
-    fields = ["mangledPkgName", "exe", "datadir"],
-)
-
 haskell_toolchain_attrs = {
     "_haskell_toolchain": attrs.toolchain_dep(
         providers = [HaskellToolchainInfo, HaskellPlatformInfo, GhcToolchainInfo],
@@ -97,7 +71,7 @@ haskell_toolchain_attrs = {
 }
 
 common_unit_attrs = {
-    "deps": attrs.list(attrs.dep(), default = []),
+    "deps": attrs.list(attrs.dep(providers = [CabalLibraryInfo]), default = []),
     "labels": attrs.list(attrs.string(), default = []),
     "pkg_name": attrs.string(),
     "pkg_version": attrs.string(),
@@ -105,31 +79,17 @@ common_unit_attrs = {
 }
 
 source_unit_attrs = haskell_toolchain_attrs | {
-    "exec_deps": attrs.list(attrs.exec_dep(providers = [ExeDependInfo]), default = []),
+    "exec_deps": attrs.list(attrs.exec_dep(providers = [CabalExecutableInfo]), default = []),
     "flags": attrs.dict(attrs.string(), attrs.bool()),
     "src": attrs.dep(providers = [CabalPackageInfo]),
 }
 
-def manglePkgName(name: str) -> str:
-    # NOTE: taken from build-env, check with Cabal
-    return name.replace("-", "_")
-
-def package_db(ctx: AnalysisContext, tset: PackageConfTSet) -> cmd_args:
-    haskell_toolchain = ctx.attrs._haskell_toolchain[HaskellToolchainInfo]
-    cache = ctx.actions.declare_output("package_db", "package.cache", has_content_based_path = False)
-    ctx.actions.run(
-        cmd_args(
-            haskell_toolchain.packager,
-            "recache",
-            cmd_args(cache.as_output(), format = "--package-db={}", parent = 1),
-            hidden = [
-                ctx.actions.symlink_file("package_db/{}.conf".format(package_conf.owner.name), package_conf, has_content_based_path = False)
-                for package_conf in tset.traverse()
-            ],
-        ),
-        category = "packagedb",
-    )
-    return cmd_args(cache, parent = 1)
+def dep_units(ctx: AnalysisContext, value: CabalUnit | None = None) -> CabalUnitTSet:
+    """The units of the dependencies, and `value` if given."""
+    children = [dep[CabalLibraryInfo].units for dep in ctx.attrs.deps]
+    if value:
+        return ctx.actions.tset(CabalUnitTSet, value = value, children = children)
+    return ctx.actions.tset(CabalUnitTSet, children = children)
 
 def _flags(ctx: AnalysisContext) -> cmd_args:
     return cmd_args([("+" if value else "-") + name for name, value in ctx.attrs.flags.items()], format = "--flags={}")
@@ -144,28 +104,24 @@ def configure_args(ctx: AnalysisContext) -> cmd_args:
         "--package-db=global",
     )
 
-    tset_deps = ctx.actions.tset(
-        PackageConfTSet,
-        children = [
-            dep[UnitInfo].package_conf_tset
-            for dep in ctx.attrs.deps
-        ],
-    )
+    # One package db for each unit that is not the compiler's, the way the
+    # cabal_simple rules do it.
+    units = dep_units(ctx)
+    args.add(units.project_as_args("setup_package_db"))
+    args.add(cmd_args(hidden = units.project_as_args("artifacts")))
 
-    args.add(cmd_args(package_db(ctx, tset_deps), format = "--package-db={}"))
-
-    for d in ctx.attrs.deps:
-        unitInfo = d[UnitInfo]
-        if unitInfo.lib_name:
-            args.add("--dependency={}:{}={}".format(unitInfo.name, unitInfo.lib_name, unitInfo.id))
+    for dep in ctx.attrs.deps:
+        info = dep[CabalLibraryInfo]
+        if not info.id or not info.name:
+            fail("{}: Setup.hs is told each dependency by package name and unit-id during analysis, and {} does not know {}".format(
+                ctx.label,
+                dep.label,
+                "its unit-id (give haskell_unit an `id`)" if info.name else "its package name",
+            ))
+        if info.lib_name:
+            args.add("--dependency={}:{}={}".format(info.name, info.lib_name, info.id))
         else:
-            args.add("--dependency={}={}".format(unitInfo.name, unitInfo.id))
-
-        # hli = d[HaskellLibraryProvider].lib[LinkStyle("static")]
-        # args.add(cmd_args(hli.db, format = "--package-db={}"))
-
-        # # FIXME: missing libname
-        # args.add("--dependency={}={}".format(hli.name, hli.id))
+            args.add("--dependency={}={}".format(info.name, info.id))
 
     args.add(_flags(ctx))
     return args
@@ -181,16 +137,16 @@ def build_env(exec_deps: list[Dependency]) -> cmd_args:
     env = cmd_args()
 
     if exec_deps:
-        path = cmd_args([k[ExeDependInfo].exe for k in exec_deps], parent = 1, delimiter = ":")
+        path = cmd_args([k[CabalExecutableInfo].exe for k in exec_deps], parent = 1, delimiter = ":")
         env.add(cmd_args(path, format = "PATH={}:$PATH"))
 
-    # NOTE: the data dir has to be absolute: a tool can write it into a file
+    # NOTE: the paths have to be absolute: a tool can write them into a file
     # somewhere else, as hsc2hs does with `#include "<datadir>/template-hsc.h"`.
+    # The scripts run from the package's directory, which is what the paths
+    # are relative to.
     for dep in exec_deps:
-        env.add(cmd_args(
-            dep[ExeDependInfo].datadir,
-            format = dep[ExeDependInfo].mangledPkgName + "_datadir=$(realpath {})",
-        ))
+        for name, value in dep[CabalExecutableInfo].env.items():
+            env.add(cmd_args(value, format = name + "=$PWD/{}"))
 
     return env
 
@@ -378,3 +334,51 @@ def mkProviders(ctx, package_db, installdirs) -> list[Provider]:
     )
 
     return [haskell_lib_provider, haskell_link_infos, merged_link_info, shared_library_info, linkable_graph]
+
+def library_info(ctx: AnalysisContext, package_db: Artifact, installdirs: InstallDirs, lib_name: str | None) -> CabalLibraryInfo:
+    """What a library unit hands to its dependents, whatever rule set they are of.
+
+    Args:
+      ctx: the context of the unit's rule
+      package_db: a package db with the unit's registration and nothing else
+      installdirs: where Setup.hs copied the unit
+      lib_name: the name of the sublibrary, None for the main library
+    Returns:
+      the CabalLibraryInfo of the unit
+    """
+    pkg_name = ctx.attrs.pkg_name
+    unit_id = ctx.attrs.unit_id
+
+    # The cabal_simple rules want to hear what the registration says.
+    # NOTE: a sublibrary is registered with a name of its own (z-<pkg>-z-<lib>),
+    # so it is only looked for by id.
+    resolved = resolve_unit(
+        ctx.actions,
+        ctx.attrs._haskell_toolchain[GhcToolchainInfo],
+        ctx.label,
+        package_db,
+        unit_id,
+        None if lib_name else pkg_name,
+        ctx.attrs.pkg_version,
+    )
+    return CabalLibraryInfo(
+        name = pkg_name,
+        lib_name = lib_name,
+        id = unit_id,
+        unit = resolved.unit,
+        units = dep_units(ctx, CabalUnit(
+            id = unit_id,
+            package_db = package_db,
+            # The registration refers to the installation prefix.
+            artifacts = [installdirs.prefix],
+            data_dir = (mangle(pkg_name) + "_datadir", data_dir(installdirs)),
+        )),
+    )
+
+def data_dir(installdirs: InstallDirs) -> cmd_args:
+    """Where Setup.hs copied the data-files of the package.
+
+    NOTE: not a projection of the prefix, since the directory is only there
+    when the package has data-files.
+    """
+    return cmd_args(installdirs.prefix, "/data", delimiter = "")

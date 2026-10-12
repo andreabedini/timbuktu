@@ -24,9 +24,21 @@ top-level `README.md` indexes them. Keep them in step with the `BUCK` files.
 The plan interpreter knows which units to build and where their sources are,
 but each unit is an opaque `Setup.hs` run. The `cabal_simple` rules know how to
 build one component with fine-grained outputs, but their targets are
-transcribed by hand and nothing solves dependencies for them. The two do not
-share providers or toolchains yet; having `interpret_plan` emit `cabal_simple`
-targets for Simple units is the open question.
+transcribed by hand and nothing solves dependencies for them. Both use one
+toolchain and the same providers (`rules/haskell/providers.bzl`), so a unit
+of a plan and a `cabal_simple` component can depend on each other; having
+`interpret_plan` emit `cabal_simple` targets for Simple units is the open
+question.
+
+The direction of travel (Andrea, 2026-10-12): rules covering a spectrum from
+the most dynamic (`cabal build` in one action, a plan computed at build
+time) to the most static (`cabal_simple` targets written by hand), all
+speaking the same providers, plus BXL scripts that turn the dynamic into the
+static (a `.cabal` file into `cabal_simple` targets, a plan into targets).
+The plan read in a dynamic action that was deleted on 2026-10-06 is one of
+those levels, unfinished rather than abandoned. `../cabal-solver-plan`, a
+solver with explicit inputs, is being adapted to replace
+`cabal build --dry-run` with a JSON format of its own.
 
 This is a research sandbox, not a product. History is mostly `wip` commits and
 the code is reworked wholesale. The repository was cleaned up on 2026-10-06:
@@ -118,7 +130,17 @@ Known broken or untested:
     untested. There are no profiling libraries.
 - The other direction does not exist: neither a unit of a plan nor a
   `cabal_simple` component can depend on a prelude `haskell_library` (they
-  need `UnitInfo` and `CabalLibraryInfo`).
+  need `CabalLibraryInfo`).
+- A unit of a plan and a `cabal_simple` component depending on each other:
+  `//examples/plan/network:socketpair-simple` is a `cabal_simple` executable
+  on the network unit. The rest was checked with throwaway targets on
+  2026-10-12: the plan's `random` built by `Setup.hs` against a
+  `cabal_simple` splitmix, with a `cabal_simple` executable on top; a plan
+  unit with `cabal_simple` alex as a build tool; a `cabal_simple` library
+  with the plan's hsc2hs as a build tool. `interpret_plan` has no way to put
+  a `cabal_simple` target in place of a unit: that took a `build` target
+  written by hand. A sublibrary of a plan used by `cabal_simple` is
+  untested.
 - Prelude rules depending on a `cabal_simple` library: the linker flags of
   `extra-libraries`, `extra-lib-dirs` and
   `ld-options` are passed on but no example has them. A library built with
@@ -242,7 +264,15 @@ failed once with a transient HTTP/2 error; run it again.
   read in a dynamic action. Every rule set can depend on one; the top of the
   file says what each gets out of it. It took the place of
   `cabal_toolchain_library` and `pre_existing_unit`: `interpret_plan` makes
-  one for each pre-existing unit of a plan.
+  one for each pre-existing unit of a plan. `resolve_unit` is that reading of
+  a package db, also used by the plan interpreter for the units it builds.
+- `rules/haskell/providers.bzl` — what a library or an executable hands to
+  its dependents, whatever rule set they are of: `CabalLibraryInfo` (package
+  name, sublibrary, the unit-id when known during analysis, a dynamic
+  `CabalUnitInfo`, and a `CabalUnitTSet` of package dbs and artifacts) and
+  `CabalExecutableInfo` (the program and the environment it expects as a
+  build tool). The plan interpreter, the `cabal_simple` rules and
+  `haskell_unit` all return and consume these.
 - `rules/haskell/hackage.bzl` — `hackage_package`: `http_archive` of an sdist
   from Hackage, no cabal-file revisions. Used by `examples/`.
 - `rules/haskell/helpers/` — `parse_fields.hs` prints the fields of a `.cabal`
@@ -271,8 +301,9 @@ failed once with a transient HTTP/2 error; run it again.
     predicted. A build tool's data dir (`<pkg>_datadir`, from `build_env` in
     `common.bzl`) is an absolute path, because hsc2hs writes it into an
     `#include` of a generated C file.
-  - `common.bzl` — providers (`UnitInfo`, `PackageConfTSet`, `CabalPackageInfo`,
-    `ExeDependInfo`), configure arguments, install dirs, and `mkProviders`,
+  - `common.bzl` — `CabalPackageInfo` (not the one of the `cabal_simple`
+    rules), configure arguments, install dirs, `library_info` (the
+    `CabalLibraryInfo` of a unit), and `mkProviders`,
     which adapts a built unit to the prelude's Haskell rules:
     `HaskellLibraryProvider` and `HaskellLinkInfo` to compile against it,
     `MergedLinkInfo`, `SharedLibraryInfo` and `LinkableGraph` to link it. The
@@ -295,10 +326,9 @@ failed once with a transient HTTP/2 error; run it again.
   - `prelude.bzl` — what the Haskell rules of the prelude need to depend on a
     `cabal_simple_library` (the same five providers as `mkProviders`), and to
     link a `haskell_unit` (linker flags only, see "Design rules").
-  - `providers.bzl` — `CabalPackageInfo`, `CabalLibraryInfo` (a dynamic
-    `CabalUnitInfo` plus a `CabalUnitTSet` of package dbs and artifacts),
-    `CabalExecutableInfo`. `CabalPackageInfo` here is not the provider of the
-    same name in `cabal_install/common.bzl`.
+  - `providers.bzl` — `CabalPackageInfo`, which is not the provider of the
+    same name in `cabal_install/common.bzl`. What components hand their
+    dependents is in `rules/haskell/providers.bzl`.
   - `macros.bzl`, `paths.bzl` — `cabal_macros.h`, `Paths_<pkg>` and
     `PackageInfo_<pkg>`, after Cabal's templates. `paths.bzl` also has the
     `cabal_paths_module` rule, used by `examples/prelude/alex/BUCK`.
@@ -345,7 +375,8 @@ failed once with a transient HTTP/2 error; run it again.
   during analysis and a package db is only read later. The `cabal_simple`
   rules need nothing ahead of time and always tell GHC the id
   (`-package-id`), also for a unit given by name. The plan interpreter needs
-  `id` and the name of the package (`UnitInfo`). The prelude needs the name
+  `id` and the name of the package during analysis, and fails without them.
+  The prelude needs the name
   for `-package <name>`; an `id` is of no use to it, except that with a `db`
   it takes one for the package db to reach the compiler at all.
 - What the prelude's Haskell rules need from a toolchain beyond the compiler
@@ -404,9 +435,17 @@ failed once with a transient HTTP/2 error; run it again.
   looked up in a document that changes over time (such as which revision a
   cabal file is) belongs in the `plan` step, not in the rules that fetch
   sources.
-- In the plan interpreter, package dbs are composed from a transitive set of
-  `.conf` files (`PackageConfTSet`) and recached per consumer, starting from
-  `--package-db=clear --package-db=global`.
+- Every library unit has a package db of its own, whatever built it. A
+  consumer gets one `-package-db` (GHC) or `--package-db=` (`Setup.hs`, after
+  `--package-db=clear --package-db=global`) for each unit it needs that is
+  not the compiler's, from the `CabalUnitTSet` of `CabalLibraryInfo`, and
+  what the registrations refer to as hidden inputs.
+- A build tool's environment (`<pkg>_datadir`) is made of absolute paths
+  where it is used: hsc2hs writes its data dir into an `#include` of a C
+  file it generates elsewhere. `tools/run.sh` and `build_env` in
+  `cabal_install/common.bzl` do it; a data dir of a plan unit is a path
+  under its prefix, not a projection, since it only exists when the package
+  has data files.
 - Actions that must run inside the source directory write a small bash script
   (`cd <srcdir>` then a command made relative with `relative_to = srcdir`) and
   declare inputs/outputs through `hidden`. The `cabal_simple` rules use

@@ -12,8 +12,8 @@ its own.
 | `executable <name>` | `cabal_simple_executable` (`executable_name`) |
 | `test-suite <name>` | `cabal_simple_test` |
 | a field, `hs-source-dirs` | the attribute of the same name with underscores, `hs_source_dirs` |
-| `build-depends` | targets: another component, or a `haskell_unit` for a package that comes with the compiler |
-| `build-tool-depends` | targets of executables |
+| `build-depends` | targets: another component, a `haskell_unit` for a package that comes with the compiler, or a library unit of a [build plan](../plan) |
+| `build-tool-depends` | targets of executables, of these rules or of a build plan |
 | `if flag(...)`, `if os(...)` | `select`, or resolved by hand |
 
 The rules are in [`rules/haskell/cabal`](../../rules/haskell/cabal); the

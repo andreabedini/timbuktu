@@ -43,20 +43,20 @@ have a different idea of what a library is: see prelude.bzl.
 load("@prelude//:paths.bzl", "paths")
 load("@prelude//cxx:cxx_toolchain_types.bzl", "CxxToolchainInfo")
 load("@prelude//decls:toolchains_common.bzl", "toolchains_common")
-load("//rules/haskell:toolchain.bzl", "GhcDynamicInfo", "GhcToolchainInfo", "ghc_toolchain_attrs")
-load(":macros.bzl", "CabalMacroContext", "Versioned", "cabal_macros_gen")
-load(":paths.bzl", "PathsModuleCtx", "mk_package_info_module", "mk_paths_module")
-load(":prelude.bzl", "prelude_library_attrs", "prelude_library_providers")
 load(
-    ":providers.bzl",
+    "//rules/haskell:providers.bzl",
     "CabalExecutableInfo",
     "CabalLibraryInfo",
-    "CabalPackageInfo",
     "CabalUnit",
     "CabalUnitInfo",
     "CabalUnitTSet",
     "mangle",
 )
+load("//rules/haskell:toolchain.bzl", "GhcDynamicInfo", "GhcToolchainInfo", "ghc_toolchain_attrs")
+load(":macros.bzl", "CabalMacroContext", "Versioned", "cabal_macros_gen")
+load(":paths.bzl", "PathsModuleCtx", "mk_package_info_module", "mk_paths_module")
+load(":prelude.bzl", "prelude_library_attrs", "prelude_library_providers")
+load(":providers.bzl", "CabalPackageInfo")
 
 # See knownSuffixHandlers in Distribution.Simple.PreProcess
 _PREPROCESSOR_EXTS = ["chs", "hsc", "x", "y", "ly", "cpphs"]
@@ -859,6 +859,7 @@ def _cabal_simple_library_impl(ctx: AnalysisContext) -> list[Provider]:
         CabalLibraryInfo(
             name = pkg.name,
             lib_name = lib_name,
+            id = unit_id,
             unit = unit,
             units = _dep_units(ctx, CabalUnit(
                 id = unit_id,

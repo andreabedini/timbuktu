@@ -4,7 +4,7 @@ Distribution.Simple.Build.PathsModule and
 Distribution.Simple.Build.PackageInfoModule.
 """
 
-load(":providers.bzl", "mangle")
+load("//rules/haskell:providers.bzl", "mangle")
 
 def manglePkgName(name: str) -> str:
     return mangle(name)
