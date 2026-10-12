@@ -1,9 +1,0 @@
-load("//rules/haskell/cabal_install/plan.bzl", "plan")
-
-# buildifier: disable=module-docstring
-
-plan(
-    name = "plan",
-    project_file = "cabal.project",
-    targets = ["haskell-src-exts"],
-)

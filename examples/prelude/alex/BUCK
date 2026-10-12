@@ -1,0 +1,85 @@
+load("@prelude//rules.bzl", "sh_test")
+load("//rules/haskell:defs.bzl", "haskell_binary")
+load("//rules/haskell:hackage.bzl", "hackage_package")
+load("//rules/haskell/cabal/paths.bzl", "cabal_paths_module")
+
+# alex, straight from its sdist, built by the Haskell rules of the prelude.
+# Compare with //examples/cabal_simple/alex, which builds the same package
+# from a transcription of alex.cabal.
+
+_MODULES = [
+    "Main",
+    "AbsSyn",
+    "CharSet",
+    "DFA",
+    "DFAMin",
+    "DFS",
+    "Info",
+    "NFA",
+    "Output",
+    "Parser",
+    "ParseMonad",
+    "Scan",
+    "Util",
+    "UTF8",
+    "Data.Ranged",
+    "Data.Ranged.Boundaries",
+    "Data.Ranged.RangedSet",
+    "Data.Ranged.Ranges",
+]
+
+# The prelude takes each source file on its own, so every file we need is a
+# subtarget of the archive.
+_FILES = ["src/{}.hs".format(m.replace(".", "/")) for m in _MODULES]
+
+hackage_package(
+    name = "alex-3.5.1.0",
+    sha256 = "c92efe86f8eb959ee03be6c04ee57ebc7e4abc75a6c4b26551215d7443e92a07",
+    sub_targets = _FILES + ["data", "examples/words.x"],
+)
+
+haskell_binary(
+    name = "alex",
+    # NOTE: the prelude derives the names of object files from the keys, which
+    # have to be the module paths: `src/` goes.
+    srcs = {f.removeprefix("src/"): ":alex-3.5.1.0[{}]".format(f) for f in _FILES} |
+           {"Paths_alex.hs": ":alex-paths"},
+    toolchain_libs = [
+        "base",
+        "array",
+        "containers",
+        "directory",
+    ],
+    compiler_flags = [
+        "-XHaskell2010",
+        "-XPatternSynonyms",
+        "-XScopedTypeVariables",
+        "-XTupleSections",
+    ],
+    link_style = "static",
+)
+
+# Cabal generates this module. The directories are placeholders: the prelude
+# installs nothing. alex reads its templates from `datadir`, which the
+# environment variable alex_datadir overrides (see tests/alex.sh).
+cabal_paths_module(
+    name = "alex-paths",
+    package_name = "alex",
+    package_version = "3.5.1.0",
+    bindir = "bin",
+    libdir = "lib",
+    dynlibdir = "dynlib",
+    datadir = "data",
+    libexecdir = "libexec",
+    sysconfdir = "sysconf",
+)
+
+sh_test(
+    name = "alex-test",
+    args = [
+        "$(location :alex)",
+        "$(location :alex-3.5.1.0[data])",
+        "$(location :alex-3.5.1.0[examples/words.x])",
+    ],
+    test = "tests/alex.sh",
+)

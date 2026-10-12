@@ -184,13 +184,12 @@ def build_env(exec_deps: list[Dependency]) -> cmd_args:
         path = cmd_args([k[ExeDependInfo].exe for k in exec_deps], parent = 1, delimiter = ":")
         env.add(cmd_args(path, format = "PATH={}:$PATH"))
 
+    # NOTE: the data dir has to be absolute: a tool can write it into a file
+    # somewhere else, as hsc2hs does with `#include "<datadir>/template-hsc.h"`.
     for dep in exec_deps:
         env.add(cmd_args(
-            [
-                cmd_args(dep[ExeDependInfo].mangledPkgName, format = "{}_datadir"),
-                dep[ExeDependInfo].datadir,
-            ],
-            delimiter = "=",
+            dep[ExeDependInfo].datadir,
+            format = dep[ExeDependInfo].mangledPkgName + "_datadir=$(realpath {})",
         ))
 
     return env

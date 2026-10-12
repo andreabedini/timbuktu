@@ -1,7 +1,0 @@
-load("//rules/haskell/cabal_install/plan.bzl", "plan")
-
-plan(
-    name = "plan",
-    project_file = "cabal.project",
-    targets = ["lens"],
-)

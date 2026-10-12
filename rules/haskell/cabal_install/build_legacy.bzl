@@ -79,7 +79,7 @@ def _build_legacy_impl(ctx: AnalysisContext) -> list[Provider]:
     ghc_cmd = cmd_args(
         ctx.attrs._haskell_toolchain[HaskellToolchainInfo].packager,
         "recache",
-        cmd_args(package_db.as_output(), format = "--package-db={}"),
+        cmd_args(package_db, format = "--package-db={}", ignore_artifacts = True),
         delimiter = " ",
     )
 
@@ -93,6 +93,7 @@ def _build_legacy_impl(ctx: AnalysisContext) -> list[Provider]:
         cmd_args(copy_cmd, relative_to = srcdir),
         cmd_args("mkdir", package_db, delimiter = " ", relative_to = srcdir, ignore_artifacts = True),
         cmd_args(register_cmd, relative_to = srcdir),
+        cmd_args(ghc_cmd, relative_to = srcdir),
     )
 
     build_sh = ctx.actions.write(
@@ -110,7 +111,7 @@ def _build_legacy_impl(ctx: AnalysisContext) -> list[Provider]:
                 setup,
                 build.as_output(),
                 installdirs.prefix.as_output(),
-                package_conf.as_output(),
+                package_db.as_output(),
             ],
         ),
         category = "cabal_build_legacy",

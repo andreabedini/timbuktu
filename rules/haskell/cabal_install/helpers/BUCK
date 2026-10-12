@@ -7,10 +7,3 @@ haskell_binary(
     toolchain_libs = ["base", "bytestring", "containers", "filepath", "Cabal", "Cabal-syntax"],
     visibility = ["PUBLIC"],
 )
-
-haskell_binary(
-    name = "setup_configure",
-    srcs = {"Main.hs": "setup_configure.hs"},
-    toolchain_libs = ["base", "Cabal"],
-    visibility = ["PUBLIC"],
-)

@@ -1,9 +1,0 @@
-# buildifier: disable=module-docstring
-
-load("//rules/haskell/cabal_install/plan.bzl", "plan")
-
-plan(
-    name = "plan",
-    project_file = "cabal.project",
-    targets = ["attoparsec"],
-)

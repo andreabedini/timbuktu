@@ -8,14 +8,18 @@ Experiments in building Haskell with Buck2, focused on projects that use cabal.
 Three approaches live side by side:
 
 1. Hand-written targets using the Haskell rules from the Buck2 prelude
-   (`BUCK`, `rules/haskell/helpers/BUCK`, `tmp/alex-3.5.1.0/BUCK`).
+   (`examples/prelude/`, `rules/haskell/helpers/BUCK`).
 2. The plan interpreter: mapping a cabal-install build plan (`plan.json`) onto
    a Buck2 target graph, building each unit through `Setup.hs` the way
-   cabal-install does (`rules/haskell/cabal_install/`, `projects/`).
+   cabal-install does (`rules/haskell/cabal_install/`, `examples/plan/`).
 3. The `cabal_simple` rules: targets whose attributes are the fields of a
    `.cabal` stanza, built the way Cabal builds `build-type: Simple` but by
    calling GHC directly, without `Setup.hs` (`rules/haskell/cabal/`,
-   `examples/`).
+   `examples/cabal_simple/`).
+
+The repository is meant to show how a cabal package is built from its
+sources with each approach: every example has a `README.md`, and the
+top-level `README.md` indexes them. Keep them in step with the `BUCK` files.
 
 The plan interpreter knows which units to build and where their sources are,
 but each unit is an opaque `Setup.hs` run. The `cabal_simple` rules know how to
@@ -29,26 +33,35 @@ the code is reworked wholesale. The repository was cleaned up on 2026-10-06:
 abandoned experiments (the generated toolchain, a from-scratch
 `haskell_library`, a plan read in a dynamic action, buildozer generation,
 Cabal's types as providers, remote execution platforms) were deleted and are
-only in the history.
+only in the history. On 2026-10-12 the examples were regrouped by approach
+under `examples/`; the projects whose plans no longer built (everything in
+`projects/` but shake), the vendored alex sdist in `tmp/`, the root `//:main`
+and the unused `setup_configure` helper were deleted.
 
-## Current state (2026-10-06)
+## Current state (2026-10-12)
 
 The repository runs on the upstream prelude bundled with buck2, with a
 downloaded GHC 9.12.2. It used to depend on the Mercury fork of the prelude;
 that dependency is gone. There is one GHC toolchain, `toolchains//:haskell`,
 for the prelude rules, the plan interpreter and the `cabal_simple` rules.
 
-Built and run after the cleanup:
+Built and run after the cleanup (`buck2 test //examples/...` runs 6 tests, all
+passing; buck2 also reports the 5 `http_archive` targets as passed tests):
 
-- Prelude rules: `//:main`, `//rules/haskell/helpers:parse_fields`,
-  `//rules/haskell/cabal_install/helpers:setup_simple` and `:setup_configure`,
-  `//tmp/alex-3.5.1.0:alex` (prints its version).
-- `cabal_simple` rules: `//examples/hello:exe` with both toolchains,
-  `//examples/hello:hello-test`, `//examples/lexer:exe`, and
-  `//examples/cparse:exe` (built, not run), which pulls in alex, happy,
-  happy-lib and language-c.
-- Plan interpreter: `//projects/shake:plan`, and the whole shake plan; the
-  `shake` executable unit builds and prints its version.
+- Prelude rules: `//rules/haskell/helpers:parse_fields`,
+  `//rules/haskell/cabal_install/helpers:setup_simple`,
+  `//examples/prelude/alex:alex` (sources taken one by one from the sdist as
+  subtargets of the `http_archive`; `:alex-test` generates a lexer with it).
+- `cabal_simple` rules: `//examples/cabal_simple/hello:exe` with both
+  toolchains, `:hello-test`, `//examples/cabal_simple/lexer:exe`, and
+  `//examples/cabal_simple/cparse:exe`, which pulls in alex, happy, happy-lib
+  and language-c.
+- Plan interpreter: `//examples/plan/shake:plan`, and the whole shake plan;
+  the `shake` executable unit builds and prints its version.
+  `//examples/plan/network` is a plan whose `network` unit has
+  `build-type: Configure` and goes through `build_legacy.bzl`, with hsc2hs
+  built from the plan as an exe-depend; `:socketpair`, a prelude binary
+  linked `static`, depends on it and runs (`:socketpair-test`).
 - `buck2 targets //...` parses every package.
 - Prelude rules on top of the plan interpreter: a `haskell_binary` and a
   `haskell_library` depending on the `utf8-string` unit of the shake plan
@@ -56,7 +69,7 @@ Built and run after the cleanup:
   `linker_flags`), also when what they use of it needs `bytestring` from the
   global package db. This was checked with throwaway targets; no target in
   the repository does it.
-- `haskell_unit`: `//examples/prelude:count` is a prelude binary that gets
+- `haskell_unit`: `//examples/interop:count` is a prelude binary that gets
   `base` and `containers` from units alone (`:count-test`), the
   `cabal_simple` examples take the libraries of the compiler from units, and
   every pre-existing unit of a plan is one. Checked
@@ -65,30 +78,31 @@ Built and run after the cleanup:
   units in a package db other than the compiler's (found by name from a
   `cabal_simple_library`; given by id, one depending on the other, from a
   prelude binary linked `static` and `static_pic`).
-- Prelude rules on top of the `cabal_simple` rules: `//examples/prelude:exe`,
-  a `haskell_binary` depending on `//examples/prelude:lib`, a
-  `haskell_library` which depends on `//examples/hello:lib`, with both
-  toolchains. It is linked with the `static` style; `static_pic` and `shared`
-  (with `-dynamic` in `linker_flags`) were checked with throwaway targets, and
-  so was a `haskell_binary` depending on `//examples/hello:lib` directly.
-- The other Haskell rules of the prelude, in `examples/prelude` and with the
+- Prelude rules on top of the `cabal_simple` rules: `//examples/interop:exe`,
+  a `haskell_binary` depending on `//examples/interop:lib`, a
+  `haskell_library` which depends on `//examples/cabal_simple/hello:lib`, with
+  both toolchains. It is linked with the `static` style; `static_pic` and
+  `shared` (with `-dynamic` in `linker_flags`) were checked with throwaway
+  targets, and so was a `haskell_binary` depending on the hello library
+  directly.
+- The other Haskell rules of the prelude, in `examples/interop` and with the
   bindist toolchain: `:ghci` (`haskell_ghci`; `:ghci-test` loads the library
   in it and calls it), `:haddock` (`haskell_haddock`; `:haddock-test` looks at
   what it wrote) and `:ide` (`haskell_ide`; `tests/ide.sh`, run by hand, gives
   what `prelude//haskell/ide/ide.bxl` answers to GHC).
 - With the GHC in `PATH` (9.12.4), `--config haskell.toolchain=toolchains//:ghc`:
-  `//:main`, `//examples/hello:exe`, `:hello-test`, `//examples/prelude:exe`,
-  `:haddock-test`, and the analysis of a unit of the shake plan.
+  `//:main` (since deleted), `//examples/cabal_simple/hello:exe`,
+  `:hello-test`, `//examples/interop:exe`, `:haddock-test`, and the analysis
+  of a unit of the shake plan. Not run again after the 2026-10-12 moves.
 
 Known broken or untested:
 
-- Every project other than shake still pins `index-state: 2024-09-19`, which
-  has no install plan for GHC 9.12. The plans embedded in
-  `projects/aeson-diff/BUCK` and `projects/cabal-install/BUCK` were made with
-  GHC 9.8.2 / 9.10.1 and name units the current toolchain does not have; the
-  one in `projects/c2hs/BUCK` is commented out.
-- `build_legacy.bzl` and the legacy branch of `interpret_plan.bzl` have not
-  run since the move to the bundled prelude; shake's plan has no legacy units.
+- `build_legacy.bzl` has only been run on `network` (`build-type:
+  Configure`, no `setup-depends`). `build-type: Custom` and `Hooks` are
+  untested.
+- `rules/haskell/cabal_install/helpers/setup_simple.hs` has a `postConf`
+  hook that writes `local-build-info.json`, which nothing reads (see
+  "Layout").
 - Prelude rules depending on a unit of an interpreted plan (see "Design
   rules" for why):
   - The `-setup` binaries of legacy units with `setup-depends` built from
@@ -115,7 +129,7 @@ Known broken or untested:
   error about `NoneType` (that toolchain has nothing of what it needs), and
   the IDE script is untested (`tests/ide.sh` takes GHC from the bindist).
 - `haskell_ghci` with `srcs`: the prelude computes their paths relative to a
-  cell called `fbcode` and fails analysis in any other. `//examples/prelude:ghci`
+  cell called `fbcode` and fails analysis in any other. `//examples/interop:ghci`
   only has `deps`.
 - `haskell_unit`: a prelude target that depends on a unit of another package
   db with the `shared` link style is untested, and there is nothing to find
@@ -124,7 +138,7 @@ Known broken or untested:
   target. `haskell_ghci` asks for `-package <name>-<version>`, so a unit it
   depends on directly needs its `version` attribute.
   `prelude//haskell/ide/ide.bxl` does not see the units of the compiler,
-  which is why the targets of `//examples/prelude:ide` still use
+  which is why the targets of `//examples/interop:ide` still use
   `toolchain_libs`.
 - `prelude//haskell/ide/ide.bxl` was only run on a file of a project made of
   prelude targets, with HLS nowhere in sight. It takes a file as
@@ -136,22 +150,22 @@ Known broken or untested:
 
 ```sh
 mise install                       # buck2 (latest prerelease), buildifier, lefthook
-buck2 targets //projects/shake:    # what parses in one package
-buck2 build //:main                # smallest Haskell target
-buck2 run //examples/hello:exe     # cabal_simple rules
-buck2 test //examples/hello:hello-test
-buck2 run //examples/prelude:exe   # prelude rules on top of a cabal_simple library
-buck2 test //examples/prelude:     # haskell_ghci and haskell_haddock
-buck2 run //examples/prelude:ghci  # a GHCi with //examples/prelude:lib
-sh examples/prelude/tests/ide.sh   # what the IDE script answers, given to GHC
-buck2 build //projects/shake:plan --show-output   # cabal dry-run -> plan.json
+buck2 targets //examples/plan/shake:          # what parses in one package
+buck2 test //examples/...                       # every test there is
+buck2 run //examples/prelude/alex:alex -- --version   # prelude rules
+buck2 run //examples/cabal_simple/hello:exe     # cabal_simple rules
+buck2 run //examples/plan/network:socketpair    # a prelude binary on a plan unit
+buck2 run //examples/interop:exe     # prelude rules on top of a cabal_simple library
+buck2 run //examples/interop:ghci    # a GHCi with //examples/interop:lib
+sh examples/interop/tests/ide.sh     # what the IDE script answers, given to GHC
+buck2 build //examples/plan/shake:plan --show-output   # cabal dry-run -> plan.json
 buck2 build toolchains//:haskell   # downloads the GHC bindist (about 290 MB)
 buildifier BUCK path/to/file.bzl   # format Starlark
 buck2 starlark lint path/to/file.bzl
 ```
 
 Units of an interpreted plan are targets named by unit-id, for example
-`//projects/shake:shake-0.19.9-e-shake-<hash>`; `buck2 run <target> -- --version`
+`//examples/plan/shake:shake-0.19.9-e-shake-<hash>`; `buck2 run <target> -- --version`
 runs an executable unit.
 
 Every Haskell rule takes its compiler from `toolchains//:haskell`, an alias
@@ -167,9 +181,10 @@ other).
 fails to parse them. The file is not under version control, so a new checkout
 or workspace has to be given its own.
 
-"Does it build and run" is the check for the rules. The few tests there are
-(`//examples/hello:hello-test`, `//examples/prelude:ghci-test` and
-`:haddock-test`) are examples of test rules more than a test suite.
+"Does it build and run" is the check for the rules. The tests under
+`examples/` (a `cabal_simple_test`, and `sh_test`s that run what an example
+built) check that the examples still do what their README says more than
+they test the rules.
 
 `rules/haskell/ghcup/metadata.bzl` (about 16.8k lines) is generated, never
 edit it by hand:
@@ -178,8 +193,11 @@ edit it by hand:
 yq .ghcupDownloads ~/.ghcup/cache/ghcup-0.0.9.yaml -o json | sed 's/null/None/' > rules/haskell/ghcup/metadata.bzl
 ```
 
-To refresh a project's plan: build `:plan`, then replace the JSON inside the
-`interpret_plan(...)` call in the project's `BUCK` with the new `plan.json`.
+To refresh a plan in `examples/plan/<name>`: build `:plan`, then replace the
+JSON inside the `interpret_plan(...)` call in its `BUCK` with the new
+`plan.json`. A target that names a unit by id (`network:socketpair`) has to
+be updated too. The step that looks up cabal-file revisions with `curl` has
+failed once with a transient HTTP/2 error; run it again.
 
 ## Layout
 
@@ -250,7 +268,9 @@ To refresh a project's plan: build `:plan`, then replace the JSON inside the
     `helpers:setup_simple` executable, plus register for library components.
   - `build_legacy.bzl` — every other build type; compiles the package's own
     `Setup.hs` and runs all phases in one action, since its outputs cannot be
-    predicted.
+    predicted. A build tool's data dir (`<pkg>_datadir`, from `build_env` in
+    `common.bzl`) is an absolute path, because hsc2hs writes it into an
+    `#include` of a generated C file.
   - `common.bzl` — providers (`UnitInfo`, `PackageConfTSet`, `CabalPackageInfo`,
     `ExeDependInfo`), configure arguments, install dirs, and `mkProviders`,
     which adapts a built unit to the prelude's Haskell rules:
@@ -262,7 +282,6 @@ To refresh a project's plan: build `:plan`, then replace the JSON inside the
     reads the dump at the moment; it was made for an experiment that
     configured with `Setup.hs` and then called GHC from a dynamic action, and
     is kept as a possible source of what a `cabal_simple` target needs.
-    `helpers/setup_configure.hs` is a plain `defaultMain`, unused.
 - `rules/haskell/cabal/` — the `cabal_simple` rules; load them from `defs.bzl`:
   - `package.bzl` — `cabal_package`: the package-level fields and the source
     tree (a directory, possibly the output of another rule, or a list of
@@ -282,27 +301,30 @@ To refresh a project's plan: build `:plan`, then replace the JSON inside the
     same name in `cabal_install/common.bzl`.
   - `macros.bzl`, `paths.bzl` — `cabal_macros.h`, `Paths_<pkg>` and
     `PackageInfo_<pkg>`, after Cabal's templates. `paths.bzl` also has the
-    `cabal_paths_module` rule, used by `tmp/alex-3.5.1.0/BUCK`.
+    `cabal_paths_module` rule, used by `examples/prelude/alex/BUCK`.
   - `tools/` — shell scripts run by the actions: `find_modules.sh` (which file
     a module comes from), `run.sh` (run a command from the package root with
     build tools in `PATH`), `register.sh` (write a package db).
-- `examples/` — `.cabal` files transcribed to `cabal_simple` targets: `hello`
-  (sublibrary, c-sources, hsc2hs, Template Haskell, data-files, a test suite;
-  it has a `hello.cabal` too, so `cabal build` can be compared), `lexer`
-  (build-tool-depends on alex), `alex`, `happy`, `happy-lib` and `language-c`
-  from their Hackage sdists, `cparse` (an executable using language-c), and
-  `ghc` (the libraries that come with the compiler). `prelude` is not a
-  transcription: it has one target for each Haskell rule of the prelude
-  (`haskell_library`, `haskell_binary`, `haskell_ghci`, `haskell_haddock`,
-  `haskell_ide`) on top of the library of `hello`, and the scripts that check
-  the last three in `tests/`.
-- `projects/<name>/` — a `cabal.project` pinned by `index-state`, plus a `BUCK`
-  with a `plan(...)` target and, where a plan has been pasted in, an
-  `interpret_plan(...)` call. The embedded plans make some `BUCK` files
-  20–80 KB; search them, don't read them whole.
-- `tmp/alex-3.5.1.0` — an unpacked upstream sdist (don't edit its sources)
-  with a hand-written `BUCK` that builds alex with the prelude rules. The same
-  package is built with the `cabal_simple` rules in `examples/alex`.
+- `examples/` — one directory per approach, a `README.md` in each example:
+  - `prelude/alex` — alex built from its Hackage sdist with `haskell_binary`;
+    each source file is a subtarget of the `hackage_package` archive.
+  - `plan/<name>/` — a `cabal.project` pinned by `index-state`, plus a `BUCK`
+    with a `plan(...)` target and an `interpret_plan(...)` call with the plan
+    pasted in: `shake` (all Simple) and `network` (Configure, plus a prelude
+    binary using it). The embedded plans make these `BUCK` files 10–25 KB;
+    search them, don't read them whole. `plan/README.md` explains making a
+    plan.
+  - `cabal_simple/` — `.cabal` files transcribed to `cabal_simple` targets:
+    `hello` (sublibrary, c-sources, hsc2hs, Template Haskell, data-files, a
+    test suite; it has a `hello.cabal` too, so `cabal build` can be
+    compared), `lexer` (build-tool-depends on alex), `alex`, `happy`,
+    `happy-lib` and `language-c` from their Hackage sdists, `cparse` (an
+    executable using language-c), and `ghc` (the libraries that come with the
+    compiler). `cabal_simple/README.md` maps `.cabal` fields to attributes.
+  - `interop` — not a transcription: one target for each Haskell rule of the
+    prelude (`haskell_library`, `haskell_binary`, `haskell_ghci`,
+    `haskell_haddock`, `haskell_ide`) on top of the library of `hello`, and
+    the scripts that check the last three in `tests/`.
 
 ## Design rules that matter
 

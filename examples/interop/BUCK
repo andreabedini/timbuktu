@@ -1,0 +1,81 @@
+load("@prelude//rules.bzl", "haskell_ghci", "haskell_haddock", "haskell_ide", "sh_test")
+load("//rules/haskell:defs.bzl", "haskell_binary", "haskell_library", "haskell_unit")
+
+# The Haskell rules of the prelude on top of a library built by the
+# cabal_simple rules.
+
+# NOTE: prelude//haskell/ide/ide.bxl only reads `srcs` given as a dictionary.
+haskell_library(
+    name = "lib",
+    srcs = {"Report.hs": "Report.hs"},
+    toolchain_libs = ["base"],
+    deps = ["//examples/cabal_simple/hello:lib"],
+)
+
+haskell_binary(
+    name = "exe",
+    srcs = {"Main.hs": "Main.hs"},
+    link_style = "static",
+    toolchain_libs = ["base"],
+    deps = [":lib"],
+)
+
+# The packages of the compiler as targets, in place of `toolchain_libs`: the
+# compiler is told about them, and the linker gets their libraries after what
+# needs them.
+haskell_unit(name = "base")
+
+haskell_unit(name = "containers")
+
+haskell_binary(
+    name = "count",
+    srcs = {"Main.hs": "Count.hs"},
+    link_style = "static",
+    deps = [
+        ":base",
+        ":containers",
+    ],
+)
+
+sh_test(
+    name = "count-test",
+    args = ["$(location :count)"],
+    test = "tests/count.sh",
+)
+
+# buck2 run //examples/interop:ghci
+haskell_ghci(
+    name = "ghci",
+    deps = [":lib"],
+)
+
+sh_test(
+    name = "ghci-test",
+    args = ["$(location :ghci)"],
+    test = "tests/ghci.sh",
+)
+
+haskell_haddock(
+    name = "haddock",
+    deps = [":lib"],
+)
+
+sh_test(
+    name = "haddock-test",
+    args = ["$(location :haddock)"],
+    test = "tests/haddock.sh",
+)
+
+# A project for an IDE. The rule does nothing, a bxl script reads its
+# attributes:
+#
+#   buck2 bxl prelude//haskell/ide/ide.bxl:ide_for_file -- --bios true --file root//examples/interop/Report.hs
+haskell_ide(
+    name = "ide",
+    deps_query = "kind('haskell_(binary|library)', deps(//examples/interop:exe))",
+    include_projects = [
+        ":exe",
+        ":lib",
+    ],
+    link_style = "static",
+)
