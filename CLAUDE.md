@@ -218,8 +218,11 @@ yq .ghcupDownloads ~/.ghcup/cache/ghcup-0.0.9.yaml -o json | sed 's/null/None/' 
 To refresh a plan in `examples/plan/<name>`: build `:plan`, then replace the
 JSON inside the `interpret_plan(...)` call in its `BUCK` with the new
 `plan.json`. A target that names a unit by id (`network:socketpair`) has to
-be updated too. The step that looks up cabal-file revisions with `curl` has
-failed once with a transient HTTP/2 error; run it again.
+be updated too. The step that looks up cabal-file revisions makes one `curl`
+request after another with no retry. In Claude's sandbox some of them fail
+with an HTTP/2 error (`curl: (92) … PROTOCOL_ERROR`), sometimes on several
+runs in a row, which fails `buck2 build //...` on the `:plan` targets alone.
+cabal-solver-plan, which reads all of it from the index, is to replace it.
 
 ## Layout
 
@@ -293,17 +296,24 @@ failed once with a transient HTTP/2 error; run it again.
     `.cabal` revision the plan was made with (`revision/<n>.cabal`, checked
     against the plan's sha256). A plan without `pkg-cabal-revision` and
     `pkg-cabal-size` fails with a message asking to make it again.
-  - `build.bzl` — `build-type: Simple`, one component per target; configure,
-    build and copy run as separate actions using the shared
-    `helpers:setup_simple` executable, plus register for library components.
-  - `build_legacy.bzl` — every other build type; compiles the package's own
-    `Setup.hs` and runs all phases in one action, since its outputs cannot be
-    predicted. A build tool's data dir (`<pkg>_datadir`, from `build_env` in
-    `common.bzl`) is an absolute path, because hsc2hs writes it into an
-    `#include` of a generated C file.
+  - `setup.bzl` — building a unit with `Setup.hs`, as functions of
+    `actions` and plain data (`SetupEnv`, `SetupUnit`, the providers of the
+    dependencies), with no rule context: `build_component` for
+    `build-type: Simple`, one component, configure, build, copy and register
+    as separate actions using the shared `helpers:setup_simple`;
+    `build_package` for every other build type, the package's own `Setup.hs`
+    running all phases in one action, since its outputs cannot be predicted.
+    A `scope` puts a unit's outputs in a directory of its own, so that one
+    target can build many: a throwaway rule built two units of the shake
+    plan this way from JSON read in a dynamic action (2026-10-12). A build
+    tool's data dir (`<pkg>_datadir`, from `build_env`) is an absolute path,
+    because hsc2hs writes it into an `#include` of a generated C file.
+  - `build.bzl`, `build_legacy.bzl` — the rules `interpret_plan` emits,
+    thin wrappers around `build_component` and `build_package` that add what
+    the prelude needs (`mkProviders`).
   - `common.bzl` — `CabalPackageInfo` (not the one of the `cabal_simple`
-    rules), configure arguments, install dirs, `library_info` (the
-    `CabalLibraryInfo` of a unit), and `mkProviders`,
+    rules), the attributes of the unit rules, `setup_env` and `setup_unit`
+    (from a rule's context to what `setup.bzl` takes), and `mkProviders`,
     which adapts a built unit to the prelude's Haskell rules:
     `HaskellLibraryProvider` and `HaskellLinkInfo` to compile against it,
     `MergedLinkInfo`, `SharedLibraryInfo` and `LinkableGraph` to link it. The
@@ -443,7 +453,7 @@ failed once with a transient HTTP/2 error; run it again.
 - A build tool's environment (`<pkg>_datadir`) is made of absolute paths
   where it is used: hsc2hs writes its data dir into an `#include` of a C
   file it generates elsewhere. `tools/run.sh` and `build_env` in
-  `cabal_install/common.bzl` do it; a data dir of a plan unit is a path
+  `cabal_install/setup.bzl` do it; a data dir of a plan unit is a path
   under its prefix, not a projection, since it only exists when the package
   has data files.
 - Actions that must run inside the source directory write a small bash script

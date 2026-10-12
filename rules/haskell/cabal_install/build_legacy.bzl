@@ -1,140 +1,35 @@
 """
-Build rules for legacy packages (i.e. anything other than the simple build-type).
+The rule for a unit of any build type other than Simple: a whole package.
 """
 
-load("@prelude//haskell:toolchain.bzl", "HaskellToolchainInfo")
+load("//rules/haskell:providers.bzl", "CabalExecutableInfo", "CabalLibraryInfo")
 load(
     "common.bzl",
     "CabalPackageInfo",
-    "build_env",
     "common_unit_attrs",
-    "configure_args",
-    "dep_units",
-    "library_info",
-    "mkInstallDirs",
     "mkProviders",
+    "setup_env",
+    "setup_unit",
     "source_unit_attrs",
 )
+load("setup.bzl", "build_package")
 
 def _build_legacy_impl(ctx: AnalysisContext) -> list[Provider]:
-    # For legacy packages (i.e. anything other than the simple build-type) we
-    # have to configure and build in a single step, since we do not really know
-    # what is gong to be written where.
-    srcdir = ctx.attrs.src[CabalPackageInfo].srcdir
-    setup = ctx.attrs.setup[RunInfo]
-
-    env = build_env(ctx.attrs.exec_deps)
-
-    installdirs = mkInstallDirs(ctx.actions)
-
-    # configure
-
-    build = ctx.actions.declare_output("build", dir = True, has_content_based_path = False)
-    builddir = cmd_args(build, parent = 1)
-
-    package_db = ctx.actions.declare_output("package.conf.d", dir = True, has_content_based_path = False)
-    package_conf = package_db.project("{}.conf".format(ctx.attrs.unit_id))
-
-    configure_cmd = cmd_args(
-        env,
-        setup,
-        "configure",
-        cmd_args(builddir, format = "--builddir={}", ignore_artifacts = True),
-        cmd_args(installdirs.args, ignore_artifacts = True),
-        configure_args(ctx),
-        delimiter = " ",
+    built = build_package(
+        setup_env(ctx),
+        setup_unit(ctx, None),
+        ctx.attrs.src[CabalPackageInfo].srcdir,
+        ctx.attrs.setup[RunInfo],
+        [dep[CabalLibraryInfo] for dep in ctx.attrs.deps],
+        [dep[CabalExecutableInfo] for dep in ctx.attrs.exec_deps],
     )
-
-    configure_cmd.add("--ipi={}".format(ctx.attrs.unit_id))
-
-    # build
-
-    build_cmd = cmd_args(
-        env,
-        setup,
-        "build",
-        cmd_args(builddir, format = "--builddir={}", ignore_artifacts = True),
-        delimiter = " ",
-    )
-
-    # copy
-
-    copy_cmd = cmd_args(
-        env,
-        setup,
-        "copy",
-        cmd_args(builddir, format = "--builddir={}", ignore_artifacts = True),
-        delimiter = " ",
-    )
-
-    register_cmd = cmd_args(
-        env,
-        setup,
-        "register",
-        cmd_args(builddir, format = "--builddir={}", ignore_artifacts = True),
-        cmd_args(package_conf.as_output(), format = "--gen-pkg-config={}"),
-        delimiter = " ",
-    )
-
-    ghc_cmd = cmd_args(
-        ctx.attrs._haskell_toolchain[HaskellToolchainInfo].packager,
-        "recache",
-        cmd_args(package_db, format = "--package-db={}", ignore_artifacts = True),
-        delimiter = " ",
-    )
-
-    build_sh_content = cmd_args(
-        "#!/usr/bin/env bash",
-        "set -euo pipefail",
-        cmd_args("mkdir", "-p", installdirs.prefix.as_output(), delimiter = " "),
-        cmd_args(srcdir, format = "cd {}"),
-        cmd_args(configure_cmd, relative_to = srcdir),
-        cmd_args(build_cmd, relative_to = srcdir),
-        cmd_args(copy_cmd, relative_to = srcdir),
-        cmd_args("mkdir", package_db, delimiter = " ", relative_to = srcdir, ignore_artifacts = True),
-        cmd_args(register_cmd, relative_to = srcdir),
-        cmd_args(ghc_cmd, relative_to = srcdir),
-    )
-
-    build_sh = ctx.actions.write(
-        "build_legacy.sh",
-        build_sh_content,
-        is_executable = True,
-        with_inputs = True,
-    )
-
-    ctx.actions.run(
-        cmd_args(
-            build_sh,
-            hidden = [
-                srcdir,
-                setup,
-                dep_units(ctx).project_as_args("artifacts"),
-                build.as_output(),
-                installdirs.prefix.as_output(),
-                package_db.as_output(),
-            ],
-        ),
-        category = "cabal_build_legacy",
-    )
-
-    providers = [
-        DefaultInfo(
-            default_outputs = [
-                installdirs.prefix,
-                package_conf,
-            ],
-        ),
-        # NOTE: the library of the package. What Setup.hs builds besides is
-        # not available to dependents.
-        library_info(ctx, package_db, installdirs, None),
-    ]
-
-    providers.extend(mkProviders(ctx, package_db, installdirs))
-
-    return providers
+    return [
+        DefaultInfo(default_outputs = [built.installdirs.prefix, built.package_conf]),
+        built.library,
+    ] + mkProviders(ctx, built.package_db, built.installdirs)
 
 build_legacy = rule(
+    doc = "A whole package of a build type other than Simple, built with its own Setup.hs (see setup.bzl).",
     impl = _build_legacy_impl,
     attrs =
         common_unit_attrs |

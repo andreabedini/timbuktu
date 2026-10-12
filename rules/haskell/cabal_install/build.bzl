@@ -1,256 +1,50 @@
 """
-Build rules for the simple build-type.
+The rule for a unit of build-type Simple, one component at a time.
 """
 
-load("@prelude//:paths.bzl", "paths")
-load(
-    "@prelude//cxx:cxx_toolchain_types.bzl",
-    "LinkerType",
-)
-load(
-    "@prelude//haskell:toolchain.bzl",
-    "HaskellPlatformInfo",
-    "HaskellToolchainInfo",
-)
-load(
-    "@prelude//haskell/library_info.bzl",
-    "HaskellLibraryInfo",
-    "HaskellLibraryInfoTSet",
-    "HaskellLibraryProvider",
-)
-load(
-    "@prelude//linking:link_info.bzl",
-    "Archive",
-    "ArchiveLinkable",
-    "LinkInfo",
-    "LinkInfos",
-    "LinkStyle",
-    "SharedLibLinkable",
-)
-load("//rules/haskell:providers.bzl", "CabalExecutableInfo", "mangle")
+load("//rules/haskell:providers.bzl", "CabalExecutableInfo", "CabalLibraryInfo")
 load(
     "common.bzl",
     "CabalPackageInfo",
-    "build_env",
     "common_unit_attrs",
-    "configure_args",
-    "data_dir",
-    "dep_units",
-    "library_info",
-    "mkInstallDirs",
     "mkProviders",
+    "setup_env",
+    "setup_unit",
     "source_unit_attrs",
 )
+load("setup.bzl", "build_component")
 
 def _build_impl(ctx: AnalysisContext) -> list[Provider]:
-    srcdir = ctx.attrs.src[CabalPackageInfo].srcdir
-    setup = ctx.attrs.setup[RunInfo]
-
-    # NOTE: I need to copy so I know (statically) where the datadir is
     # WARN: What a library unit hands to the prelude's Haskell rules is in
     # mkProviders. It is not all they expect: the libraries of the units that
     # come from the global package db are missing.
-
-    env = build_env(ctx.attrs.exec_deps)
-
-    installdirs = mkInstallDirs(ctx.actions)
-
-    # NOTE: the paths of these outputs end up in the setup-config and in the
-    # package conf, so they cannot be content-based.
-    setup_config = ctx.actions.declare_output("setup-config", has_content_based_path = False)
-
-    build = ctx.actions.declare_output("build", dir = True, has_content_based_path = False)
-    builddir = cmd_args(build, parent = 1)
-
-    # configure
-
-    configure_cmd = cmd_args(
-        env,
-        setup,
-        "configure",
-        cmd_args(builddir, format = "--builddir={}", ignore_artifacts = True),
-        cmd_args(installdirs.args, ignore_artifacts = True),
-        configure_args(ctx),
-        delimiter = " ",
+    built = build_component(
+        setup_env(ctx),
+        setup_unit(ctx, ctx.attrs.component_name),
+        ctx.attrs.src[CabalPackageInfo].srcdir,
+        ctx.attrs.setup[RunInfo],
+        [dep[CabalLibraryInfo] for dep in ctx.attrs.deps],
+        [dep[CabalExecutableInfo] for dep in ctx.attrs.exec_deps],
     )
-
-    configure_cmd.add("--cid={}".format(ctx.attrs.unit_id))
-
-    if ctx.attrs.component_name:
-        configure_cmd.add(_component_name(ctx))
-
-    configure_sh_content = cmd_args(
-        "#!/usr/bin/env bash",
-        "set -euo pipefail",
-        cmd_args(srcdir, format = "cd {}"),
-        cmd_args(configure_cmd, relative_to = srcdir),
-    )
-
-    configure_sh = ctx.actions.write(
-        "configure.sh",
-        configure_sh_content,
-        with_inputs = True,
-        is_executable = True,
-    )
-
-    ctx.actions.run(
-        cmd_args(configure_sh, hidden = [srcdir, setup, setup_config.as_output()]),
-        category = "cabal_configure",
-    )
-
-    # build
-
-    build_cmd = cmd_args(
-        env,
-        setup,
-        "build",
-        cmd_args(builddir, format = "--builddir={}", ignore_artifacts = True),
-        delimiter = " ",
-    )
-
-    if ctx.attrs.component_name:
-        build_cmd.add(_component_name(ctx))
-
-    build_sh_content = cmd_args(
-        "#!/usr/bin/env bash",
-        "set -euo pipefail",
-        cmd_args(srcdir, format = "cd {}"),
-        cmd_args(build_cmd, relative_to = srcdir),
-    )
-
-    build_sh = ctx.actions.write(
-        "build.sh",
-        build_sh_content,
-        with_inputs = True,
-        is_executable = True,
-    )
-
-    ctx.actions.run(
-        cmd_args(build_sh, hidden = [setup_config, build.as_output(), dep_units(ctx).project_as_args("artifacts")]),
-        category = "cabal_build",
-    )
-
-    # copy
-
-    copy_cmd = cmd_args(
-        env,
-        setup,
-        "copy",
-        cmd_args(builddir, format = "--builddir={}"),
-        delimiter = " ",
-    )
-
-    if ctx.attrs.component_name:
-        copy_cmd.add(_component_name(ctx))
-
-    copy_sh_content = cmd_args(
-        "#!/usr/bin/env bash",
-        "set -euo pipefail",
-        cmd_args(srcdir, format = "cd {}"),
-        cmd_args(copy_cmd, relative_to = srcdir),
-    )
-
-    copy_sh = ctx.actions.write(
-        "copy.sh",
-        copy_sh_content,
-        with_inputs = True,
-        is_executable = True,
-    )
-
-    ctx.actions.run(
-        cmd_args(copy_sh, hidden = [installdirs.prefix.as_output()]),
-        category = "cabal_copy",
-    )
-
-    # register
-
-    # NOTE: only libraries are registered, other components have no package
-    # conf.
-    is_lib = ctx.attrs.component_name == "lib" or ctx.attrs.component_name.startswith("lib:")
-
-    if is_lib:
-        package_db = ctx.actions.declare_output("package.conf.d", dir = True, has_content_based_path = False)
-        package_conf = package_db.project("{}.conf".format(ctx.attrs.unit_id))
-
-        register_cmd = cmd_args(
-            env,
-            setup,
-            "register",
-            cmd_args(builddir, format = "--builddir={}"),
-            cmd_args(package_conf.as_output(), format = "--gen-pkg-config={}"),
-            delimiter = " ",
-        )
-
-        ghc_cmd = cmd_args(
-            ctx.attrs._haskell_toolchain[HaskellToolchainInfo].packager,
-            "recache",
-            cmd_args(package_db, format = "--package-db={}"),
-            delimiter = " ",
-        )
-
-        if ctx.attrs.component_name:
-            register_cmd.add(_component_name(ctx))
-
-        register_sh_content = cmd_args(
-            "#!/usr/bin/env bash",
-            "set -euo pipefail",
-            cmd_args(srcdir, format = "cd {}"),
-            cmd_args("mkdir", package_db, delimiter = " ", relative_to = srcdir),
-            cmd_args(register_cmd, relative_to = srcdir),
-            cmd_args(ghc_cmd, relative_to = srcdir),
-        )
-
-        register_sh = ctx.actions.write(
-            "register.sh",
-            register_sh_content,
-            is_executable = True,
-        )
-
-        ctx.actions.run(
-            cmd_args(register_sh, hidden = [installdirs.prefix, package_db.as_output()]),
-            category = "cabal_register",
-        )
-
-    # providers
 
     providers = [
-        # provider
         DefaultInfo(
-            default_outputs = [installdirs.prefix] + ([package_conf] if is_lib else []),
+            default_outputs = [built.installdirs.prefix] + ([built.package_conf] if built.package_conf else []),
         ),
     ]
 
-    # shared_libs = {
-    #     "libHSCabal-3.12.0.0-7126-ghc9.10.1.so": "lib/x86_64-linux-ghc-9.10.1/libHSCabal-3.12.0.0-7126-ghc9.10.1.so",
-    # },
-    # static_libs = [
-    #     "lib/x86_64-linux-ghc-9.10.1/Cabal-3.12.0.0-7126/libHSCabal-3.12.0.0-7126.a",
-    # ],
-    # profiled_static_libs = [
-    #     "lib/x86_64-linux-ghc-9.10.1/Cabal-3.12.0.0-7126/libHSCabal-3.12.0.0-7126_p.a",
-    # ],
+    if built.library:
+        providers.append(built.library)
+        providers.extend(mkProviders(ctx, built.package_db, built.installdirs))
 
-    if is_lib:
-        lib_name = ctx.attrs.component_name[4:] or None
-
-        providers.extend(mkProviders(ctx, package_db, installdirs))
-        providers.append(library_info(ctx, package_db, installdirs, lib_name))
-
-    if ctx.attrs.component_name.startswith("exe:"):
-        exe_name = ctx.attrs.component_name[4:]
-        exe = installdirs.prefix.project(paths.join("bin", exe_name))
-        providers.extend([
-            RunInfo(args = exe),
-            CabalExecutableInfo(
-                name = exe_name,
-                exe = exe,
-                env = {mangle(ctx.attrs.pkg_name) + "_datadir": data_dir(installdirs)},
-            ),
-        ])
+    if built.executable:
+        providers.append(RunInfo(args = built.executable.exe))
+        providers.append(built.executable)
 
     return providers
 
 build = rule(
+    doc = "One component of a package with `build-type: Simple`, built with Setup.hs (see setup.bzl).",
     impl = _build_impl,
     attrs =
         common_unit_attrs |
@@ -263,6 +57,3 @@ build = rule(
             ),
         },
 )
-
-def _component_name(ctx: AnalysisContext) -> str:
-    return "lib:{}".format(ctx.attrs.pkg_name) if ctx.attrs.component_name == "lib" else ctx.attrs.component_name

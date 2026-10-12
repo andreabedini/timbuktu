@@ -159,7 +159,8 @@ def resolve_unit(
         db: Artifact | None,
         id: str | None,
         name: str | None,
-        version: str | None) -> struct:
+        version: str | None,
+        scope: str | None = None) -> struct:
     """Find a unit in a package db, in a dynamic action.
 
     Args:
@@ -170,6 +171,8 @@ def resolve_unit(
       id: the unit-id, if known
       name: the name of its package, required without an id
       version: what the version has to be, if anything
+      scope: a directory for the outputs, when a target resolves more than
+        one unit
     Returns:
       a struct with the DynamicValue that resolves to CabalUnitInfo (`unit`)
       and the files with the linker options for the prelude (`link_static`,
@@ -178,9 +181,10 @@ def resolve_unit(
 
     # What is in the package db, when it is not the one the toolchain already
     # knows about.
+    subdir = scope + "/unit" if scope else "unit"
     dump = []
     if db:
-        out = actions.declare_output("unit", "package-db")
+        out = actions.declare_output(subdir, "package-db")
         cmd = cmd_args(
             toolchain.ghc_pkg,
             "dump",
@@ -196,14 +200,14 @@ def resolve_unit(
         actions.run(
             cmd_args("sh", "-c", cmd),
             category = "ghc_info",
-            identifier = "package-db",
+            identifier = subdir + "/package-db",
             # The answer has paths of this machine in it.
             local_only = True,
         )
         dump.append(out)
 
-    link_static = actions.declare_output("unit", "link-static.args")
-    link_shared = actions.declare_output("unit", "link-shared.args")
+    link_static = actions.declare_output(subdir, "link-static.args")
+    link_shared = actions.declare_output(subdir, "link-shared.args")
     unit = actions.dynamic_output_new(_resolve(
         ghc = toolchain.dynamic,
         db = dump,
