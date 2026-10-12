@@ -12,3 +12,21 @@ haskell_binary(
         "Cabal-syntax",
     ],
 )
+
+# What generate.bxl in root//rules/haskell/cabal reads a .cabal file with.
+haskell_binary(
+    name = "describe_package",
+    srcs = {
+        "Main.hs": "describe_package.hs",
+    },
+    link_style = "static",
+    toolchain_libs = [
+        "base",
+        "bytestring",
+        "Cabal",
+        "Cabal-syntax",
+        "directory",
+        "filepath",
+    ],
+    visibility = ["PUBLIC"],
+)

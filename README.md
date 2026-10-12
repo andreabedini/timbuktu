@@ -34,8 +34,9 @@ would. This works for any build type, but each unit is an opaque step.
 **The `cabal_simple` rules** take the fields of a `.cabal` stanza as
 attributes and call GHC directly: configure, preprocess, build and register
 become separate actions with fine-grained outputs. They only cover
-`build-type: Simple`, the targets are transcribed by hand and nothing solves
-dependencies for them.
+`build-type: Simple`, and nothing solves dependencies for them. The targets
+can be written by hand or generated from a `.cabal` file by a BXL script
+(see [`examples/cabal_simple`](examples/cabal_simple)).
 
 Not everything works and I keep reworking the code significantly.
 

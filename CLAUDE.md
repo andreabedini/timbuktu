@@ -69,6 +69,15 @@ passing; buck2 also reports the 5 `http_archive` targets as passed tests):
   toolchains, `:hello-test`, `//examples/cabal_simple/lexer:exe`, and
   `//examples/cabal_simple/cparse:exe`, which pulls in alex, happy, happy-lib
   and language-c.
+- The `.cabal` → `cabal_simple` generator (2026-10-12): each of the seven
+  transcriptions in `examples/cabal_simple` (all but `ghc`) regenerated with
+  the options in `examples/cabal_simple/README.md` has the same attributes
+  as the hand-written one (`buck2 uquery --output-all-attributes --json`,
+  compared without `extra_source_files`, `extra_doc_files`,
+  `license_file(s)`, `cabal_version`, `visibility` and the order of
+  `build_depends`), and with all seven generated files in place
+  `//examples/cabal_simple/...` builds, its tests pass and hello, lexer,
+  cparse, alex and happy run. The originals were put back.
 - Plan interpreter: `//examples/plan/shake:plan`, and the whole shake plan;
   the `shake` executable unit builds and prints its version.
   `//examples/plan/network` is a plan whose `network` unit has
@@ -315,8 +324,12 @@ archive in `buck-out` that the build uses.
   `haskell_unit` all return and consume these.
 - `rules/haskell/hackage.bzl` — `hackage_package`: `http_archive` of an sdist
   from Hackage, no cabal-file revisions. Used by `examples/`.
-- `rules/haskell/helpers/` — `parse_fields.hs` prints the fields of a `.cabal`
-  file as JSON, a first step towards generating `cabal_simple` targets.
+- `rules/haskell/helpers/` — `parse_fields.hs` prints the raw fields of a
+  `.cabal` file as JSON. `describe_package.hs` (`:describe_package`) prints a
+  package description resolved with `finalizePD` for a GHC version, a
+  platform and flags (common stanzas inlined, conditionals gone), the
+  package's fields and one object per component, keyed by `.cabal` field
+  names, for `cabal/generate.bxl`.
 - `rules/haskell/cabal_install/` — the plan interpreter:
   - `plan.bzl` — the `plan` rule: runs cabal-solver-plan with the
     toolchain's GHC and its global package db, a Hackage index and an
@@ -396,6 +409,16 @@ archive in `buck-out` that the build uses.
   - `macros.bzl`, `paths.bzl` — `cabal_macros.h`, `Paths_<pkg>` and
     `PackageInfo_<pkg>`, after Cabal's templates. `paths.bzl` also has the
     `cabal_paths_module` rule, used by `examples/prelude/alex/BUCK`.
+  - `generate.bzl`, `generate.bxl` — the generator: `buck_file` turns what
+    `describe_package` prints into the text of a BUCK file (target names as
+    in the transcriptions: the package, `lib`, sublibraries by name, `exe`,
+    test suites by name; dependencies on the compiler's packages become
+    `haskell_unit`s or `--compiler-prefix` labels, others need `--dep` /
+    `--tool`, or it fails naming them). The BXL script runs the helper with
+    the toolchain's GHC version, lists the compiler's packages with
+    `ghc-pkg`, and prints the path of the BUCK file; `--cabal-file` for a
+    file in the repository, `--sdist` for a `hackage_package` target. Kept
+    as a `.bzl` function so a plan → BUCK generator can use it.
   - `tools/` — shell scripts run by the actions: `find_modules.sh` (which file
     a module comes from), `run.sh` (run a command from the package root with
     build tools in `PATH`), `register.sh` (write a package db).
@@ -537,8 +560,10 @@ archive in `buck-out` that the build uses.
 - A `.cabal` field the `cabal_simple` rules know but do not honour (`mixins`,
   `pkgconfig-depends`, `signatures`, …) fails the build instead of being
   ignored. Conditionals are left to `select`.
-- Turning a `.cabal` file into `cabal_simple` targets is manual transcription
-  for now; the intent is a bxl script that generates them.
+- Turning a `.cabal` file into `cabal_simple` targets is done by hand or by
+  `cabal/generate.bxl`, which resolves the conditionals for one
+  configuration: it emits no `select`. Options of a BXL script that are
+  booleans want a value (`--tests false`).
 
 ## Conventions
 

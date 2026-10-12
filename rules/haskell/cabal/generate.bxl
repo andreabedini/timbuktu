@@ -1,0 +1,118 @@
+"""
+Generate cabal_simple targets from a .cabal file.
+
+    buck2 bxl //rules/haskell/cabal/generate.bxl:generate -- --cabal-file examples/cabal_simple/hello/hello.cabal
+    buck2 bxl //rules/haskell/cabal/generate.bxl:generate -- --sdist //examples/cabal_simple/alex:alex-3.5.1.0
+
+It prints the path of a BUCK file: copy it where it belongs and format it
+with buildifier. The conditionals of the package description are resolved
+for the GHC of toolchains//:haskell, this machine's platform and `--flags`
+(the defaults of the package otherwise). See generate.bzl for how
+components and dependencies become targets.
+
+Options:
+  --cabal-file PATH   a .cabal file in the repository; the BUCK file is to
+                      go next to it, with the package's files as `srcs`
+  --sdist TARGET      a hackage_package target (an unpacked sdist); the
+                      BUCK file has its hackage_package and uses it as `srcs`
+  --flags '+a -b'     flags of the package
+  --tests false       no targets for the test suites
+  --dep PKG[:LIB]=TARGET    the target of a library of another package
+  --tool PKG:EXE=TARGET     the target of an executable of another package
+  --compiler-prefix LABEL   e.g. //examples/cabal_simple/ghc: to use those
+                            targets for the packages of the compiler, rather
+                            than haskell_unit targets of its own
+"""
+
+load("//rules/haskell:toolchain.bzl", "GhcToolchainInfo")
+load(":generate.bzl", "buck_file", "glob_srcs", "label_srcs")
+
+def _pairs(items: list[str], option: str) -> dict[str, str]:
+    out = {}
+    for item in items:
+        key, sep, value = item.partition("=")
+        if not sep:
+            fail("--{} wants KEY=TARGET, not `{}`".format(option, item))
+        out[key] = value
+    return out
+
+def _generate_impl(ctx: bxl.Context):
+    args = ctx.cli_args
+    if bool(args.cabal_file) == bool(args.sdist):
+        fail("give either --cabal-file or --sdist")
+
+    actions = ctx.bxl_actions().actions
+    ghc = ctx.analysis(ctx.configured_targets("toolchains//:haskell")).providers()[GhcToolchainInfo]
+    helper = ctx.analysis(ctx.configured_targets("root//rules/haskell/helpers:describe_package")).providers()[RunInfo]
+
+    loads = []
+    preamble = []
+    if args.cabal_file:
+        cabal = ctx.fs.source(args.cabal_file)
+        source = args.cabal_file
+        srcs = glob_srcs()
+    else:
+        node = ctx.configured_targets(args.sdist)
+        cabal = ctx.analysis(node).providers()[DefaultInfo].default_outputs[0]
+        source = "the sdist of " + str(node.label.raw_target())
+        name = node.label.name
+        srcs = label_srcs(":" + name)
+        sha256 = node.attrs_eager().sha256.value()
+        loads.append('load("@root//rules/haskell:hackage.bzl", "hackage_package")')
+        preamble.append("hackage_package(\n    name = {},\n    sha256 = {},\n)\n".format(repr(name), repr(sha256)))
+
+    description = actions.declare_output("description.json")
+    actions.run(
+        cmd_args(
+            "sh",
+            "-c",
+            'helper=$1; shift; out=$1; shift; version=$("$@" --numeric-version); exec $helper "$CABAL" --ghc-version "$version" --flags "$FLAGS" > "$out"',
+            "--",
+            cmd_args(helper, delimiter = " "),
+            description.as_output(),
+            ghc.ghc,
+        ),
+        env = {"CABAL": cabal, "FLAGS": args.flags},
+        category = "describe_package",
+        local_only = True,
+    )
+    compiler_packages = actions.declare_output("compiler-packages")
+    actions.run(
+        cmd_args("sh", "-c", 'out=$1; shift; "$@" list --global --simple-output --names-only > "$out"', "--", compiler_packages.as_output(), ghc.ghc_pkg),
+        category = "compiler_packages",
+        local_only = True,
+    )
+
+    out = actions.declare_output("BUCK")
+    deps = _pairs(args.dep, "dep")
+    tools = _pairs(args.tool, "tool")
+
+    def write(ctx, artifacts, outputs):
+        ctx.bxl_actions().actions.write(outputs[out], buck_file(
+            artifacts[description].read_json(),
+            artifacts[compiler_packages].read_string().split(),
+            srcs,
+            deps = deps,
+            tools = tools,
+            compiler_prefix = args.compiler_prefix,
+            tests = args.tests,
+            source = source,
+            loads = loads,
+            preamble = preamble,
+        ))
+
+    actions.dynamic_output(dynamic = [description, compiler_packages], inputs = [], outputs = [out.as_output()], f = write)
+    ctx.output.print(ctx.output.ensure(out).abs_path())
+
+generate = bxl_main(
+    impl = _generate_impl,
+    cli_args = {
+        "cabal-file": cli_args.option(cli_args.string()),
+        "compiler-prefix": cli_args.option(cli_args.string()),
+        "dep": cli_args.list(cli_args.string(), default = []),
+        "flags": cli_args.string(default = ""),
+        "tests": cli_args.bool(default = True),
+        "sdist": cli_args.option(cli_args.string()),
+        "tool": cli_args.list(cli_args.string(), default = []),
+    },
+)

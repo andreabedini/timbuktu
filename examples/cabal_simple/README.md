@@ -21,7 +21,43 @@ docstring of `simple.bzl` describes the steps. A field the rules know but do
 not honour (`mixins`, `pkgconfig-depends`, …) fails the build rather than
 being ignored.
 
-To see the fields of a `.cabal` file as JSON while transcribing it:
+## Generating the targets
+
+The transcription can be generated:
+
+```bash
+$ buck2 bxl //rules/haskell/cabal/generate.bxl:generate -- --cabal-file path/to/pkg.cabal
+$ buck2 bxl //rules/haskell/cabal/generate.bxl:generate -- --sdist //path/to:pkg-1.0 --tests false
+```
+
+prints the path of a `BUCK` file to copy next to the `.cabal` file, or into
+the package of the `hackage_package` target, and format with buildifier.
+Cabal's parser reads the package description, and the conditionals are
+resolved for the GHC of the toolchain, this machine and `--flags` (the
+package's defaults otherwise): the targets are for that configuration, with
+no `select`. A dependency on a package that comes with the compiler becomes
+a `haskell_unit` in the same `BUCK` file (or `<prefix><package>` with
+`--compiler-prefix //examples/cabal_simple/ghc:`); any other has to be named
+with `--dep pkg=//target` or, for a build tool, `--tool pkg:exe=//target`.
+Benchmarks and foreign libraries are left out, with a comment.
+
+Every example here but `ghc` comes out of it with the same attributes as the
+hand-written transcription, apart from spelling (`cabal_version`,
+`license_files`), order (`build_depends`), the `extra-source-files` the
+transcriptions leave out, and `visibility`, which the generator gives the
+libraries other packages may use and the executables. The options that take:
+
+| Example | Options |
+| --- | --- |
+| `hello` | `--cabal-file examples/cabal_simple/hello/hello.cabal` |
+| `lexer` | `--cabal-file examples/cabal_simple/lexer/lexer.cabal --tool alex:alex=//examples/cabal_simple/alex:exe` |
+| `cparse` | `--cabal-file examples/cabal_simple/cparse/cparse.cabal --compiler-prefix //examples/cabal_simple/ghc: --dep language-c=//examples/cabal_simple/language-c:lib` |
+| `alex` | `--sdist //examples/cabal_simple/alex:alex-3.5.1.0 --tests false` |
+| `happy-lib` | `--sdist //examples/cabal_simple/happy-lib:happy-lib-2.2 --compiler-prefix //examples/cabal_simple/ghc: --tests false` |
+| `happy` | `--sdist //examples/cabal_simple/happy:happy-2.2 --compiler-prefix //examples/cabal_simple/ghc: --dep happy-lib=//examples/cabal_simple/happy-lib:lib --tests false` |
+| `language-c` | `--sdist //examples/cabal_simple/language-c:language-c-0.10.2 --compiler-prefix //examples/cabal_simple/ghc: --tool happy:happy=//examples/cabal_simple/happy:exe --tool alex:alex=//examples/cabal_simple/alex:exe --tests false` |
+
+To see the raw fields of a `.cabal` file as JSON instead:
 
 ```bash
 $ buck2 run //rules/haskell/helpers:parse_fields -- path/to/pkg.cabal
