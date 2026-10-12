@@ -75,6 +75,12 @@ passing; buck2 also reports the 5 `http_archive` targets as passed tests):
   `build-type: Configure` and goes through `build_legacy.bzl`, with hsc2hs
   built from the plan as an exe-depend; `:socketpair`, a prelude binary
   linked `static`, depends on it and runs (`:socketpair-test`).
+- Dynamic plans (2026-10-12): `//examples/plan/dynamic:shake` and
+  `:network` make the same two plans at build time and build all their
+  units in one dynamic action each; `:shake[shake]` runs (`:shake-test`),
+  and `:network` builds from fresh daemons twice in a row, Setup.hs compiled
+  in the dynamic action, hsc2hs from the plan. `download_file` works inside
+  a dynamic action.
 - `buck2 targets //...` parses every package.
 - Prelude rules on top of the plan interpreter: a `haskell_binary` and a
   `haskell_library` depending on the `utf8-string` unit of the shake plan
@@ -110,11 +116,19 @@ passing; buck2 also reports the 5 `http_archive` targets as passed tests):
 
 Known broken or untested:
 
-- Plans: a package that uses Backpack gets a wrong plan from
-  cabal-solver-plan, which does not say so (the instantiated unit is left
-  out); local packages (`--local-package`) are in the format but
+- Plans: cabal-solver-plan refuses a plan that needs Backpack (since
+  b6642ff; 3ea35f7 got it wrong without saying so); local packages (`--local-package`) are in the format but
   `interpret_plan` does not take them yet; tests and benchmarks are only in a
   plan when the solver enables them, which it does not without being asked.
+- `dynamic_plan`: once in 16 builds from a fresh daemon (2026-10-12, log
+  `20261012-123556_build_bfd4165a…` in `buck-out/v2/log`), network's
+  whole-package action failed because hsc2hs's `template-hsc.h` was not at
+  `<unit>/prefix/data`, where it is afterwards; hsc2hs itself ran. Not
+  reproduced in 15 more builds, also not when switching the solver binary,
+  which was what came before the failure. The cause is unknown; suspects
+  are a missing dependency edge or partial materialisation of the
+  prefix in the dynamic action. Units are not targets, so nothing can depend
+  on a library of a `dynamic_plan`.
 - `build_legacy.bzl` has only been run on `network` (`build-type:
   Configure`, no `setup-depends`). `build-type: Custom` and `Hooks` are
   untested.
@@ -232,12 +246,15 @@ The `:plan` targets need cabal-solver-plan, which is not built here and is
 not in `PATH`: `haskell.cabal_solver_plan` in `.buckconfig.local` (or
 `--config`) says where it is, `haskell.hackage_index` where the
 `01-index.tar` is (default: the one `cabal update` downloads). Without them
-`buck2 build //...` fails on the `:plan` targets alone. The plans were made
-with its commit 3ea35f7 (main in `../cabal-solver-plan` on 2026-10-12, not
-pushed then), built with GHC 9.12.2 from a `git archive` into `$TMPDIR` with
+`buck2 build //...` fails on the `:plan` and `dynamic_plan` targets alone.
+The plans were checked with its commit b6642ff (main in
+`../cabal-solver-plan` on 2026-10-12, not pushed then; 3ea35f7 gave the same
+plans), built with GHC 9.12.2 from a `git archive` into `$TMPDIR` with
 `cabal build -w <ghc> --builddir=...`; its output was byte-identical to the
 samples in its `examples/`. It reads the index without writing anything
-next to it.
+next to it. Building it while a buck2 daemon starts fails ("the version of
+ghc-pkg could not be determined"): a new daemon re-materialises the GHC
+archive in `buck-out` that the build uses.
 
 ## Layout
 
@@ -307,7 +324,16 @@ next to it.
     for each package the sdist's checksum and size and the revision,
     checksum and size of the `.cabal` file, all read off the index. It reads
     the index of the machine (`local_only`), so it is not hermetic;
-    everything downstream is pinned by checksum.
+    everything downstream is pinned by checksum. `solve` is the action, and
+    `plan_attrs` the attributes, shared with `dynamic_plan`.
+  - `dynamic_plan.bzl` — `dynamic_plan`: `solve`, then a dynamic action that
+    reads the plan and builds every unit with `fetch_package` and the
+    functions of `setup.bzl` (`compile_setup` for a whole-package unit's
+    Setup.hs), scoped `src/<pkg-id>` and `unit/<unit-id>`. The units are not
+    targets: it offers the named `executables` of the plan's targets as
+    subtargets (copied to `bin/<name>`), `[plan.json]`, and `units.txt`, a
+    line per unit with its prefix and registration. A pre-existing unit
+    from a package db other than the compiler's fails.
   - `solver_toolchain.bzl` — the rule of `toolchains//:cabal-solver-plan`
     (`CabalSolverPlanInfo`).
   - `cabal_toolchain.bzl` — the rule of `toolchains//:cabal`.
@@ -316,8 +342,9 @@ next to it.
     (`haskell_unit`, `build` or `build_legacy` with a `<pkg>-setup` binary,
     by `build-style`), and an alias for each of the plan's `targets`. It
     refuses other formats, and a whole-package unit as a build tool.
-  - `pkg_src.bzl` — downloads the sdist from `<repo>package/<id>.tar.gz`
-    (with `size_bytes`, so with a content-based path) and overlays the
+  - `pkg_src.bzl` — `fetch_package`, a function of `actions` that
+    downloads the sdist from `<repo>package/<id>.tar.gz` (with `size_bytes`,
+    so with a content-based path) and overlays the
     `.cabal` revision the plan was made with (`revision/<n>.cabal`, checked
     against the plan's sha256). Only `repo-tar` packages; a local package
     (`"src": {"type": "local"}`) fails.
@@ -333,6 +360,8 @@ next to it.
     plan this way from JSON read in a dynamic action (2026-10-12). A build
     tool's data dir (`<pkg>_datadir`, from `build_env`) is an absolute path,
     because hsc2hs writes it into an `#include` of a generated C file.
+    `compile_setup` compiles a package's own Setup.hs with GHC (the
+    `dynamic_plan` path; `interpret_plan` uses a prelude `haskell_binary`).
   - `build.bzl`, `build_legacy.bzl` — the rules `interpret_plan` emits,
     thin wrappers around `build_component` and `build_package` that add what
     the prelude needs (`mkProviders`).
@@ -378,7 +407,8 @@ next to it.
     in: `shake` (all Simple) and `network` (Configure, plus a prelude binary
     and a `cabal_simple` executable using it). The embedded plans make these
     `BUCK` files 10–30 KB; search them, don't read them whole.
-    `plan/README.md` explains making a plan.
+    `plan/README.md` explains making a plan. `plan/dynamic` has the same two
+    plans as `dynamic_plan` targets.
   - `cabal_simple/` — `.cabal` files transcribed to `cabal_simple` targets:
     `hello` (sublibrary, c-sources, hsc2hs, Template Haskell, data-files, a
     test suite; it has a `hello.cabal` too, so `cabal build` can be
@@ -460,7 +490,11 @@ next to it.
   prefix, package dbs) are declared with `has_content_based_path = False`.
   Current buck2 defaults to content-based paths, which cannot be combined with
   `ignore_artifacts` and are not known when the configure step writes them
-  down. Fetched sources do not need the opt-out.
+  down. That goes for the unpacked sources of a package too, since the
+  scripts give paths relative to them: out of a dynamic action, a
+  content-based source directory made buck2 compute those relative paths
+  from the path it would otherwise have had, and hsc2hs got a data dir that
+  did not exist. The downloads themselves can be content-based.
 - A download can use a content-based path when buck2 knows its digest and its
   size up front: a `sha256` is enough for the digest, the size comes from
   `size_bytes` or the server's `Content-Length`. Hackage reports a size for

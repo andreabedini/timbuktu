@@ -37,6 +37,9 @@ $ buck2 targets //examples/plan/shake:      # one target per unit
 $ buck2 run //examples/plan/shake:exe-shake -- --version
 ```
 
+[`dynamic`](dynamic) makes and builds the same plans at build time, with no
+plan pasted anywhere, at the cost of the units not being targets.
+
 The rules are in [`rules/haskell/cabal_install`](../../rules/haskell/cabal_install).
 
 ## Making a plan
@@ -65,9 +68,9 @@ A plan is made for one compiler (`compiler-id`) and names the units of its
 global package db: it only builds with the toolchain it was made with, the
 downloaded GHC 9.12.2.
 
-Not supported: packages that use Backpack (cabal-solver-plan gets their
-plans wrong without saying so), local packages, and a whole-package unit's
-executables as build tools of another unit.
+Not supported: packages that use Backpack (cabal-solver-plan refuses to
+plan for them), local packages, and a whole-package unit's executables as
+build tools of another unit.
 
 ## Using a unit elsewhere
 

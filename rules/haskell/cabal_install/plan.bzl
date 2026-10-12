@@ -12,45 +12,63 @@ pinned by checksum.
 load("//rules/haskell:toolchain.bzl", "GhcToolchainInfo")
 load(":solver_toolchain.bzl", "CabalSolverPlanInfo")
 
-def _plan_impl(ctx: AnalysisContext) -> list[Provider]:
-    solver = ctx.attrs._solver[CabalSolverPlanInfo]
-    ghc = ctx.attrs._ghc[GhcToolchainInfo]
-    out = ctx.actions.declare_output("plan.json")
+def solve(
+        actions: AnalysisActions,
+        solver: CabalSolverPlanInfo,
+        ghc: GhcToolchainInfo,
+        attrs: typing.Any) -> Artifact:
+    """Run cabal-solver-plan.
 
+    Args:
+      actions: where to declare the action
+      solver: the solver and the index
+      ghc: the compiler to plan for
+      attrs: the attributes of the `plan` rule: targets, index_state,
+        constraints, flags, args
+    Returns:
+      the plan, in JSON
+    """
+    out = actions.declare_output("plan.json")
     index = solver.index or "${XDG_CACHE_HOME:-$HOME/.cache}/cabal/packages/hackage.haskell.org/01-index.tar"
     cmd = cmd_args(
         solver.tool,
         cmd_args(ghc.ghc, format = "--with-ghc={}"),
         "--use-global-packagedb",
         '--index="{}"'.format(index),
-        "--index-state=" + ctx.attrs.index_state,
+        "--index-state=" + attrs.index_state,
         "--json",
-        ["--constraint='{}'".format(c) for c in ctx.attrs.constraints],
-        ["--flag='{}:{}'".format(pkg, flags) for pkg, flags in ctx.attrs.flags.items()],
-        ctx.attrs.args,
-        ctx.attrs.targets,
+        ["--constraint='{}'".format(c) for c in attrs.constraints],
+        ["--flag='{}:{}'".format(pkg, flags) for pkg, flags in attrs.flags.items()],
+        attrs.args,
+        attrs.targets,
         ">",
         out.as_output(),
         delimiter = " ",
     )
-    ctx.actions.run(
+    actions.run(
         cmd_args("sh", "-c", cmd),
         category = "cabal_solver_plan",
         # It reads the package index of this machine.
         local_only = True,
     )
+    return out
+
+def _plan_impl(ctx: AnalysisContext) -> list[Provider]:
+    out = solve(ctx.actions, ctx.attrs._solver[CabalSolverPlanInfo], ctx.attrs._ghc[GhcToolchainInfo], ctx.attrs)
     return [DefaultInfo(default_output = out)]
+
+# What a plan is made of, for the rules that make one.
+plan_attrs = {
+    "targets": attrs.list(attrs.string(), doc = "The packages to plan for."),
+    "index_state": attrs.string(doc = "Packages uploaded after this time are left out, e.g. 2026-06-01T00:00:00Z."),
+    "constraints": attrs.list(attrs.string(), default = [], doc = "As in cabal.project, e.g. `aeson >= 2.2`."),
+    "flags": attrs.dict(attrs.string(), attrs.string(), default = {}, doc = "Flags by package, e.g. {\"aeson\": \"-ordered-keymap\"}."),
+    "args": attrs.list(attrs.arg(), default = [], doc = "More options for cabal-solver-plan."),
+    "_ghc": attrs.toolchain_dep(default = "toolchains//:haskell", providers = [GhcToolchainInfo]),
+    "_solver": attrs.toolchain_dep(default = "toolchains//:cabal-solver-plan", providers = [CabalSolverPlanInfo]),
+}
 
 plan = rule(
     impl = _plan_impl,
-    # @unsorted-dict-items
-    attrs = {
-        "targets": attrs.list(attrs.string(), doc = "The packages to plan for."),
-        "index_state": attrs.string(doc = "Packages uploaded after this time are left out, e.g. 2026-06-01T00:00:00Z."),
-        "constraints": attrs.list(attrs.string(), default = [], doc = "As in cabal.project, e.g. `aeson >= 2.2`."),
-        "flags": attrs.dict(attrs.string(), attrs.string(), default = {}, doc = "Flags by package, e.g. {\"aeson\": \"-ordered-keymap\"}."),
-        "args": attrs.list(attrs.arg(), default = [], doc = "More options for cabal-solver-plan."),
-        "_ghc": attrs.toolchain_dep(default = "toolchains//:haskell", providers = [GhcToolchainInfo]),
-        "_solver": attrs.toolchain_dep(default = "toolchains//:cabal-solver-plan", providers = [CabalSolverPlanInfo]),
-    },
+    attrs = plan_attrs,
 )

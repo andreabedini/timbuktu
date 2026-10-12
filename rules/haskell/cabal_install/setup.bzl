@@ -304,6 +304,52 @@ def build_component(
         executable = executable,
     )
 
+def compile_setup(env: SetupEnv, srcdir: Artifact, deps: list[CabalLibraryInfo]) -> RunInfo:
+    """Compile a package's own Setup.hs (or Setup.lhs).
+
+    Args:
+      env: where to declare the actions
+      srcdir: the package's source tree
+      deps: the libraries it needs (setup-depends); none means base and
+        Cabal from the compiler, as for a package without a custom-setup
+        stanza
+    Returns:
+      the program
+    """
+    exe = _declare(env, "setup/Setup")
+    objs = _declare(env, "setup/objs", dir = True)
+    if deps:
+        units = dep_units(env.actions, deps)
+        packages = cmd_args(
+            units.project_as_args("package_db"),
+            [cmd_args("-package-id", dep.id, delimiter = " ") for dep in deps],
+            hidden = units.project_as_args("artifacts"),
+        )
+    else:
+        packages = cmd_args("-package", "base", "-package", "Cabal")
+    script = _declare(env, "setup/compile.sh")
+    env.actions.write(script.as_output(), cmd_args(
+        "#!/usr/bin/env bash",
+        "set -euo pipefail",
+        cmd_args("srcdir=", srcdir, delimiter = ""),
+        'setup="$srcdir/Setup.hs"; [ -e "$setup" ] || setup="$srcdir/Setup.lhs"',
+        cmd_args(
+            env.ghc.ghc,
+            "--make",
+            "-hide-all-packages",
+            "-no-user-package-db",
+            packages,
+            "-outputdir",
+            objs.as_output(),
+            "-o",
+            exe.as_output(),
+            '"$setup"',
+            delimiter = " ",
+        ),
+    ), is_executable = True, with_inputs = True)
+    _run(env, cmd_args(script, hidden = [srcdir, objs.as_output(), exe.as_output()]), "cabal_compile_setup")
+    return RunInfo(args = exe)
+
 def build_package(
         env: SetupEnv,
         unit: SetupUnit,

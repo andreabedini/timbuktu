@@ -1,0 +1,27 @@
+# buildifier: disable=module-docstring
+load("@prelude//rules.bzl", "sh_test")
+load("//rules/haskell/cabal_install/dynamic_plan.bzl", "dynamic_plan")
+
+# The plans of ../shake and ../network, made and built at build time: nothing
+# is pasted here.
+
+dynamic_plan(
+    name = "shake",
+    targets = ["shake"],
+    index_state = "2026-06-01T00:00:00Z",
+    executables = ["shake"],
+)
+
+sh_test(
+    name = "shake-test",
+    args = ["$(location :shake[shake])"],
+    test = "tests/shake.sh",
+)
+
+# build-type Configure: built as a whole package, with its own Setup.hs and
+# hsc2hs from the plan.
+dynamic_plan(
+    name = "network",
+    targets = ["network"],
+    index_state = "2026-06-01T00:00:00Z",
+)
