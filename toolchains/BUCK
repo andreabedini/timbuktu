@@ -5,6 +5,7 @@ load("@prelude//toolchains:python.bzl", "system_python_bootstrap_toolchain", "sy
 load("@prelude//toolchains:remote_test_execution.bzl", "remote_test_execution_toolchain")
 load("@root//rules/haskell:toolchain.bzl", "bindist_ghc_toolchain", "system_ghc_toolchain")
 load("@root//rules/haskell/cabal_install:cabal_toolchain.bzl", "cabal_toolchain")
+load("@root//rules/haskell/cabal_install:solver_toolchain.bzl", "cabal_solver_plan_toolchain")
 load("@root//rules/haskell/ghcup:defs.bzl", "download_cabal_distribution", "download_ghc_distribution")
 
 system_cxx_toolchain(
@@ -74,5 +75,15 @@ download_cabal_distribution(
 cabal_toolchain(
     name = "cabal",
     distribution = ":cabal-3.14.2.0",
+    visibility = ["PUBLIC"],
+)
+
+# What the `plan` rule makes plans with: cabal-solver-plan, from PATH unless
+# `haskell.cabal_solver_plan` says where, and the Hackage index of the cabal
+# directory unless `haskell.hackage_index` names an 01-index.tar.
+cabal_solver_plan_toolchain(
+    name = "cabal-solver-plan",
+    index = read_root_config("haskell", "hackage_index", ""),
+    path = read_root_config("haskell", "cabal_solver_plan", "cabal-solver-plan"),
     visibility = ["PUBLIC"],
 )

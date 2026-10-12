@@ -23,9 +23,11 @@ the two depend on each other freely; the prelude rules can use both (see
 one, and whatever Cabal would have done (the `Paths_<pkg>` module, the
 language extensions, data files) has to be done by hand.
 
-**The plan interpreter** lets cabal-install solve the dependencies: a `plan`
-target runs `cabal build --dry-run` and the resulting `plan.json`, pasted into
-the `BUCK` file, becomes one target per unit, named after its unit-id. Each
+**The plan interpreter** lets the solver of cabal-install choose the
+dependencies: a `plan` target runs
+[cabal-solver-plan](https://github.com/andreabedini/cabal-solver-plan), and
+the plan it prints, pasted into the `BUCK` file, becomes one target per unit,
+named after its unit-id. Each
 unit is built from its sdist by the package's own `Setup.hs`, as cabal-install
 would. This works for any build type, but each unit is an opaque step.
 
@@ -64,8 +66,10 @@ $ mise install
 You also need:
 
 - a C compiler and a linker, since buck2 uses the ones on your system;
-- `curl`, `jq` and a Hackage index downloaded with `cabal update`, only to
-  make a build plan (e.g. `buck2 build //examples/plan/shake:plan`).
+- cabal-solver-plan and a Hackage index downloaded with `cabal update`, only
+  to make a build plan (e.g. `buck2 build //examples/plan/shake:plan`; see
+  [`examples/plan`](examples/plan) for how to tell buck2 where they are).
+  Without them `buck2 build //...` fails on the `:plan` targets alone.
 
 Then, for example:
 

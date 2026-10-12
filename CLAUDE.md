@@ -9,7 +9,7 @@ Three approaches live side by side:
 
 1. Hand-written targets using the Haskell rules from the Buck2 prelude
    (`examples/prelude/`, `rules/haskell/helpers/BUCK`).
-2. The plan interpreter: mapping a cabal-install build plan (`plan.json`) onto
+2. The plan interpreter: mapping a build plan (made by cabal-solver-plan) onto
    a Buck2 target graph, building each unit through `Setup.hs` the way
    cabal-install does (`rules/haskell/cabal_install/`, `examples/plan/`).
 3. The `cabal_simple` rules: targets whose attributes are the fields of a
@@ -36,9 +36,10 @@ time) to the most static (`cabal_simple` targets written by hand), all
 speaking the same providers, plus BXL scripts that turn the dynamic into the
 static (a `.cabal` file into `cabal_simple` targets, a plan into targets).
 The plan read in a dynamic action that was deleted on 2026-10-06 is one of
-those levels, unfinished rather than abandoned. `../cabal-solver-plan`, a
-solver with explicit inputs, is being adapted to replace
-`cabal build --dry-run` with a JSON format of its own.
+those levels, unfinished rather than abandoned. The plans are made by
+`../cabal-solver-plan`, cabal-install's solver on explicit inputs, which
+prints a JSON format of its own (format 1, its `docs/plan-format.md`); it
+replaced `cabal build --dry-run` on 2026-10-12.
 
 This is a research sandbox, not a product. History is mostly `wip` commits and
 the code is reworked wholesale. The repository was cleaned up on 2026-10-06:
@@ -109,6 +110,11 @@ passing; buck2 also reports the 5 `http_archive` targets as passed tests):
 
 Known broken or untested:
 
+- Plans: a package that uses Backpack gets a wrong plan from
+  cabal-solver-plan, which does not say so (the instantiated unit is left
+  out); local packages (`--local-package`) are in the format but
+  `interpret_plan` does not take them yet; tests and benchmarks are only in a
+  plan when the solver enables them, which it does not without being asked.
 - `build_legacy.bzl` has only been run on `network` (`build-type:
   Configure`, no `setup-depends`). `build-type: Custom` and `Hooks` are
   untested.
@@ -180,15 +186,16 @@ buck2 run //examples/plan/network:socketpair    # a prelude binary on a plan uni
 buck2 run //examples/interop:exe     # prelude rules on top of a cabal_simple library
 buck2 run //examples/interop:ghci    # a GHCi with //examples/interop:lib
 sh examples/interop/tests/ide.sh     # what the IDE script answers, given to GHC
-buck2 build //examples/plan/shake:plan --show-output   # cabal dry-run -> plan.json
+buck2 build //examples/plan/shake:plan --show-output   # cabal-solver-plan -> plan.json
 buck2 build toolchains//:haskell   # downloads the GHC bindist (about 290 MB)
 buildifier BUCK path/to/file.bzl   # format Starlark
 buck2 starlark lint path/to/file.bzl
 ```
 
 Units of an interpreted plan are targets named by unit-id, for example
-`//examples/plan/shake:shake-0.19.9-e-shake-<hash>`; `buck2 run <target> -- --version`
-runs an executable unit.
+`//examples/plan/shake:shake-0.19.9-e-shake-<hash>`, and the units the plan
+was made for have aliases (`:shake`, `:exe-shake`, `:network`):
+`buck2 run //examples/plan/shake:exe-shake -- --version`.
 
 Every Haskell rule takes its compiler from `toolchains//:haskell`, an alias
 of what the `haskell.toolchain` config value names. The default is
@@ -217,12 +224,20 @@ yq .ghcupDownloads ~/.ghcup/cache/ghcup-0.0.9.yaml -o json | sed 's/null/None/' 
 
 To refresh a plan in `examples/plan/<name>`: build `:plan`, then replace the
 JSON inside the `interpret_plan(...)` call in its `BUCK` with the new
-`plan.json`. A target that names a unit by id (`network:socketpair`) has to
-be updated too. The step that looks up cabal-file revisions makes one `curl`
-request after another with no retry. In Claude's sandbox some of them fail
-with an HTTP/2 error (`curl: (92) … PROTOCOL_ERROR`), sometimes on several
-runs in a row, which fails `buck2 build //...` on the `:plan` targets alone.
-cabal-solver-plan, which reads all of it from the index, is to replace it.
+`plan.json`. Targets that use a unit through its alias need no change; one
+that names a unit of the compiler by id (`:base-4.21.0.0-b7a5` in
+`network:socketpair-simple`) changes only with the compiler.
+
+The `:plan` targets need cabal-solver-plan, which is not built here and is
+not in `PATH`: `haskell.cabal_solver_plan` in `.buckconfig.local` (or
+`--config`) says where it is, `haskell.hackage_index` where the
+`01-index.tar` is (default: the one `cabal update` downloads). Without them
+`buck2 build //...` fails on the `:plan` targets alone. The plans were made
+with its commit 3ea35f7 (main in `../cabal-solver-plan` on 2026-10-12, not
+pushed then), built with GHC 9.12.2 from a `git archive` into `$TMPDIR` with
+`cabal build -w <ghc> --builddir=...`; its output was byte-identical to the
+samples in its `examples/`. It reads the index without writing anything
+next to it.
 
 ## Layout
 
@@ -241,7 +256,12 @@ cabal-solver-plan, which reads all of it from the index, is to replace it.
   - `:haskell`, the GHC of every Haskell rule: a `toolchain_alias` of
     `:ghc-9.12.2-bindist` or, with `--config haskell.toolchain=toolchains//:ghc`,
     of `:ghc` (the GHC in `PATH`).
-  - `:cabal` (3.14.2.0), cabal-install for the `plan` rule.
+  - `:cabal-solver-plan`, what the `plan` rule makes plans with: the program
+    and the Hackage index, from `haskell.cabal_solver_plan` and
+    `haskell.hackage_index`.
+  - `:cabal` (3.14.2.0), cabal-install. Nothing uses it since the `plan` rule
+    moved to cabal-solver-plan; it is kept for the `cabal build` end of the
+    spectrum.
 - `rules/haskell/toolchain.bzl` — the GHC toolchain rules,
   `bindist_ghc_toolchain` and `system_ghc_toolchain`, for every rule set. They
   return `GhcToolchainInfo`, with the GHC version and the global package db
@@ -281,21 +301,26 @@ cabal-solver-plan, which reads all of it from the index, is to replace it.
 - `rules/haskell/helpers/` — `parse_fields.hs` prints the fields of a `.cabal`
   file as JSON, a first step towards generating `cabal_simple` targets.
 - `rules/haskell/cabal_install/` — the plan interpreter:
-  - `plan.bzl` — runs `cabal build --dry-run` with the toolchain's GHC and
-    cabal, then adds `pkg-cabal-revision` and `pkg-cabal-size` to each unit:
-    the revision number comes from matching `pkg-cabal-sha256` against
-    Hackage's `revisions/.json`, the size from fetching that revision (needs
-    `curl` and `jq`). The output is that annotated `plan.json`. It reads the Hackage
-    index from the user's cabal directory and queries Hackage, so it is not
-    hermetic; everything downstream is pinned by checksum.
-  - `cabal_toolchain.bzl` — the rule of `toolchains//:cabal`, the
-    cabal-install `plan.bzl` runs.
-  - `interpret_plan.bzl` — macro that decodes a `plan.json` string and emits
-    one target per unit, named by unit-id.
-  - `pkg_src.bzl` — downloads the sdist from the plan's repo and overlays the
+  - `plan.bzl` — the `plan` rule: runs cabal-solver-plan with the
+    toolchain's GHC and its global package db, a Hackage index and an
+    `index_state` (plus `constraints`, `flags`). Its output, format 1, has
+    for each package the sdist's checksum and size and the revision,
+    checksum and size of the `.cabal` file, all read off the index. It reads
+    the index of the machine (`local_only`), so it is not hermetic;
+    everything downstream is pinned by checksum.
+  - `solver_toolchain.bzl` — the rule of `toolchains//:cabal-solver-plan`
+    (`CabalSolverPlanInfo`).
+  - `cabal_toolchain.bzl` — the rule of `toolchains//:cabal`.
+  - `interpret_plan.bzl` — macro that decodes a format-1 plan and emits a
+    target per package (`pkg_src`), one per unit, named by unit-id
+    (`haskell_unit`, `build` or `build_legacy` with a `<pkg>-setup` binary,
+    by `build-style`), and an alias for each of the plan's `targets`. It
+    refuses other formats, and a whole-package unit as a build tool.
+  - `pkg_src.bzl` — downloads the sdist from `<repo>package/<id>.tar.gz`
+    (with `size_bytes`, so with a content-based path) and overlays the
     `.cabal` revision the plan was made with (`revision/<n>.cabal`, checked
-    against the plan's sha256). A plan without `pkg-cabal-revision` and
-    `pkg-cabal-size` fails with a message asking to make it again.
+    against the plan's sha256). Only `repo-tar` packages; a local package
+    (`"src": {"type": "local"}`) fails.
   - `setup.bzl` — building a unit with `Setup.hs`, as functions of
     `actions` and plain data (`SetupEnv`, `SetupUnit`, the providers of the
     dependencies), with no rule context: `build_component` for
@@ -348,12 +373,12 @@ cabal-solver-plan, which reads all of it from the index, is to replace it.
 - `examples/` — one directory per approach, a `README.md` in each example:
   - `prelude/alex` — alex built from its Hackage sdist with `haskell_binary`;
     each source file is a subtarget of the `hackage_package` archive.
-  - `plan/<name>/` — a `cabal.project` pinned by `index-state`, plus a `BUCK`
-    with a `plan(...)` target and an `interpret_plan(...)` call with the plan
-    pasted in: `shake` (all Simple) and `network` (Configure, plus a prelude
-    binary using it). The embedded plans make these `BUCK` files 10–25 KB;
-    search them, don't read them whole. `plan/README.md` explains making a
-    plan.
+  - `plan/<name>/` — a `BUCK` with a `plan(...)` target (targets and
+    index-state) and an `interpret_plan(...)` call with its output pasted
+    in: `shake` (all Simple) and `network` (Configure, plus a prelude binary
+    and a `cabal_simple` executable using it). The embedded plans make these
+    `BUCK` files 10–30 KB; search them, don't read them whole.
+    `plan/README.md` explains making a plan.
   - `cabal_simple/` — `.cabal` files transcribed to `cabal_simple` targets:
     `hello` (sublibrary, c-sources, hsc2hs, Template Haskell, data-files, a
     test suite; it has a `hello.cabal` too, so `cabal build` can be
@@ -439,8 +464,8 @@ cabal-solver-plan, which reads all of it from the index, is to replace it.
 - A download can use a content-based path when buck2 knows its digest and its
   size up front: a `sha256` is enough for the digest, the size comes from
   `size_bytes` or the server's `Content-Length`. Hackage reports a size for
-  sdists but not for `.cabal` files, so the plan records the size of each
-  cabal file and `pkg_src.bzl` passes it as `size_bytes`.
+  sdists but not for `.cabal` files. The plan has both sizes, read off the
+  index, and `pkg_src.bzl` passes them as `size_bytes`.
 - buck2 does not download a file without a checksum. Anything that has to be
   looked up in a document that changes over time (such as which revision a
   cabal file is) belongs in the `plan` step, not in the rules that fetch
@@ -499,8 +524,8 @@ cabal-solver-plan, which reads all of it from the index, is to replace it.
 
 - `mise.toml` installs buck2, buildifier and lefthook. It sets no environment.
 - GHC (9.12.4), cabal and ghcup from `~/.ghcup` are on `PATH`. Builds go
-  through `toolchains//:haskell` and `toolchains//:cabal`, which are the
-  downloaded ones unless told otherwise.
+  through `toolchains//:haskell`, the downloaded GHC unless told otherwise.
+  cabal-solver-plan is not on `PATH` (see "Commands").
 - Sibling checkouts under `../`: `buck2-prelude` (jj clone of the prelude fork,
   remotes `origin`, `MercuryTechnologies`, `upstream`; its branch
   `timbuktu-prelude` is the fork as this repository last used it, mid-2025,

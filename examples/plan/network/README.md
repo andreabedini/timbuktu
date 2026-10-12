@@ -21,5 +21,5 @@ $ buck2 run //examples/plan/network:socketpair-simple
 $ buck2 test //examples/plan/network:
 ```
 
-Both name the unit by its id, which comes from the plan: they have to be
-updated whenever the plan is made again. See [`../README.md`](../README.md).
+Both depend on `:network`, the alias the plan makes for its target, so they
+need no change when the plan is made again. See [`../README.md`](../README.md).

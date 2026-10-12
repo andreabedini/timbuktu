@@ -1,47 +1,73 @@
 # Build plans
 
-cabal-install solves the dependencies, buck2 builds the result. Each
-directory here is a small cabal project:
+A solver chooses the packages, buck2 builds them. Each directory here has a
+`BUCK` with:
 
-- `cabal.project` pins the Hackage index (`index-state`) and names the
-  package to build (`extra-packages`);
-- `BUCK` has a `plan` target and an `interpret_plan(...)` call with the plan
-  pasted in.
+- a `plan` target: which packages to plan for and the Hackage index-state to
+  plan with;
+- an `interpret_plan(...)` call with the output of that target pasted in.
 
-`interpret_plan` makes one target per unit of the plan, named after its
-unit-id:
+The plans are made by
+[cabal-solver-plan](https://github.com/andreabedini/cabal-solver-plan),
+which runs the solver of cabal-install on explicit inputs: the GHC of
+`toolchains//:haskell` with its global package db, and a Hackage index
+(`01-index.tar`) read up to the index-state. It prints the plan as JSON, with
+everything the rules need: each package's sdist and its checksum and size,
+which revision of its `.cabal` file to use, and each unit with its flags and
+dependencies.
 
-- a unit that comes with the compiler (`"type": "pre-existing"`) becomes a
-  `haskell_unit`;
-- every other unit gets its sdist from Hackage, with the revision of the
-  `.cabal` file the plan was made with, and is built by the package's own
-  `Setup.hs`, with `--exact-configuration` and each dependency given by
-  unit-id. A unit with `build-type: Simple` is configured, built, copied and
-  registered by separate actions (`build.bzl`); any other build type does all
-  of it in one action (`build_legacy.bzl`).
+`interpret_plan` makes a target for each entry of the plan:
+
+- each package, `<name>-<version>`: its sdist from Hackage, with the
+  revision of its `.cabal` file;
+- each unit that comes with the compiler: a `haskell_unit`, named after its
+  unit-id;
+- each unit to build, named after its unit-id, built from its sdist by the
+  package's own `Setup.hs`, with `--exact-configuration` and each dependency
+  given by unit-id. A unit of a package with `build-type: Simple` is one
+  component, configured, built, copied and registered by separate actions;
+  a package of any other build type is one unit, built in a single action
+  (`setup.bzl` in `rules/haskell/cabal_install`);
+- for each unit the plan was made for, an alias: the package name for its
+  library (`:network`), `<kind>-<name>` for another component
+  (`:exe-shake`).
 
 ```bash
 $ buck2 targets //examples/plan/shake:      # one target per unit
+$ buck2 run //examples/plan/shake:exe-shake -- --version
 ```
 
 The rules are in [`rules/haskell/cabal_install`](../../rules/haskell/cabal_install).
 
 ## Making a plan
 
+cabal-solver-plan is not built here. Install it, or tell buck2 where it is,
+and where the Hackage index is if it is not the one `cabal update`
+downloads, in `.buckconfig.local`:
+
+```ini
+[haskell]
+  cabal_solver_plan = /path/to/cabal-solver-plan
+  hackage_index = /path/to/01-index.tar
+```
+
+Then
+
 ```bash
 $ buck2 build //examples/plan/shake:plan --show-output
 ```
 
-runs `cabal build --dry-run` with the toolchain's GHC and cabal-install, then
-looks up on Hackage which revision of each `.cabal` file the plan uses and how
-big it is, and adds both to the plan. This needs the Hackage index of your
-cabal directory (`cabal update`), `curl`, `jq` and network access: it is the
-only step that is not hermetic. To update the example, replace the JSON inside
-`interpret_plan(...)` with the `plan.json` it printed.
+prints where the plan is. To update an example, replace the JSON inside
+`interpret_plan(...)` with it. Nothing else reads the network or the index:
+everything downstream is pinned by checksum.
 
 A plan is made for one compiler (`compiler-id`) and names the units of its
 global package db: it only builds with the toolchain it was made with, the
 downloaded GHC 9.12.2.
+
+Not supported: packages that use Backpack (cabal-solver-plan gets their
+plans wrong without saying so), local packages, and a whole-package unit's
+executables as build tools of another unit.
 
 ## Using a unit elsewhere
 
