@@ -1,0 +1,376 @@
+{
+  "format": 1,
+  "cabal-library": "3.14.1.0",
+  "ghc-version": "9.12.2",
+  "platform": "x86_64-linux",
+  "flags": {
+    "fast": false
+  },
+  "cabal-version": "3.14",
+  "name": "everything",
+  "version": "1.2.3",
+  "build-type": "Simple",
+  "license": "BSD-3-Clause",
+  "license-files": [
+    "LICENSE"
+  ],
+  "copyright": "nobody",
+  "maintainer": "nobody@example.org",
+  "author": "nobody",
+  "stability": "experimental",
+  "tested-with": "ghc ==9.12.2",
+  "homepage": "https://example.org/everything",
+  "package-url": "https://example.org/everything.tar.gz",
+  "bug-reports": "https://example.org/everything/issues",
+  "synopsis": "Every field there is",
+  "description": "What describe_package and the generator are tested on.",
+  "category": "Testing",
+  "data-dir": "data",
+  "data-files": [
+    "greeting.txt"
+  ],
+  "extra-source-files": [
+    "cbits/*.h"
+  ],
+  "extra-tmp-files": [
+    "tmp/*.log"
+  ],
+  "extra-doc-files": [
+    "CHANGELOG.md"
+  ],
+  "extra-files": [
+    "notes.txt"
+  ],
+  "components": [
+    {
+      "kind": "lib",
+      "name": null,
+      "exposed-modules": [
+        "Everything"
+      ],
+      "reexported-modules": [
+        "Data.Map as Map",
+        "containers:Data.Set"
+      ],
+      "exposed": false,
+      "buildable": true,
+      "hs-source-dirs": [
+        "src"
+      ],
+      "other-modules": [
+        "Everything.Internal"
+      ],
+      "virtual-modules": [
+        "GHC.Everything"
+      ],
+      "autogen-modules": [
+        "Paths_everything"
+      ],
+      "default-language": "Haskell2010",
+      "other-languages": [
+        "GHC2021"
+      ],
+      "default-extensions": [
+        "OverloadedStrings"
+      ],
+      "other-extensions": [
+        "TemplateHaskell"
+      ],
+      "build-depends": [
+        {
+          "package": "base",
+          "internal": false,
+          "libraries": [
+            "lib"
+          ],
+          "version": ">=0"
+        },
+        {
+          "package": "containers",
+          "internal": false,
+          "libraries": [
+            "lib"
+          ],
+          "version": ">=0"
+        },
+        {
+          "package": "everything",
+          "internal": true,
+          "libraries": [
+            "internal"
+          ],
+          "version": ">=0"
+        }
+      ],
+      "build-tool-depends": [
+        {
+          "package": "alex",
+          "internal": false,
+          "executable": "alex",
+          "version": ">=0"
+        }
+      ],
+      "ghc-options": [
+        "-Wall",
+        "-Wcompat",
+        "-O0"
+      ],
+      "ghc-prof-options": [
+        "-fprof-auto"
+      ],
+      "ghc-shared-options": [
+        "-fPIC"
+      ],
+      "ghc-prof-shared-options": [
+        "-fprof-auto-top"
+      ],
+      "cpp-options": [
+        "-DEVERYTHING"
+      ],
+      "cc-options": [
+        "-O2"
+      ],
+      "cxx-options": [
+        "-std=c++17"
+      ],
+      "asm-options": [
+        "-g"
+      ],
+      "cmm-options": [
+        "-g"
+      ],
+      "ld-options": [
+        "-lm"
+      ],
+      "hsc2hs-options": [
+        "--verbose"
+      ],
+      "c-sources": [
+        "cbits/a.c"
+      ],
+      "cxx-sources": [
+        "cbits/b.cpp"
+      ],
+      "asm-sources": [
+        "cbits/c.S"
+      ],
+      "cmm-sources": [
+        "cbits/d.cmm"
+      ],
+      "js-sources": [
+        "js/e.js"
+      ],
+      "include-dirs": [
+        "include"
+      ],
+      "includes": [
+        "a.h"
+      ],
+      "install-includes": [
+        "b.h"
+      ],
+      "autogen-includes": [
+        "c.h"
+      ],
+      "extra-libraries": [
+        "z"
+      ],
+      "extra-libraries-static": [
+        "z_static"
+      ],
+      "extra-lib-dirs": [
+        "/opt/lib"
+      ],
+      "extra-lib-dirs-static": [
+        "/opt/lib/static"
+      ],
+      "extra-ghci-libraries": [
+        "z_ghci"
+      ],
+      "extra-bundled-libraries": [
+        "Cbundled"
+      ],
+      "extra-library-flavours": [
+        "_debug"
+      ],
+      "extra-dynamic-library-flavours": [
+        "_debug"
+      ],
+      "frameworks": [
+        "Everything"
+      ],
+      "extra-framework-dirs": [
+        "/opt/frameworks"
+      ],
+      "pkgconfig-depends": [
+        "zlib >=1.2"
+      ],
+      "mixins": [
+        "base hiding (Prelude)"
+      ]
+    },
+    {
+      "kind": "lib",
+      "name": "internal",
+      "exposed-modules": [
+        "Everything.Signature.User"
+      ],
+      "signatures": [
+        "Everything.Signature"
+      ],
+      "visibility": "public",
+      "buildable": true,
+      "hs-source-dirs": [
+        "internal"
+      ],
+      "default-language": "Haskell2010",
+      "build-depends": [
+        {
+          "package": "base",
+          "internal": false,
+          "libraries": [
+            "lib"
+          ],
+          "version": ">=0"
+        }
+      ]
+    },
+    {
+      "kind": "exe",
+      "name": "everything",
+      "main-is": "Main.hs",
+      "scope": "private",
+      "buildable": true,
+      "hs-source-dirs": [
+        "app"
+      ],
+      "default-language": "Haskell2010",
+      "build-depends": [
+        {
+          "package": "base",
+          "internal": false,
+          "libraries": [
+            "lib"
+          ],
+          "version": ">=0"
+        },
+        {
+          "package": "everything",
+          "internal": true,
+          "libraries": [
+            "lib"
+          ],
+          "version": ">=0"
+        }
+      ],
+      "ghc-options": [
+        "-Wall"
+      ]
+    },
+    {
+      "kind": "test",
+      "name": "stdio",
+      "type": "exitcode-stdio-1.0",
+      "main-is": "Stdio.hs",
+      "code-generators": [
+        "everything-discover"
+      ],
+      "buildable": true,
+      "hs-source-dirs": [
+        "test"
+      ],
+      "default-language": "Haskell2010",
+      "build-depends": [
+        {
+          "package": "base",
+          "internal": false,
+          "libraries": [
+            "lib"
+          ],
+          "version": ">=0"
+        }
+      ]
+    },
+    {
+      "kind": "test",
+      "name": "detailed",
+      "type": "detailed-0.9",
+      "test-module": "Detailed",
+      "buildable": true,
+      "hs-source-dirs": [
+        "test"
+      ],
+      "default-language": "Haskell2010",
+      "build-depends": [
+        {
+          "package": "Cabal",
+          "internal": false,
+          "libraries": [
+            "lib"
+          ],
+          "version": ">=0"
+        },
+        {
+          "package": "base",
+          "internal": false,
+          "libraries": [
+            "lib"
+          ],
+          "version": ">=0"
+        }
+      ]
+    },
+    {
+      "kind": "bench",
+      "name": "speed",
+      "type": "exitcode-stdio-1.0",
+      "main-is": "Speed.hs",
+      "buildable": true,
+      "hs-source-dirs": [
+        "bench"
+      ],
+      "default-language": "Haskell2010",
+      "build-depends": [
+        {
+          "package": "base",
+          "internal": false,
+          "libraries": [
+            "lib"
+          ],
+          "version": ">=0"
+        }
+      ]
+    },
+    {
+      "kind": "flib",
+      "name": "everything-c",
+      "type": "native-shared",
+      "options": [
+        "standalone"
+      ],
+      "lib-version-info": "6:3:2",
+      "lib-version-linux": "1.2.3",
+      "mod-def-file": [
+        "everything.def"
+      ],
+      "buildable": true,
+      "hs-source-dirs": [
+        "flib"
+      ],
+      "other-modules": [
+        "Everything.Foreign"
+      ],
+      "default-language": "Haskell2010",
+      "build-depends": [
+        {
+          "package": "base",
+          "internal": false,
+          "libraries": [
+            "lib"
+          ],
+          "version": ">=0"
+        }
+      ]
+    }
+  ]
+}

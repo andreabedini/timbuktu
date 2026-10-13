@@ -11,15 +11,17 @@ its own.
 | `library`, `library <name>` | `cabal_simple_library` (`library_name` for a sublibrary) |
 | `executable <name>` | `cabal_simple_executable` (`executable_name`) |
 | `test-suite <name>` | `cabal_simple_test` |
-| a field, `hs-source-dirs` | the attribute of the same name with underscores, `hs_source_dirs` |
+| a field, `hs-source-dirs` | the attribute of the same name with underscores, `hs_source_dirs` (`visibility` of a library is `library_visibility`) |
 | `build-depends` | targets: another component, a `haskell_unit` for a package that comes with the compiler, or a library unit of a [build plan](../plan) |
 | `build-tool-depends` | targets of executables, of these rules or of a build plan |
 | `if flag(...)`, `if os(...)` | `select`, or resolved by hand |
 
 The rules are in [`rules/haskell/cabal`](../../rules/haskell/cabal); the
-docstring of `simple.bzl` describes the steps. A field the rules know but do
-not honour (`mixins`, `pkgconfig-depends`, …) fails the build rather than
-being ignored.
+docstring of `simple.bzl` describes the steps.
+[`fields.bzl`](../../rules/haskell/cabal/fields.bzl) lists every field of
+Cabal 3.14 and what the rules make of it: a field they know but do not honour
+(`mixins`, `pkgconfig-depends`, …) fails the build rather than being ignored,
+and so does a `cabal-version` newer than 3.14.
 
 ## Generating the targets
 
@@ -43,9 +45,13 @@ Benchmarks and foreign libraries are left out, with a comment.
 
 Every example here but `ghc` comes out of it with the same attributes as the
 hand-written transcription, apart from spelling (`cabal_version`,
-`license_files`), order (`build_depends`), the `extra-source-files` the
-transcriptions leave out, and `visibility`, which the generator gives the
-libraries other packages may use and the executables. The options that take:
+`license_files`), order (`build_depends`), the `extra-source-files`,
+`extra-doc-files` and `tested-with` the transcriptions leave out, and
+`visibility`, which the generator gives the libraries other packages may use
+and the executables. [`tests/generate.sh`](tests/generate.sh) checks it,
+with `generate.bxl:check`, which compares what would be generated with a
+package. Run it by hand, from the root of the repository. The options that
+take:
 
 | Example | Options |
 | --- | --- |

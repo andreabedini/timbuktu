@@ -1,0 +1,66 @@
+# What describe_package prints, and what the generator makes of it, for two
+# .cabal files: everything/everything.cabal has every field Cabal knows,
+# old/old.cabal the ones a newer cabal-version no longer has. Each is
+# compared with what is expected (expected/). When a change is meant, update
+# those files with what the target built:
+#
+#   cp $(buck2 build //rules/haskell/cabal/tests:everything --show-simple-output) rules/haskell/cabal/tests/expected/everything.json
+#
+# describe_package itself stops when the Cabal it is built with knows a field
+# it does not print, so these tests also fail after an upgrade of Cabal that
+# adds one.
+
+load(":defs.bzl", "described_package", "expected_test", "generated_buck_file")
+
+described_package(
+    name = "everything",
+    cabal = "everything/everything.cabal",
+)
+
+generated_buck_file(
+    name = "everything-buck",
+    compiler_packages = [
+        "base",
+        "Cabal",
+        "containers",
+    ],
+    compiler_prefix = "//compiler:",
+    description = ":everything",
+    tools = {"alex:alex": "//tools:alex"},
+)
+
+described_package(
+    name = "old",
+    cabal = "old/old.cabal",
+)
+
+generated_buck_file(
+    name = "old-buck",
+    compiler_packages = ["base"],
+    description = ":old",
+    tools = {"happy:happy": "//tools:happy"},
+)
+
+expected_test(
+    name = "everything-test",
+    actual = ":everything",
+    expected = "expected/everything.json",
+)
+
+expected_test(
+    name = "everything-buck-test",
+    actual = ":everything-buck",
+    expected = "expected/everything.generated",
+)
+
+expected_test(
+    name = "old-test",
+    actual = ":old",
+    expected = "expected/old.json",
+)
+
+expected_test(
+    name = "old-buck-test",
+    actual = ":old-buck",
+    expected = "expected/old.generated",
+)

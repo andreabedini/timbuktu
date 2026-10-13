@@ -1,0 +1,54 @@
+{
+  "format": 1,
+  "cabal-library": "3.14.1.0",
+  "ghc-version": "9.12.2",
+  "platform": "x86_64-linux",
+  "flags": {},
+  "cabal-version": "2.2",
+  "name": "old",
+  "version": "0.1",
+  "build-type": "Simple",
+  "license": "BSD-3-Clause",
+  "license-files": [
+    "LICENSE"
+  ],
+  "data-dir": ".",
+  "components": [
+    {
+      "kind": "lib",
+      "name": null,
+      "exposed-modules": [
+        "Old"
+      ],
+      "buildable": true,
+      "hs-source-dirs": [
+        "src"
+      ],
+      "default-language": "Haskell2010",
+      "default-extensions": [
+        "CPP"
+      ],
+      "build-depends": [
+        {
+          "package": "base",
+          "internal": false,
+          "libraries": [
+            "lib"
+          ],
+          "version": ">=0"
+        }
+      ],
+      "build-tool-depends": [
+        {
+          "package": "happy",
+          "internal": false,
+          "executable": "happy",
+          "version": ">=1.19"
+        }
+      ],
+      "build-tools": [
+        "pkg-config >=0"
+      ]
+    }
+  ]
+}

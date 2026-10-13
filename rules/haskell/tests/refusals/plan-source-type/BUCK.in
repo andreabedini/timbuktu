@@ -1,0 +1,3 @@
+load("@root//rules/haskell/cabal_install:interpret_plan.bzl", "interpret_plan")
+
+interpret_plan("p", '{"format": 1, "targets": [], "packages": [{"id": "x-1", "build-type": "Simple", "src": {"type": "git"}}], "units": [{"id": "x-1-abc", "type": "configured", "package": "x-1", "build-style": "per-component", "component": "lib"}]}')

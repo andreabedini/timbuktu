@@ -1,0 +1,1 @@
+{"format": 1, "cabal-library": "3.16.0.0", "ghc-version": "9.12.2", "platform": "x86_64-linux", "flags": {}, "name": "p", "version": "1", "components": [{"kind": "lib", "name": null, "buildable": true, "new-field": ["x"]}]}

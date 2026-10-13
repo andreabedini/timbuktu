@@ -1,0 +1,1 @@
+describe_package printed `new-field`, which generate.bzl does not know

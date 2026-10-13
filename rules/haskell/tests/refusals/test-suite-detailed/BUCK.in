@@ -1,0 +1,5 @@
+load("@root//rules/haskell/cabal:defs.bzl", "cabal_package", "cabal_simple_library", "cabal_simple_test")
+
+cabal_package(name = "p", version = "1", srcs = [])
+
+cabal_simple_test(name = "t", package = ":p", type = "detailed-0.9", test_module = "T")

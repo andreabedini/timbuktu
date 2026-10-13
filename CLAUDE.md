@@ -78,6 +78,14 @@ passing; buck2 also reports the 5 `http_archive` targets as passed tests):
   `build_depends`), and with all seven generated files in place
   `//examples/cabal_simple/...` builds, its tests pass and hello, lexer,
   cparse, alex and happy run. The originals were put back.
+- The Cabal checks (2026-10-13, see "Keeping the Cabal logic in check"):
+  `buck2 test //rules/... //examples/...` runs 17 tests, all passing (with
+  `haskell.cabal_solver_plan` set, see "Commands"), `buck2 build` of the
+  same builds, and cparse, happy, alex and shake run;
+  `rules/haskell/tests/refusals.sh` gets its 17 refusals, and
+  `examples/cabal_simple/tests/generate.sh` finds the seven transcriptions
+  the same as what would be generated. Breaking an expected file, and
+  letting a newer `cabal-version` through, made the tests fail.
 - Plan interpreter: `//examples/plan/shake:plan`, and the whole shake plan;
   the `shake` executable unit builds and prints its version.
   `//examples/plan/network` is a plan whose `network` unit has
@@ -202,7 +210,9 @@ Known broken or untested:
 ```sh
 mise install                       # buck2 (latest prerelease), buildifier, lefthook
 buck2 targets //examples/plan/shake:          # what parses in one package
-buck2 test //examples/...                       # every test there is
+buck2 test //rules/... //examples/...           # every test there is
+sh rules/haskell/tests/refusals.sh              # what the rules refuse, by hand
+sh examples/cabal_simple/tests/generate.sh      # transcriptions vs generator, by hand
 buck2 run //examples/prelude/alex:alex -- --version   # prelude rules
 buck2 run //examples/cabal_simple/hello:exe     # cabal_simple rules
 buck2 run //examples/plan/network:socketpair    # a prelude binary on a plan unit
@@ -236,8 +246,11 @@ or workspace has to be given its own.
 "Does it build and run" is the check for the rules. The tests under
 `examples/` (a `cabal_simple_test`, and `sh_test`s that run what an example
 built) check that the examples still do what their README says more than
-they test the rules. Tests of the Cabal knowledge itself are still to be
-written (see "Keeping the Cabal logic in check").
+they test the rules. The tests of what the rules know of Cabal are in
+`rules/haskell/cabal/tests` (what `describe_package` prints and what the
+generator makes of it, compared with `expected/`), and the two scripts above,
+which need buck2 itself and are run by hand (see "Keeping the Cabal logic in
+check").
 
 `rules/haskell/ghcup/metadata.bzl` (about 16.8k lines) is generated, never
 edit it by hand:
@@ -325,12 +338,18 @@ archive in `buck-out` that the build uses.
   `haskell_unit` all return and consume these.
 - `rules/haskell/hackage.bzl` — `hackage_package`: `http_archive` of an sdist
   from Hackage, no cabal-file revisions. Used by `examples/`.
-- `rules/haskell/helpers/` — `parse_fields.hs` prints the raw fields of a
-  `.cabal` file as JSON. `describe_package.hs` (`:describe_package`) prints a
-  package description resolved with `finalizePD` for a GHC version, a
-  platform and flags (common stanzas inlined, conditionals gone), the
-  package's fields and one object per component, keyed by `.cabal` field
-  names, for `cabal/generate.bxl`.
+- `rules/haskell/helpers/` — the programs the rules run, in Haskell.
+  `parse_fields.hs` prints the raw fields of a `.cabal` file as JSON.
+  `describe_package.hs` (`:describe_package`) prints a package description
+  resolved with `finalizePD` for a GHC version, a platform and flags (common
+  stanzas inlined, conditionals gone), the package's fields and one object
+  per component, keyed by `.cabal` field names, for `cabal/generate.bxl`; it
+  stops when Cabal knows a field it does not print. `find_modules.hs` (which
+  file a module comes from, with Cabal's suffixes) and `register.hs` (write a
+  package db) are for the `cabal_simple` rules.
+- `rules/haskell/tests/` — `refusals.sh` and its cases in `refusals/`: a
+  `BUCK.in` that has to fail with the message in `expected`, built in
+  `scratch/` (ignored by version control).
 - `rules/haskell/cabal_install/` — the plan interpreter:
   - `plan.bzl` — the `plan` rule: runs cabal-solver-plan with the
     toolchain's GHC and its global package db, a Hackage index and an
@@ -351,6 +370,10 @@ archive in `buck-out` that the build uses.
   - `solver_toolchain.bzl` — the rule of `toolchains//:cabal-solver-plan`
     (`CabalSolverPlanInfo`).
   - `cabal_toolchain.bzl` — the rule of `toolchains//:cabal`.
+  - `plan_format.bzl` — `decode_plan`, how `interpret_plan` and
+    `dynamic_plan` read a plan: it refuses another format, and any value of
+    the closed sets of the format (unit type, build style, component kind,
+    build type, source type) it does not list.
   - `interpret_plan.bzl` — macro that decodes a format-1 plan and emits a
     target per package (`pkg_src`), one per unit, named by unit-id
     (`haskell_unit`, `build` or `build_legacy` with a `<pkg>-setup` binary,
@@ -410,8 +433,14 @@ archive in `buck-out` that the build uses.
   - `macros.bzl`, `paths.bzl` — `cabal_macros.h`, `Paths_<pkg>` and
     `PackageInfo_<pkg>`, after Cabal's templates. `paths.bzl` also has the
     `cabal_paths_module` rule, used by `examples/prelude/alex/BUCK`.
-  - `generate.bzl`, `generate.bxl` — the generator: `buck_file` turns what
-    `describe_package` prints into the text of a BUCK file (target names as
+  - `fields.bzl` — every field of a package description (Cabal 3.14), with
+    the attribute it is and what the rules make of it (honoured, refused,
+    ignored), and `CABAL_SPEC_VERSION`, the newest `cabal-version`
+    `cabal_package` accepts. The rules take their attributes from it, the
+    generator the fields it copies.
+  - `generate.bzl`, `generate.bxl` — the generator: `package_targets` turns
+    what `describe_package` prints into targets and their attributes, and
+    `buck_file` into the text of a BUCK file (target names as
     in the transcriptions: the package, `lib`, sublibraries by name, `exe`,
     test suites by name; dependencies on the compiler's packages become
     `haskell_unit`s or `--compiler-prefix` labels, others need `--dep` /
@@ -420,9 +449,14 @@ archive in `buck-out` that the build uses.
     `ghc-pkg`, and prints the path of the BUCK file; `--cabal-file` for a
     file in the repository, `--sdist` for a `hackage_package` target. Kept
     as a `.bzl` function so a plan → BUCK generator can use it.
-  - `tools/` — shell scripts run by the actions: `find_modules.sh` (which file
-    a module comes from), `run.sh` (run a command from the package root with
-    build tools in `PATH`), `register.sh` (write a package db).
+    `generate.bxl:check` (`--against <package>`) compares what would be
+    generated with the targets of a package instead.
+  - `tests/` — `everything/everything.cabal` (every field Cabal 3.14 has) and
+    `old/old.cabal` (fields a newer `cabal-version` no longer has), what
+    `describe_package` and the generator make of them, and the rules that
+    run the two halves of `generate.bxl` for the tests (`defs.bzl`).
+  - `tools/run.sh` — run a command from the package root with build tools
+    in `PATH`, as Cabal does.
 - `examples/` — one directory per approach, a `README.md` in each example:
   - `prelude/alex` — alex built from its Hackage sdist with `haskell_binary`;
     each source file is a subtarget of the `hackage_package` archive.
@@ -560,7 +594,7 @@ archive in `buck-out` that the build uses.
   a library exposes its unit as a dynamic value its dependents wait for.
 - A `.cabal` field the `cabal_simple` rules know but do not honour (`mixins`,
   `pkgconfig-depends`, `signatures`, …) fails the build instead of being
-  ignored. Conditionals are left to `select`.
+  ignored (`fields.bzl`). Conditionals are left to `select`.
 - Turning a `.cabal` file into `cabal_simple` targets is done by hand or by
   `cabal/generate.bxl`, which resolves the conditionals for one
   configuration: it emits no `select`. Options of a BXL script that are
@@ -583,8 +617,9 @@ things in a plan. Write the code for the day they do.
   function of the library called from a helper, the plan, a registration) or
   we recover or re-derive it ourselves. Where the line falls is not clear
   cut, and is decided case by case. When we re-derive something, name the
-  Cabal function it follows (as `_PREPROCESSOR_EXTS` in `simple.bzl` cites
-  `knownSuffixHandlers`), so the two can be compared when Cabal changes.
+  Cabal function it follows (as `_resolve_reexports` in `simple.bzl` cites
+  the parser of `ModuleReexport`), so the two can be compared when Cabal
+  changes.
   Analysis cannot run a helper: what has to be known then is worked out in
   Starlark or comes from an earlier step (a BXL script, a plan).
 - Helpers are written in Haskell. The Haskell rules can count on a Haskell
@@ -624,26 +659,35 @@ things in a plan. Write the code for the day they do.
   refusal is behaviour too: test that an unknown field, an unknown build type
   and a newer `cabal-version` fail, and with which message.
 
-Where the code falls short of this (2026-10-13):
+How the code does it (2026-10-13):
 
-- `describe_package.hs` reads `BuildInfo` one accessor at a time, so a field
-  added to Cabal is left out of what it prints.
-- `generate.bzl` copies only the keys in `_COMPONENT_FIELDS`. `build-tools`,
-  which the helper prints, is dropped: the target is generated without the
-  tool, which is then looked up in `PATH`.
-- `interpret_plan.bzl` and `dynamic_plan.bzl` each decode the plan
-  themselves. Both build any `build-style` other than `per-component` as a
-  whole package, and build any unit whose `type` is not `pre-existing`.
-- The fields of a component are listed in `simple.bzl` (twice),
-  `generate.bzl`, `describe_package.hs` and `examples/cabal_simple/README.md`;
-  those of a package in `package.bzl`, `generate.bzl` and the helper.
-- `cabal_package` takes `cabal_version` and does not check it. What
-  `describe_package` prints has no format version.
-- Starlark parses what Cabal has parsers for: `reexported-modules` in
-  `simple.bzl`, component names (`lib:<name>`) in the plan interpreter.
-- `cabal/tools/find_modules.sh` and `register.sh` are shell scripts with
-  Cabal knowledge in them.
-- None of the above has a test.
+- `describe_package` prints every field of every stanza that Cabal's field
+  grammars list, under the name Cabal reads it by (`hs-source-dir` as
+  `hs-source-dirs`, `build-tools` Cabal knows the package of as
+  `build-tool-depends`), and stops when the Cabal it is built with knows one
+  it does not. Its output has a `format` and the Cabal version.
+- `rules/haskell/cabal/fields.bzl` is the one list of fields, with what the
+  rules make of each; `generate.bzl` fails on a field, a kind of component
+  or a format it does not know. `cabal_package` refuses a `cabal-version`
+  newer than `CABAL_SPEC_VERSION` and names the build type it refuses.
+- `cabal_install/plan_format.bzl` reads plans for both plan interpreters.
+- `find_modules` takes its suffixes from Cabal (`knownSuffixHandlers`,
+  `builtinHaskellSuffixes`): a preprocessor Cabal adds is found, and refused
+  by `_preprocess` in `simple.bzl`, which runs alex, happy and hsc2hs.
+
+What is left:
+
+- The refusals and the comparison of generated and written targets need
+  buck2 itself, and are scripts run by hand, not `buck2 test`.
+- `describe_package` checks what it prints against Cabal's field grammars,
+  not against Cabal's types: a field of a record that no `.cabal` field sets
+  (`staticOptions` in 3.14) goes unnoticed, as it should.
+- The expected outputs in `rules/haskell/cabal/tests/expected` name the
+  Cabal version (`cabal-library`): a new compiler means updating them, after
+  looking at what else changed.
+- Starlark still parses `reexported-modules` (during analysis, where no
+  helper can run) and `setup.bzl` tells components apart by the prefix of
+  their name (`lib:`, `exe:`), which `decode_plan` has checked.
 
 ## Conventions
 

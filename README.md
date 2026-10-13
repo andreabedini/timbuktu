@@ -93,8 +93,11 @@ are made for the downloaded one and will not build.
   set uses), `defs.bzl` (wrappers around the prelude rules, `haskell_unit`),
   `unit.bzl` (`haskell_unit`, a unit that is already in a package db),
   `hackage.bzl` (fetch an sdist), `ghcup/` (pick a GHC or cabal-install
-  bindist), `helpers/` (`parse_fields`, which prints the fields of a `.cabal`
-  file as JSON), and the two rule sets in `cabal_install/` and `cabal/`.
+  bindist), `helpers/` (the programs the rules run, in Haskell:
+  `describe_package`, `find_modules`, `register`, and `parse_fields`, which
+  prints the fields of a `.cabal` file as JSON), `tests/` (that the rules
+  refuse what they do not support, run by hand with `refusals.sh`), and the
+  two rule sets in `cabal_install/` and `cabal/`.
 - `toolchains/` — where the toolchains are chosen.
 
 # Notes and rants

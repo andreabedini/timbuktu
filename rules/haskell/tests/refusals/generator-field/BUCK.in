@@ -1,0 +1,3 @@
+load("@root//rules/haskell/cabal/tests:defs.bzl", "generated_buck_file")
+
+generated_buck_file(name = "g", description = "description.json")
