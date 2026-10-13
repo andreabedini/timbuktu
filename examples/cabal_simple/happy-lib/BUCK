@@ -24,6 +24,27 @@ cabal_package(
     stability = "stable",
     homepage = "https://www.haskell.org/happy/",
     synopsis = "Happy is a parser generator for Haskell implemented using this library",
+    description = (
+        "Happy is a parser generator for Haskell.  Given a grammar\n" +
+        "specification in BNF, Happy generates Haskell code to parse the\n" +
+        "grammar.  Happy works in a similar way to the @yacc@ tool for C.\n" +
+        "\n" +
+        "This library provides the following functionality:\n" +
+        "\n" +
+        "  * Data type definitions for the Grammar AST type, capturing the information in .y-files (Happy.Grammar)\n" +
+        "\n" +
+        "  * A parser for happy grammar files (.y) to produce a Grammar (Happy.Frontend.*)\n" +
+        "\n" +
+        "  * Implementations of the text book algorithms that compute the LR action and\n" +
+        "    goto tables for the given 'Grammar' (Happy.Tabular.*)\n" +
+        "\n" +
+        "  * An LALR code generator to produce table-driven, deterministic parsing code\n" +
+        "    in Haskell (Happy.Backend.LALR.*)\n" +
+        "\n" +
+        "  * A (less maintained) GLR code generator to produce table-driven,\n" +
+        "    non-deterministic parsing code in Haskell, where ambiguous parses produce\n" +
+        "    multiple parse trees (Happy.Backend.GLR.*)"
+    ),
     category = "Development",
     build_type = "Simple",
     data_dir = "data",

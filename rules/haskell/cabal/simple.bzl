@@ -53,84 +53,38 @@ load(
     "mangle",
 )
 load("//rules/haskell:toolchain.bzl", "GhcDynamicInfo", "GhcToolchainInfo", "ghc_toolchain_attrs")
+load(
+    ":fields.bzl",
+    "BUILD_INFO_FIELDS",
+    "EXECUTABLE_FIELDS",
+    "LIBRARY_FIELDS",
+    "TEST_SUITE_FIELDS",
+    "attr_name",
+    "check_refused",
+    "field_attrs",
+)
 load(":macros.bzl", "CabalMacroContext", "Versioned", "cabal_macros_gen")
 load(":paths.bzl", "PathsModuleCtx", "mk_package_info_module", "mk_paths_module")
 load(":prelude.bzl", "prelude_library_attrs", "prelude_library_providers")
 load(":providers.bzl", "CabalPackageInfo")
 
-# See knownSuffixHandlers in Distribution.Simple.PreProcess
-_PREPROCESSOR_EXTS = ["chs", "hsc", "x", "y", "ly", "cpphs"]
-
 ##
 ## Attributes
 ##
 
-def _strings():
-    return attrs.list(attrs.string(), default = [])
-
-# The BuildInfo fields we give a meaning to.
-_build_info_string_fields = [
-    "hs_source_dirs",
-    "other_modules",
-    "autogen_modules",
-    "default_extensions",
-    "other_extensions",
-    "other_languages",
-    "ghc_options",
-    "ghc_shared_options",
-    "cpp_options",
-    "cc_options",
-    "cxx_options",
-    "asm_options",
-    "cmm_options",
-    "ld_options",
-    "hsc2hs_options",
-    "c_sources",
-    "cxx_sources",
-    "asm_sources",
-    "cmm_sources",
-    "include_dirs",
-    "includes",
-    "install_includes",
-    "extra_libraries",
-    "extra_lib_dirs",
-]
-
-# The BuildInfo fields we know about but cannot honour yet. Better to stop
-# than to build something different from what Cabal would.
-_build_info_unsupported_fields = [
-    "autogen_includes",
-    "extra_bundled_libraries",
-    "extra_framework_dirs",
-    "extra_ghci_libraries",
-    "frameworks",
-    "js_sources",
-    "mixins",
-    "pkgconfig_depends",
-]
-
-_build_info_attrs = {
-    field: _strings()
-    for field in _build_info_string_fields + _build_info_unsupported_fields
-} | {
-    "build_depends": attrs.list(attrs.dep(providers = [CabalLibraryInfo]), default = []),
-    "build_tool_depends": attrs.list(attrs.exec_dep(providers = [RunInfo]), default = []),
-    "buildable": attrs.bool(default = True),
-    "default_language": attrs.option(attrs.string(), default = None),
-    # Profiling is not supported yet, the options are accepted and ignored.
-    "ghc_prof_options": _strings(),
+# What every component has: the BuildInfo fields (see fields.bzl), and the
+# package it is part of.
+_component_attrs = field_attrs(BUILD_INFO_FIELDS) | {
     "package": attrs.dep(providers = [CabalPackageInfo]),
-    "_find_modules": attrs.default_only(attrs.source(default = "root//rules/haskell/cabal:find_modules.sh")),
-    "_register": attrs.default_only(attrs.source(default = "root//rules/haskell/cabal:register.sh")),
+    "_find_modules": attrs.default_only(attrs.exec_dep(default = "root//rules/haskell/helpers:find_modules", providers = [RunInfo])),
+    "_register": attrs.default_only(attrs.exec_dep(default = "root//rules/haskell/helpers:register", providers = [RunInfo])),
     "_run": attrs.default_only(attrs.source(default = "root//rules/haskell/cabal:run.sh")),
 } | ghc_toolchain_attrs
 
-def _check_supported(ctx: AnalysisContext, fields: list[str]):
+def _check_supported(ctx: AnalysisContext, fields: dict[str, struct]):
     if not ctx.attrs.buildable:
         fail("{}: this component is not buildable".format(ctx.label))
-    for field in fields:
-        if getattr(ctx.attrs, field):
-            fail("{}: `{}` is not supported yet".format(ctx.label, field.replace("_", "-")))
+    check_refused(ctx, BUILD_INFO_FIELDS | fields)
 
 ##
 ## Analysis: what is known from the package description alone
@@ -159,8 +113,7 @@ def _find_modules(ctx: AnalysisContext, srcdir: Artifact, source_dirs: list[str]
     located = ctx.actions.declare_output("modules.json")
     ctx.actions.run(
         cmd_args(
-            "sh",
-            ctx.attrs._find_modules,
+            ctx.attrs._find_modules[RunInfo],
             srcdir,
             located.as_output(),
             ["--dir=" + d for d in source_dirs],
@@ -208,7 +161,12 @@ def _component(
         else:
             tools[dep.label.name] = cmd_args(dep[RunInfo])
 
-    fields = {field: getattr(ctx.attrs, field) for field in _build_info_string_fields}
+    # The dependencies are in `deps` and `tools`.
+    fields = {
+        attr_name(field, spec): getattr(ctx.attrs, attr_name(field, spec))
+        for field, spec in BUILD_INFO_FIELDS.items()
+        if field not in ("build-depends", "build-tool-depends")
+    }
     fields["hs_source_dirs"] = source_dirs
 
     return ctx.actions.dynamic_output_new(_build(
@@ -224,14 +182,14 @@ def _component(
             pkg = pkg,
             unit_id = unit_id,
             modules = modules,
-            bi = struct(default_language = ctx.attrs.default_language, **fields),
+            bi = struct(**fields),
             units = _dep_units(ctx),
             tools = tools,
             tool_exes = tool_exes,
             tool_env = tool_env,
             toolchain = ctx.attrs._ghc[GhcToolchainInfo],
             run = ctx.attrs._run,
-            register = ctx.attrs._register,
+            register = ctx.attrs._register[RunInfo],
             **kwargs
         ),
     ))
@@ -404,7 +362,11 @@ def _hsc2hs_args(arg, deps: list[typing.Any], autogen, ghc_info: GhcDynamicInfo)
     )
 
 def _preprocess(actions: AnalysisActions, arg, deps: list[typing.Any], autogen, ghc_info: GhcDynamicInfo, located: dict, module_path: str) -> Artifact:
-    """Turn the source of a module into Haskell, see Distribution.Simple.PreProcess"""
+    """Turn the source of a module into Haskell, see Distribution.Simple.PreProcess
+
+    find_modules knows which files are the input of a preprocessor, from
+    Cabal's own list; here is how to run the ones we can.
+    """
     src = paths.join(located["dir"], located["file"])
     out = actions.declare_output("preprocess", module_path + ".hs")
     ext = located["ext"]
@@ -415,7 +377,7 @@ def _preprocess(actions: AnalysisActions, arg, deps: list[typing.Any], autogen, 
     elif ext == "hsc":
         cmd = cmd_args(_tool(arg, "hsc2hs"), _hsc2hs_args(arg, deps, autogen, ghc_info))
     else:
-        fail("{}: {}: no preprocessor for `.{}` files yet".format(arg.label, src, ext))
+        fail("{}: {}: Cabal would preprocess `.{}` files, these rules cannot yet".format(arg.label, src, ext))
     cmd.add("-o", out.as_output(), src)
     _run(actions, arg, cmd, category = "cabal_preprocess", identifier = src)
     return out
@@ -453,13 +415,15 @@ def _ipi_field(name: str, value: str) -> str:
     return "\n".join(["{}: {}".format(name, lines[0])] + ["    {}".format(l.strip() or ".") for l in lines[1:]])
 
 def _ipi_path(name: str, *path) -> cmd_args:
-    """A field that refers to artifacts, see register.sh"""
+    """A field that refers to artifacts, see root//rules/haskell/helpers:register"""
     return cmd_args(name + ":", [cmd_args("${projectroot}/", p, delimiter = "") for p in path], delimiter = " ")
 
 def _resolve_reexports(arg, deps: list[CabalUnitInfo]) -> dict[str, (str, str)]:
     """What a library exposes: its own modules and those it passes on.
 
-    An item of reexported-modules is `[pkg:]Module [as Name]`.
+    An item of reexported-modules is `[pkg:]Module [as Name]`, as the Parsec
+    instance of ModuleReexport (Distribution.Types.ModuleReexport) reads it.
+    describe_package prints them back in that form.
     """
     exposed = {m: (arg.unit_id, m) for m in arg.exposed_modules}
     for item in arg.reexported_modules:
@@ -552,7 +516,8 @@ def _registration(arg, deps: list[CabalUnitInfo], exposed: dict[str, (str, str)]
     ]
     fields += pkg.metadata.items()
     fields += [
-        ("exposed", "True"),
+        # The registration for the prelude is of a package of its own.
+        ("exposed", "True" if arg.exposed or for_prelude else "False"),
         ("exposed-modules", ", ".join([
             name if (unit_id, original) == (arg.unit_id, name) else "{} from {}:{}".format(name, unit_id, original)
             for name, (unit_id, original) in exposed.items()
@@ -666,7 +631,7 @@ def _build_library(actions: AnalysisActions, arg, outputs: dict[str, OutputArtif
         abi_hash = actions.write("abi-hash", "")
 
     actions.run(
-        cmd_args("sh", arg.register, outputs["package_db"], arg.unit_id, conf, abi_hash, tc.ghc_pkg),
+        cmd_args(arg.register, outputs["package_db"], arg.unit_id, conf, abi_hash, tc.ghc_pkg),
         category = "cabal_register",
         identifier = "package db",
     )
@@ -675,7 +640,7 @@ def _build_library(actions: AnalysisActions, arg, outputs: dict[str, OutputArtif
     if "prelude_package_db" in outputs:
         prelude_conf = actions.write("prelude-registration.conf", _registration(arg, deps, exposed, for_prelude = True))
         actions.run(
-            cmd_args("sh", arg.register, outputs["prelude_package_db"], arg.unit_id, prelude_conf, abi_hash, tc.ghc_pkg),
+            cmd_args(arg.register, outputs["prelude_package_db"], arg.unit_id, prelude_conf, abi_hash, tc.ghc_pkg),
             category = "cabal_register",
             identifier = "package db for the prelude",
         )
@@ -732,7 +697,7 @@ def _build_impl(
     for module in arg.modules:
         if module in located["modules"]:
             source = located["modules"][module]
-            if source["ext"] in _PREPROCESSOR_EXTS:
+            if source["preprocess"]:
                 module_path = module.replace(".", "/")
                 preprocessed[module_path + ".hs"] = _preprocess(actions, arg, deps, autogen, ghc_info, source, module_path)
         elif module not in autogen.modules:
@@ -748,7 +713,7 @@ def _build_impl(
         source = located.get("main")
         if not source:
             fail("{}: could not find main-is `{}` in hs-source-dirs ({})".format(arg.label, arg.main_is, ", ".join(arg.bi.hs_source_dirs)))
-        if source["ext"] in _PREPROCESSOR_EXTS:
+        if source["preprocess"]:
             # Out of the way of the modules, whatever the file is called.
             main = _preprocess(actions, arg, deps, autogen, ghc_info, source, "main-is/" + paths.split_extension(source["file"])[0])
         else:
@@ -794,7 +759,7 @@ _build = dynamic_actions(
 ##
 
 def _cabal_simple_library_impl(ctx: AnalysisContext) -> list[Provider]:
-    _check_supported(ctx, _build_info_unsupported_fields + ["signatures"])
+    _check_supported(ctx, LIBRARY_FIELDS)
 
     pkg = ctx.attrs.package[CabalPackageInfo]
     lib_name = ctx.attrs.library_name
@@ -840,6 +805,8 @@ def _cabal_simple_library_impl(ctx: AnalysisContext) -> list[Provider]:
         ar = ctx.attrs._cxx_toolchain[CxxToolchainInfo].linker_info.archiver,
         exposed_modules = ctx.attrs.exposed_modules,
         reexported_modules = ctx.attrs.reexported_modules,
+        # Cabal makes a sublibrary unexposed whatever the field says.
+        exposed = ctx.attrs.exposed and not lib_name,
         visibility = ctx.attrs.library_visibility or ("private" if lib_name else "public"),
     )
 
@@ -897,16 +864,11 @@ cabal_simple_library = rule(
         # not given (see _unit_id).
         "unit_id": attrs.option(attrs.string(), default = None),
         "_cxx_toolchain": toolchains_common.cxx(),
-        "exposed_modules": _strings(),
-        "reexported_modules": _strings(),
-        "signatures": _strings(),
-        # The `visibility` field; buck2 has its own idea of what visibility is.
-        "library_visibility": attrs.option(attrs.enum(["public", "private"]), default = None),
-    } | _build_info_attrs | prelude_library_attrs,
+    } | field_attrs(LIBRARY_FIELDS) | _component_attrs | prelude_library_attrs,
 )
 
-def _executable(ctx: AnalysisContext, exe_name: str) -> list[Provider]:
-    _check_supported(ctx, _build_info_unsupported_fields)
+def _executable(ctx: AnalysisContext, exe_name: str, fields: dict[str, struct]) -> list[Provider]:
+    _check_supported(ctx, fields)
 
     pkg = ctx.attrs.package[CabalPackageInfo]
     exe = ctx.actions.declare_output("bin", exe_name)
@@ -935,7 +897,7 @@ def _executable(ctx: AnalysisContext, exe_name: str) -> list[Provider]:
     ]
 
 def _cabal_simple_executable_impl(ctx: AnalysisContext) -> list[Provider]:
-    return _executable(ctx, ctx.attrs.executable_name or ctx.label.name)
+    return _executable(ctx, ctx.attrs.executable_name or ctx.label.name, EXECUTABLE_FIELDS)
 
 cabal_simple_executable = rule(
     doc = "An `executable` stanza of a package with `build-type: Simple`.",
@@ -944,14 +906,17 @@ cabal_simple_executable = rule(
     attrs = {
         # The name of the executable, when it differs from the name of the target.
         "executable_name": attrs.option(attrs.string(), default = None),
-        "main_is": attrs.string(),
-    } | _build_info_attrs,
+    } | field_attrs(EXECUTABLE_FIELDS) | _component_attrs,
 )
 
 def _cabal_simple_test_impl(ctx: AnalysisContext) -> list[Provider]:
+    if ctx.attrs.type not in _TEST_SUITE_TYPES:
+        fail("{}: `{}` is not a type of test suite Cabal had when these rules were written".format(ctx.label, ctx.attrs.type))
     if ctx.attrs.type != "exitcode-stdio-1.0":
         fail("{}: test suites of type `{}` are not supported yet".format(ctx.label, ctx.attrs.type))
-    providers = _executable(ctx, ctx.label.name)
+    if not ctx.attrs.main_is:
+        fail("{}: a test suite of type exitcode-stdio-1.0 needs main-is".format(ctx.label))
+    providers = _executable(ctx, ctx.label.name, TEST_SUITE_FIELDS)
     run_info = [p for p in providers if isinstance(p, RunInfo)][0]
     return providers + [
         ExternalRunnerTestInfo(
@@ -963,12 +928,12 @@ def _cabal_simple_test_impl(ctx: AnalysisContext) -> list[Provider]:
         ),
     ]
 
+# The types of test suite of Cabal 3.14 (TestSuiteInterface).
+_TEST_SUITE_TYPES = ["exitcode-stdio-1.0", "detailed-0.9"]
+
 cabal_simple_test = rule(
     doc = "A `test-suite` stanza of a package with `build-type: Simple`.",
     impl = _cabal_simple_test_impl,
     # @unsorted-dict-items
-    attrs = {
-        "type": attrs.string(default = "exitcode-stdio-1.0"),
-        "main_is": attrs.string(),
-    } | _build_info_attrs,
+    attrs = field_attrs(TEST_SUITE_FIELDS) | _component_attrs,
 )

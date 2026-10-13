@@ -5,9 +5,11 @@ The components (cabal_simple_library, cabal_simple_executable) refer to it for
 the package name, the version and the source tree.
 """
 
+load(":fields.bzl", "PACKAGE_FIELDS", "check_spec_version", "field_attrs")
 load(":providers.bzl", "CabalPackageInfo")
 
-# Fields we carry around because they end up in the package registration.
+# Fields we carry around because they end up in the registration of a
+# library, see simple.bzl.
 _metadata_fields = [
     "license",
     "copyright",
@@ -21,12 +23,21 @@ _metadata_fields = [
     "category",
 ]
 
+# The build types of Cabal 3.14. The rules build Simple; the others run code
+# of the package's own at build time, which only its Setup.hs can do (see
+# root//rules/haskell/cabal_install).
+_BUILD_TYPES = ["Simple", "Configure", "Custom", "Hooks"]
+
 def _attr_name(field: str) -> str:
     return field.replace("-", "_")
 
 def _cabal_package_impl(ctx: AnalysisContext) -> list[Provider]:
-    if ctx.attrs.build_type != "Simple":
-        fail("build-type: {} is not supported, only Simple is".format(ctx.attrs.build_type))
+    check_spec_version(ctx.label, ctx.attrs.cabal_version)
+    build_type = ctx.attrs.build_type
+    if build_type not in _BUILD_TYPES:
+        fail("{}: build-type `{}` is not one Cabal had when these rules were written".format(ctx.label, build_type))
+    if build_type != "Simple":
+        fail("{}: build-type {} is not supported, only Simple is; a build plan builds the others".format(ctx.label, build_type))
 
     srcs = ctx.attrs.srcs
     if isinstance(srcs, list):
@@ -67,21 +78,5 @@ cabal_package = rule(
             attrs.source(allow_directory = True),
             attrs.list(attrs.source()),
         ),
-        "cabal_version": attrs.option(attrs.string(), default = None),
-        "build_type": attrs.string(default = "Simple"),
-        "data_dir": attrs.string(default = "."),
-        "data_files": attrs.list(attrs.string(), default = []),
-        # Accepted so that a package description can be transcribed as is.
-        "license_file": attrs.option(attrs.string(), default = None),
-        "license_files": attrs.list(attrs.string(), default = []),
-        "bug_reports": attrs.option(attrs.string(), default = None),
-        "tested_with": attrs.option(attrs.string(), default = None),
-        "extra_source_files": attrs.list(attrs.string(), default = []),
-        "extra_doc_files": attrs.list(attrs.string(), default = []),
-        "extra_tmp_files": attrs.list(attrs.string(), default = []),
-        "extra_files": attrs.list(attrs.string(), default = []),
-    } | {
-        _attr_name(field): attrs.option(attrs.string(), default = None)
-        for field in _metadata_fields
-    },
+    } | field_attrs(PACKAGE_FIELDS),
 )

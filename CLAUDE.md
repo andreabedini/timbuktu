@@ -236,7 +236,8 @@ or workspace has to be given its own.
 "Does it build and run" is the check for the rules. The tests under
 `examples/` (a `cabal_simple_test`, and `sh_test`s that run what an example
 built) check that the examples still do what their README says more than
-they test the rules.
+they test the rules. Tests of the Cabal knowledge itself are still to be
+written (see "Keeping the Cabal logic in check").
 
 `rules/haskell/ghcup/metadata.bzl` (about 16.8k lines) is generated, never
 edit it by hand:
@@ -564,6 +565,85 @@ archive in `buck-out` that the build uses.
   `cabal/generate.bxl`, which resolves the conditionals for one
   configuration: it emits no `select`. Options of a BXL script that are
   booleans want a value (`--tests false`).
+
+## Keeping the Cabal logic in check
+
+Most of what this repository knows is about Cabal: what a field means, which
+build types there are, what a plan says. That is the part that has to stay
+clear, and it is easy to sweep it under the carpet of the build system,
+spread thinly over Starlark where nothing says when it is out of date. Cabal
+and cabal-install will keep changing: new fields in `.cabal` and
+`cabal.project` files, new build types (`Hooks` is the likeliest next), new
+things in a plan. Write the code for the day they do.
+
+- We know what we need to know and we control the build. As a build system
+  we need some facts about a package (its modules, its dependencies, what
+  each step produces), and we run the steps ourselves rather than hand them
+  to Cabal. For each fact, either Cabal has a way to give it to us (a
+  function of the library called from a helper, the plan, a registration) or
+  we recover or re-derive it ourselves. Where the line falls is not clear
+  cut, and is decided case by case. When we re-derive something, name the
+  Cabal function it follows (as `_PREPROCESSOR_EXTS` in `simple.bzl` cites
+  `knownSuffixHandlers`), so the two can be compared when Cabal changes.
+  Analysis cannot run a helper: what has to be known then is worked out in
+  Starlark or comes from an earlier step (a BXL script, a plan).
+- Helpers are written in Haskell. The Haskell rules can count on a Haskell
+  compiler (GHC, for now), so a helper is a Haskell program (see
+  "Conventions"), not bash, jq or Python: it runs wherever the compiler does
+  and can use Cabal's own types and functions. Shell is for putting a command
+  line together inside an action, and knows nothing about Cabal.
+- Closed sets, and fail on the rest. Every value that comes from Cabal or a
+  plan (a field, a build type, a `build-style`, a unit `type`, a component
+  kind, a test-suite type) is matched against the values the code knows, and
+  anything else fails with a message that names it. No
+  `if x == "known": ... else: <the other case>`. A value we know but do not
+  honour fails too, as fields already do. In a helper, a new field of a
+  Cabal type must not be left out quietly: match the record whole, or check
+  what is printed against Cabal's field grammars
+  (`fieldGrammarKnownFieldList` of `buildInfoFieldGrammar` and the others),
+  which list every field Cabal knows.
+- One place for each concept. A list of fields, of build types or of
+  preprocessors exists once, in a `.bzl` file that the rules, the generator
+  and the plan interpreter load, together with what we do with each value
+  (honour it, refuse it, accept it as metadata). Following a change in Cabal
+  is then a line and a decision.
+- Interfaces carry versions. A package says which version of the spec it is
+  written to (`cabal-version`), a plan which format it is in, and what a
+  helper prints should say its own format and the Cabal it was built with.
+  Refuse what is newer than what the code was last checked against, and say
+  what to review. This catches what checking field by field cannot: a field
+  whose meaning changed.
+- Project files belong to the solver. What a `cabal.project` says
+  (constraints, flags, index-state, whatever comes next) is an input of
+  cabal-solver-plan. timbuktu reads plans, not project files, and sees a new
+  project field only through a new plan format.
+- Cabal knowledge comes with tests that fail when Cabal changes under it:
+  `describe_package` on a `.cabal` file that uses every field, the generator
+  against the hand-written transcriptions (the comparison done by hand on
+  2026-10-12), the plan interpreter on a plan with each build style. A
+  refusal is behaviour too: test that an unknown field, an unknown build type
+  and a newer `cabal-version` fail, and with which message.
+
+Where the code falls short of this (2026-10-13):
+
+- `describe_package.hs` reads `BuildInfo` one accessor at a time, so a field
+  added to Cabal is left out of what it prints.
+- `generate.bzl` copies only the keys in `_COMPONENT_FIELDS`. `build-tools`,
+  which the helper prints, is dropped: the target is generated without the
+  tool, which is then looked up in `PATH`.
+- `interpret_plan.bzl` and `dynamic_plan.bzl` each decode the plan
+  themselves. Both build any `build-style` other than `per-component` as a
+  whole package, and build any unit whose `type` is not `pre-existing`.
+- The fields of a component are listed in `simple.bzl` (twice),
+  `generate.bzl`, `describe_package.hs` and `examples/cabal_simple/README.md`;
+  those of a package in `package.bzl`, `generate.bzl` and the helper.
+- `cabal_package` takes `cabal_version` and does not check it. What
+  `describe_package` prints has no format version.
+- Starlark parses what Cabal has parsers for: `reexported-modules` in
+  `simple.bzl`, component names (`lib:<name>`) in the plan interpreter.
+- `cabal/tools/find_modules.sh` and `register.sh` are shell scripts with
+  Cabal knowledge in them.
+- None of the above has a test.
 
 ## Conventions
 

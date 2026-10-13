@@ -23,6 +23,11 @@ cabal_package(
     stability = "stable",
     homepage = "https://www.haskell.org/happy/",
     synopsis = "Happy is a parser generator for Haskell",
+    description = (
+        "Happy is a parser generator for Haskell.  Given a grammar\n" +
+        "specification in BNF, Happy generates Haskell code to parse the\n" +
+        "grammar.  Happy works in a similar way to the @yacc@ tool for C."
+    ),
     category = "Development",
     build_type = "Simple",
     visibility = ["PUBLIC"],

@@ -1,0 +1,135 @@
+cabal-version:      3.14
+-- Every field of Cabal 3.14 that a .cabal file of this version can have, in
+-- every kind of stanza: what describe_package and the generator are tested
+-- on (see ../BUCK). It is not meant to build.
+name:               everything
+version:            1.2.3
+synopsis:           Every field there is
+description:        What describe_package and the generator are tested on.
+category:           Testing
+license:            BSD-3-Clause
+license-files:      LICENSE
+copyright:          nobody
+author:             nobody
+maintainer:         nobody@example.org
+stability:          experimental
+homepage:           https://example.org/everything
+package-url:        https://example.org/everything.tar.gz
+bug-reports:        https://example.org/everything/issues
+tested-with:        GHC == 9.12.2
+build-type:         Simple
+data-dir:           data
+data-files:         greeting.txt
+extra-source-files: cbits/*.h
+extra-doc-files:    CHANGELOG.md
+extra-tmp-files:    tmp/*.log
+extra-files:        notes.txt
+
+flag fast
+  description: Optimise
+  default:     False
+  manual:      True
+
+common warnings
+  ghc-options: -Wall
+
+library
+  import:                         warnings
+  exposed:                        False
+  exposed-modules:                Everything
+  reexported-modules:             Data.Map as Map, containers:Data.Set
+  hs-source-dirs:                 src
+  other-modules:                  Everything.Internal
+  autogen-modules:                Paths_everything
+  virtual-modules:                GHC.Everything
+  default-language:               Haskell2010
+  other-languages:                GHC2021
+  default-extensions:             OverloadedStrings
+  other-extensions:               TemplateHaskell
+  build-depends:                  base, containers, everything:internal
+  build-tool-depends:             alex:alex
+  ghc-options:                    -Wcompat
+  ghc-prof-options:               -fprof-auto
+  ghc-shared-options:             -fPIC
+  ghc-prof-shared-options:        -fprof-auto-top
+  cpp-options:                    -DEVERYTHING
+  cc-options:                     -O2
+  cxx-options:                    -std=c++17
+  asm-options:                    -g
+  cmm-options:                    -g
+  ld-options:                     -lm
+  hsc2hs-options:                 --verbose
+  c-sources:                      cbits/a.c
+  cxx-sources:                    cbits/b.cpp
+  asm-sources:                    cbits/c.S
+  cmm-sources:                    cbits/d.cmm
+  js-sources:                     js/e.js
+  include-dirs:                   include
+  includes:                       a.h
+  install-includes:               b.h
+  autogen-includes:               c.h
+  extra-libraries:                z
+  extra-libraries-static:         z_static
+  extra-lib-dirs:                 /opt/lib
+  extra-lib-dirs-static:          /opt/lib/static
+  extra-ghci-libraries:           z_ghci
+  extra-bundled-libraries:        Cbundled
+  extra-library-flavours:         _debug
+  extra-dynamic-library-flavours: _debug
+  frameworks:                     Everything
+  extra-framework-dirs:           /opt/frameworks
+  pkgconfig-depends:              zlib >= 1.2
+  mixins:                         base hiding (Prelude)
+  if flag(fast)
+    ghc-options: -O2
+  else
+    ghc-options: -O0
+
+library internal
+  visibility:       public
+  exposed-modules:  Everything.Signature.User
+  signatures:       Everything.Signature
+  hs-source-dirs:   internal
+  build-depends:    base
+  default-language: Haskell2010
+
+executable everything
+  import:           warnings
+  main-is:          Main.hs
+  scope:            private
+  hs-source-dirs:   app
+  build-depends:    base, everything
+  default-language: Haskell2010
+
+test-suite stdio
+  type:             exitcode-stdio-1.0
+  main-is:          Stdio.hs
+  code-generators:  everything-discover
+  hs-source-dirs:   test
+  build-depends:    base
+  default-language: Haskell2010
+
+test-suite detailed
+  type:             detailed-0.9
+  test-module:      Detailed
+  hs-source-dirs:   test
+  build-depends:    base, Cabal
+  default-language: Haskell2010
+
+benchmark speed
+  type:             exitcode-stdio-1.0
+  main-is:          Speed.hs
+  hs-source-dirs:   bench
+  build-depends:    base
+  default-language: Haskell2010
+
+foreign-library everything-c
+  type:              native-shared
+  options:           standalone
+  lib-version-info:  6:3:2
+  lib-version-linux: 1.2.3
+  mod-def-file:      everything.def
+  other-modules:     Everything.Foreign
+  hs-source-dirs:    flib
+  build-depends:     base
+  default-language:  Haskell2010

@@ -28,6 +28,11 @@ cabal_package(
     bug_reports = "https://github.com/visq/language-c/issues/",
     homepage = "https://visq.github.io/language-c/",
     synopsis = "Analysis and generation of C code",
+    description = (
+        "Language C is a Haskell library for the analysis and generation of C code.\n" +
+        "It features a complete, well tested parser and pretty printer for all of C99 and a large\n" +
+        "set of C11 and clang/GNU extensions."
+    ),
     category = "Language",
     build_type = "Simple",
     visibility = ["PUBLIC"],

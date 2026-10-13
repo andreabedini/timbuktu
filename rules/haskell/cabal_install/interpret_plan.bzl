@@ -27,15 +27,16 @@ load("//rules/haskell:defs.bzl", "haskell_binary", "haskell_unit")
 load("build.bzl", "build")
 load("build_legacy.bzl", "build_legacy")
 load("pkg_src.bzl", "pkg_src")
+load("plan_format.bzl", "component", "decode_plan")
 
 def _target(unit_id: str) -> str:
     return ":" + unit_id
 
 def _alias_name(unit: dict[str, typing.Any]) -> str:
-    component = unit.get("component")
-    if component in (None, "lib"):
+    kind, cname = component(unit["component"]) if "component" in unit else ("lib", None)
+    if kind == "lib" and not cname:
         return unit["name"]
-    return component.replace(":", "-")
+    return "{}-{}".format(kind, cname)
 
 def interpret_plan(name: str, planjson: str):
     """Make the targets of a build plan.
@@ -44,9 +45,7 @@ def interpret_plan(name: str, planjson: str):
       name: a name for the plan, for error messages
       planjson: the plan, as cabal-solver-plan prints it
     """
-    plan = json.decode(planjson)
-    if plan.get("format") != 1:
-        fail("{}: the plan is not of format 1. Make it again with the `plan` rule (cabal-solver-plan).".format(name))
+    plan = decode_plan(name, planjson)
 
     units = {unit["id"]: unit for unit in plan["units"]}
 
@@ -55,13 +54,12 @@ def interpret_plan(name: str, planjson: str):
 
     for unit in plan["units"]:
         if unit["type"] == "pre-existing":
-            component = unit.get("component", "lib")
             haskell_unit(
                 name = unit["id"],
                 id = unit["id"],
                 package_name = unit["name"],
                 version = unit["version"],
-                lib_name = component[4:] if component.startswith("lib:") else None,
+                lib_name = component(unit["component"])[1],
                 db = unit.get("db", "global"),
                 deps = map(_target, unit["depends"]),
                 visibility = ["PUBLIC"],
@@ -86,7 +84,7 @@ def interpret_plan(name: str, planjson: str):
 
         if unit["build-style"] == "per-component":
             build(component_name = unit["component"], **common)
-        else:
+        elif unit["build-style"] == "whole-package":
             # The package's own Setup.hs, with what it depends on, or Cabal
             # and base when the plan does not say.
             setup = unit["package"] + "-setup"

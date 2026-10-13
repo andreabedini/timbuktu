@@ -18,80 +18,60 @@ test suite after itself. Dependencies become targets as follows:
 - on anything else: what `deps` (keyed `<package>` or `<package>:<library>`)
   or `tools` (keyed `<package>:<executable>`) say. Without it, generating
   fails and says which.
+
+Every field describe_package prints is copied to the attribute fields.bzl
+says it is, refused fields included: the rules refuse them, not the
+generator. A field that is not in fields.bzl fails generating.
 """
 
-# The fields of a component that are attributes of the cabal_simple rules,
-# with underscores in place of dashes.
-_COMPONENT_FIELDS = [
-    "exposed-modules",
-    "reexported-modules",
-    "signatures",
-    "main-is",
-    "hs-source-dirs",
-    "other-modules",
-    "autogen-modules",
-    "default-language",
-    "other-languages",
-    "default-extensions",
-    "other-extensions",
-    "ghc-options",
-    "ghc-prof-options",
-    "ghc-shared-options",
-    "cpp-options",
-    "cc-options",
-    "cxx-options",
-    "asm-options",
-    "cmm-options",
-    "ld-options",
-    "hsc2hs-options",
-    "c-sources",
-    "cxx-sources",
-    "asm-sources",
-    "cmm-sources",
-    "js-sources",
-    "include-dirs",
-    "includes",
-    "install-includes",
-    "autogen-includes",
-    "extra-libraries",
-    "extra-lib-dirs",
-    "extra-ghci-libraries",
-    "extra-bundled-libraries",
-    "frameworks",
-    "extra-framework-dirs",
-    "pkgconfig-depends",
-    "mixins",
-]
+load(
+    ":fields.bzl",
+    "BUILD_INFO_FIELDS",
+    "EXECUTABLE_FIELDS",
+    "LIBRARY_FIELDS",
+    "PACKAGE_FIELDS",
+    "TEST_SUITE_FIELDS",
+    "attr_name",
+)
 
-# The fields of the package that are attributes of cabal_package.
-_PACKAGE_FIELDS = [
-    "cabal-version",
-    "license",
-    "license-files",
-    "copyright",
-    "maintainer",
-    "author",
-    "stability",
-    "homepage",
-    "package-url",
-    "bug-reports",
-    "synopsis",
-    "category",
-    "build-type",
-    "data-dir",
-    "data-files",
-    "extra-source-files",
-    "extra-doc-files",
-]
+# The format of what describe_package prints that this file reads.
+_DESCRIPTION_FORMAT = 1
 
-_RULES = {
-    "exe": "cabal_simple_executable",
-    "lib": "cabal_simple_library",
-    "test": "cabal_simple_test",
+# What describe_package prints besides the fields of the package.
+_DESCRIPTION_KEYS = ["format", "cabal-library", "ghc-version", "platform", "flags", "name", "version", "components"]
+
+# The kinds of component, with the rule of each and the fields it has besides
+# those of every component. Benchmarks and foreign libraries have no rule.
+#
+# @unsorted-dict-items
+_KINDS = {
+    "lib": struct(rule = "cabal_simple_library", fields = LIBRARY_FIELDS),
+    "exe": struct(rule = "cabal_simple_executable", fields = EXECUTABLE_FIELDS),
+    "test": struct(rule = "cabal_simple_test", fields = TEST_SUITE_FIELDS),
+    "bench": None,
+    "flib": None,
 }
 
-def _attr(field: str) -> str:
-    return field.replace("-", "_")
+# The fields of each rule.
+RULE_FIELDS = {
+    "cabal_package": PACKAGE_FIELDS,
+} | {
+    kind.rule: kind.fields | BUILD_INFO_FIELDS
+    for kind in _KINDS.values()
+    if kind
+}
+
+# Fields of a component that become something other than an attribute of the
+# same name.
+_SPECIAL = ["buildable", "build-depends", "build-tool-depends"]
+
+def _check_keys(what: str, keys: list[str], known: list[str]):
+    unknown = [k for k in keys if k not in known]
+    if unknown:
+        fail("{}: describe_package printed {}, which generate.bzl does not know. Say what the rules make of it in rules/haskell/cabal/fields.bzl.".format(
+            what,
+            ", ".join(["`{}`".format(k) for k in unknown]),
+        ))
 
 def _value(value: typing.Any, indent: str) -> str:
     if type(value) == "list":
@@ -129,18 +109,15 @@ def _target_names(components: list[dict[str, typing.Any]]) -> dict[(str, str | N
             names[(kind, name)] = name
     return names
 
-def buck_file(
+def package_targets(
         desc: dict[str, typing.Any],
         compiler_packages: list[str],
         srcs: typing.Any,
         deps: dict[str, str] = {},
         tools: dict[str, str] = {},
         compiler_prefix: str | None = None,
-        tests: bool = True,
-        source: str = "",
-        loads: list[str] = [],
-        preamble: list[str] = []) -> str:
-    """The text of a BUCK file with cabal_simple targets for a package.
+        tests: bool = True) -> struct:
+    """The cabal_simple targets for a package, as data.
 
     Args:
       desc: what describe_package printed, decoded
@@ -155,17 +132,29 @@ def buck_file(
       compiler_prefix: the label of the packages of the compiler but for
         their name; None to declare haskell_unit targets in the BUCK file
       tests: whether to make targets for the test suites
-      source: where the description comes from, for the header
-      loads: more load statements, for the preamble
-      preamble: lines to put after the loads (e.g. a hackage_package)
     Returns:
-      the text, to be formatted with buildifier
+      struct(targets, units, skipped): the targets, as struct(rule, attrs)
+      with the attributes in order, the cabal_package first; the packages of
+      the compiler to declare haskell_unit targets for; the components left
+      out
     """
+    if desc.get("format") != _DESCRIPTION_FORMAT:
+        fail("describe_package printed format {}, generate.bzl reads format {}".format(desc.get("format"), _DESCRIPTION_FORMAT))
     name = desc["name"]
+    _check_keys(name, desc.keys(), _DESCRIPTION_KEYS + PACKAGE_FIELDS.keys())
+    for c in desc["components"]:
+        if c["kind"] not in _KINDS:
+            fail("{}: describe_package printed a component of kind `{}`, which generate.bzl does not know".format(name, c["kind"]))
+        if _KINDS[c["kind"]]:
+            _check_keys(
+                "{}: {} {}".format(name, c["kind"], c["name"] or ""),
+                c.keys(),
+                ["kind", "name"] + _KINDS[c["kind"]].fields.keys() + BUILD_INFO_FIELDS.keys(),
+            )
     components = [
         c
         for c in desc["components"]
-        if c["kind"] in _RULES and c["buildable"] and (tests or c["kind"] != "test")
+        if _KINDS[c["kind"]] and c["buildable"] and (tests or c["kind"] != "test")
     ]
     skipped = [c for c in desc["components"] if c not in components]
     names = _target_names(components)
@@ -209,14 +198,10 @@ def buck_file(
             attrs.append(("library_name", c["name"]))
         if c["kind"] == "exe" and names[("exe", c["name"])] != c["name"]:
             attrs.append(("executable_name", c["name"]))
-        if c["kind"] == "test":
-            attrs.append(("type", c.get("type")))
-        if c["kind"] == "lib" and c.get("visibility"):
-            attrs.append(("library_visibility", c["visibility"]))
-        for field in _COMPONENT_FIELDS:
+        for field, spec in (_KINDS[c["kind"]].fields | BUILD_INFO_FIELDS).items():
             # NOTE: "." is where Cabal and the rules look anyway.
-            if field in c and not (field == "hs-source-dirs" and c[field] == ["."]):
-                attrs.append((_attr(field), c[field]))
+            if field in c and field not in _SPECIAL and not (field == "hs-source-dirs" and c[field] == ["."]):
+                attrs.append((attr_name(field, spec), c[field]))
         build_depends = []
         for dep in c.get("build-depends", []):
             for lib in dep["libraries"]:
@@ -231,7 +216,7 @@ def buck_file(
         # the executables.
         if c["kind"] == "exe" or (c["kind"] == "lib" and (c.get("visibility") or ("private" if c["name"] else "public")) == "public"):
             attrs.append(("visibility", ["PUBLIC"]))
-        targets.append(_call(_RULES[c["kind"]], attrs))
+        targets.append(struct(rule = _KINDS[c["kind"]].rule, attrs = attrs))
 
     if missing:
         fail("{}: some dependencies are not packages of the compiler, say which targets they are:\n  {}".format(
@@ -240,17 +225,51 @@ def buck_file(
         ))
 
     package = [("name", name), ("version", desc["version"]), ("srcs", srcs)]
-    for field in _PACKAGE_FIELDS:
+    for field, spec in PACKAGE_FIELDS.items():
         if field in desc:
             value = desc[field]
             if (field == "data-dir" and value in (".", "")) or (field == "license" and value == "NONE"):
                 continue
-            package.append((_attr(field), value))
+            package.append((attr_name(field, spec), value))
 
-    rules = sorted({_RULES[c["kind"]]: None for c in components}.keys())
+    return struct(
+        targets = [struct(rule = "cabal_package", attrs = package)] + targets,
+        units = sorted(units.keys()),
+        skipped = [c for c in skipped if tests or c["kind"] != "test"],
+    )
+
+def buck_file(
+        desc: dict[str, typing.Any],
+        compiler_packages: list[str],
+        srcs: typing.Any,
+        deps: dict[str, str] = {},
+        tools: dict[str, str] = {},
+        compiler_prefix: str | None = None,
+        tests: bool = True,
+        source: str = "",
+        loads: list[str] = [],
+        preamble: list[str] = []) -> str:
+    """The text of a BUCK file with cabal_simple targets for a package.
+
+    Args:
+      desc: what describe_package printed, decoded
+      compiler_packages: see package_targets
+      srcs: see package_targets
+      deps: see package_targets
+      tools: see package_targets
+      compiler_prefix: see package_targets
+      tests: see package_targets
+      source: where the description comes from, for the header
+      loads: more load statements, for the preamble
+      preamble: lines to put after the loads (e.g. a hackage_package)
+    Returns:
+      the text, to be formatted with buildifier
+    """
+    package = package_targets(desc, compiler_packages, srcs, deps, tools, compiler_prefix, tests)
+    rules = sorted({t.rule: None for t in package.targets[1:]}.keys())
     lines = [
         "# Generated by root//rules/haskell/cabal/generate.bxl from",
-        "# {}, with the conditionals resolved for".format(source or name + ".cabal"),
+        "# {}, with the conditionals resolved for".format(source or desc["name"] + ".cabal"),
         "# GHC {} on {} and the flags: {}.".format(
             desc["ghc-version"],
             desc["platform"],
@@ -258,26 +277,22 @@ def buck_file(
         ),
         "",
     ]
-    if units:
+    if package.units:
         lines.append('load("@root//rules/haskell:defs.bzl", "haskell_unit")')
     lines.extend(loads)
     lines.append('load("@root//rules/haskell/cabal:defs.bzl", {})'.format(", ".join([repr(r) for r in ["cabal_package"] + rules])))
     lines.append("")
     lines.extend(preamble)
-    out = "\n".join(lines) + "\n" + _call("cabal_package", package)
-    for t in targets:
-        out += "\n" + t
-    for c in skipped:
-        if c["kind"] == "test" and not tests:
-            continue
+    out = "\n".join(lines) + "\n" + "\n".join([_call(t.rule, t.attrs) for t in package.targets])
+    for c in package.skipped:
         out += "\n# The {} {} is left out: {}.\n".format(
             c["kind"],
             c["name"] or "",
             "it is not buildable" if not c["buildable"] else "the cabal_simple rules have no rule for it",
         )
-    if units:
+    if package.units:
         out += "\n# What comes with the compiler\n"
-        for unit in sorted(units.keys()):
+        for unit in package.units:
             out += "\nhaskell_unit(name = {})\n".format(repr(unit))
     return out
 

@@ -25,6 +25,7 @@ load("//rules/haskell:toolchain.bzl", "GhcToolchainInfo")
 load("//rules/haskell:unit.bzl", "resolve_unit")
 load(":pkg_src.bzl", "fetch_package")
 load(":plan.bzl", "plan_attrs", "solve")
+load(":plan_format.bzl", "component", "decode_plan")
 load(":setup.bzl", "SetupEnv", "SetupUnit", "build_component", "build_package", "compile_setup")
 load(":solver_toolchain.bzl", "CabalSolverPlanInfo")
 
@@ -34,9 +35,7 @@ def _build_plan_impl(
         executables: dict[str, OutputArtifact],
         manifest: OutputArtifact,
         arg: typing.Any) -> list[Provider]:
-    plan = plan.read_json()
-    if plan.get("format") != 1:
-        fail("{}: cabal-solver-plan printed a plan of format {}, not 1".format(arg.label, plan.get("format")))
+    plan = decode_plan(str(arg.label), plan.read_string())
 
     packages = {package["id"]: package for package in plan["packages"]}
     srcdirs = {}
@@ -55,8 +54,7 @@ def _build_plan_impl(
         if unit["type"] == "pre-existing":
             if unit.get("db", "global") != "global":
                 fail("{}: {} is in the package db {}; only the compiler's is supported".format(arg.label, unit_id, unit["db"]))
-            component = unit.get("component", "lib")
-            lib_name = component[4:] if component.startswith("lib:") else None
+            lib_name = component(unit["component"])[1]
             libraries[unit_id] = CabalLibraryInfo(
                 name = unit["name"],
                 lib_name = lib_name,
@@ -84,9 +82,11 @@ def _build_plan_impl(
 
         if unit["build-style"] == "per-component":
             built = build_component(env, setup_unit, src, arg.setup, deps, exe_deps)
-        else:
+        elif unit["build-style"] == "whole-package":
             setup = compile_setup(env, src, [libraries[d] for d in unit["setup-depends"]])
             built = build_package(env, setup_unit, src, setup, deps, exe_deps)
+        else:
+            fail("{}: {} has build style {}, which decode_plan should have refused".format(arg.label, unit_id, unit["build-style"]))
 
         if built.library:
             libraries[unit_id] = built.library

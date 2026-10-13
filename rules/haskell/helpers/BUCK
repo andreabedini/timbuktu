@@ -30,3 +30,38 @@ haskell_binary(
     ],
     visibility = ["PUBLIC"],
 )
+
+# What the cabal_simple rules (root//rules/haskell/cabal) find the source of
+# a module with.
+haskell_binary(
+    name = "find_modules",
+    srcs = {
+        "Main.hs": "find_modules.hs",
+    },
+    link_style = "static",
+    toolchain_libs = [
+        "base",
+        "bytestring",
+        "Cabal",
+        "Cabal-syntax",
+        "directory",
+        "filepath",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# What the cabal_simple rules register a library with.
+haskell_binary(
+    name = "register",
+    srcs = {
+        "Main.hs": "register.hs",
+    },
+    link_style = "static",
+    toolchain_libs = [
+        "base",
+        "directory",
+        "filepath",
+        "process",
+    ],
+    visibility = ["PUBLIC"],
+)

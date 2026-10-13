@@ -5,7 +5,14 @@ Generate cabal_simple targets from a .cabal file.
     buck2 bxl //rules/haskell/cabal/generate.bxl:generate -- --sdist //examples/cabal_simple/alex:alex-3.5.1.0
 
 It prints the path of a BUCK file: copy it where it belongs and format it
-with buildifier. The conditionals of the package description are resolved
+with buildifier.
+
+    buck2 bxl //rules/haskell/cabal/generate.bxl:check -- --against //examples/cabal_simple/hello --cabal-file examples/cabal_simple/hello/hello.cabal
+
+compares what would be generated with the targets of a package instead,
+attribute by attribute, and fails saying what differs (see `_IGNORED` for
+what is not compared). That is how the transcriptions in
+examples/cabal_simple are checked (examples/cabal_simple/tests/generate.sh). The conditionals of the package description are resolved
 for the GHC of toolchains//:haskell, this machine's platform and `--flags`
 (the defaults of the package otherwise). See generate.bzl for how
 components and dependencies become targets.
@@ -22,10 +29,12 @@ Options:
   --compiler-prefix LABEL   e.g. //examples/cabal_simple/ghc: to use those
                             targets for the packages of the compiler, rather
                             than haskell_unit targets of its own
+  --against PACKAGE   (check) the package to compare with
 """
 
 load("//rules/haskell:toolchain.bzl", "GhcToolchainInfo")
-load(":generate.bzl", "buck_file", "glob_srcs", "label_srcs")
+load(":fields.bzl", "attr_name")
+load(":generate.bzl", "RULE_FIELDS", "buck_file", "glob_srcs", "label_srcs", "package_targets")
 
 def _pairs(items: list[str], option: str) -> dict[str, str]:
     out = {}
@@ -36,12 +45,12 @@ def _pairs(items: list[str], option: str) -> dict[str, str]:
         out[key] = value
     return out
 
-def _generate_impl(ctx: bxl.Context):
+def _describe(ctx: bxl.Context, actions: AnalysisActions) -> struct:
+    """Run describe_package and list the packages of the compiler."""
     args = ctx.cli_args
     if bool(args.cabal_file) == bool(args.sdist):
         fail("give either --cabal-file or --sdist")
 
-    actions = ctx.bxl_actions().actions
     ghc = ctx.analysis(ctx.configured_targets("toolchains//:haskell")).providers()[GhcToolchainInfo]
     helper = ctx.analysis(ctx.configured_targets("root//rules/haskell/helpers:describe_package")).providers()[RunInfo]
 
@@ -82,37 +91,155 @@ def _generate_impl(ctx: bxl.Context):
         category = "compiler_packages",
         local_only = True,
     )
+    return struct(
+        description = description,
+        compiler_packages = compiler_packages,
+        srcs = srcs,
+        source = source,
+        loads = loads,
+        preamble = preamble,
+        options = dict(
+            deps = _pairs(args.dep, "dep"),
+            tools = _pairs(args.tool, "tool"),
+            compiler_prefix = args.compiler_prefix,
+            tests = args.tests,
+        ),
+    )
 
+def _generate_impl(ctx: bxl.Context):
+    actions = ctx.bxl_actions().actions
+    d = _describe(ctx, actions)
     out = actions.declare_output("BUCK")
-    deps = _pairs(args.dep, "dep")
-    tools = _pairs(args.tool, "tool")
 
     def write(ctx, artifacts, outputs):
         ctx.bxl_actions().actions.write(outputs[out], buck_file(
-            artifacts[description].read_json(),
-            artifacts[compiler_packages].read_string().split(),
-            srcs,
-            deps = deps,
-            tools = tools,
-            compiler_prefix = args.compiler_prefix,
-            tests = args.tests,
-            source = source,
-            loads = loads,
-            preamble = preamble,
+            artifacts[d.description].read_json(),
+            artifacts[d.compiler_packages].read_string().split(),
+            d.srcs,
+            source = d.source,
+            loads = d.loads,
+            preamble = d.preamble,
+            **d.options
         ))
 
-    actions.dynamic_output(dynamic = [description, compiler_packages], inputs = [], outputs = [out.as_output()], f = write)
+    actions.dynamic_output(dynamic = [d.description, d.compiler_packages], inputs = [], outputs = [out.as_output()], f = write)
     ctx.output.print(ctx.output.ensure(out).abs_path())
+
+# What the comparison leaves out: where the transcriptions are written
+# differently (`srcs`, `cabal_version`, `license_file`), fields that make no
+# difference to the build and that they leave out, and what is not a field
+# (`visibility`). The order of `build_depends` does not count either.
+_IGNORED = [
+    "srcs",
+    "visibility",
+    "cabal_version",
+    "license_file",
+    "license_files",
+    "tested_with",
+    "extra_source_files",
+    "extra_doc_files",
+]
+
+# The values of attributes that are the same as giving none.
+_DEFAULTS = {
+    "buildable": True,
+    "build_type": "Simple",
+    "data_dir": ".",
+    "exposed": True,
+    "hs_source_dirs": ["."],
+    "license": "NONE",
+    "type": "exitcode-stdio-1.0",
+}
+
+def _normal(package: str, name: str, value: typing.Any) -> typing.Any:
+    """A value as a string or a list of strings, labels absolute."""
+    if type(value) == "list":
+        items = [_normal(package, name, v) for v in value]
+        return sorted(items) if name == "build_depends" else items
+    value = str(value)
+    if value.startswith(":"):
+        return "root//{}{}".format(package, value)
+    if value.startswith("//"):
+        return "root" + value
+    return value
+
+def _value(package: str, name: str, value: typing.Any) -> typing.Any:
+    """A value to compare: None when it is the same as giving none."""
+    if value in (None, [], "") or (name in _DEFAULTS and _DEFAULTS[name] == value):
+        return None
+    return _normal(package, name, value)
+
+def _differences(package: str, generated: struct, written: dict[str, struct]) -> list[str]:
+    out = []
+    names = {t.attrs[0][1]: t for t in generated.targets}
+    for name, t in names.items():
+        if name not in written:
+            out.append("{}: generated, not written".format(name))
+            continue
+        w = written[name]
+        if w.rule != t.rule:
+            out.append("{}: a {} rather than a {}".format(name, w.rule, t.rule))
+            continue
+        mine = {k: _value(package, k, v) for k, v in t.attrs}
+        keys = {k: None for k in mine.keys() + [attr_name(f, spec) for f, spec in RULE_FIELDS[t.rule].items()]}
+        for k in sorted(keys.keys()):
+            if k in _IGNORED:
+                continue
+            theirs = _value(package, k, w.attrs.get(k))
+            if mine.get(k) != theirs:
+                out.append("{}: {} is {} rather than {}".format(name, k, repr(theirs), repr(mine.get(k))))
+    for name, w in written.items():
+        if w.rule.startswith("cabal_") and name not in names:
+            out.append("{}: written, not generated".format(name))
+    units = sorted([name for name, w in written.items() if w.rule == "haskell_unit"])
+    if units and units != generated.units:
+        out.append("the haskell_unit targets are {} rather than {}".format(units, generated.units))
+    return out
+
+def _check_impl(ctx: bxl.Context):
+    if not ctx.cli_args.against:
+        fail("give --against PACKAGE")
+    package = ctx.cli_args.against.removeprefix("root").removeprefix("//").rstrip(":")
+    written = {}
+    for node in ctx.uquery().eval("root//{}:".format(package)):
+        attrs = node.get_attrs()
+        written[node.label.name] = struct(rule = node.rule_type.rpartition(":")[2], attrs = attrs)
+
+    actions = ctx.bxl_actions().actions
+    d = _describe(ctx, actions)
+    out = actions.declare_output("check")
+
+    def check(ctx, artifacts, outputs):
+        generated = package_targets(
+            artifacts[d.description].read_json(),
+            artifacts[d.compiler_packages].read_string().split(),
+            d.srcs,
+            **d.options
+        )
+        differences = _differences(package, generated, written)
+        if differences:
+            fail("{}: the targets differ from what would be generated:\n  {}".format(package, "\n  ".join(differences)))
+        ctx.bxl_actions().actions.write(outputs[out], "{}: the same as generated\n".format(package))
+
+    actions.dynamic_output(dynamic = [d.description, d.compiler_packages], inputs = [], outputs = [out.as_output()], f = check)
+    ctx.output.print(ctx.output.ensure(out).abs_path())
+
+_CLI_ARGS = {
+    "cabal-file": cli_args.option(cli_args.string()),
+    "compiler-prefix": cli_args.option(cli_args.string()),
+    "dep": cli_args.list(cli_args.string(), default = []),
+    "flags": cli_args.string(default = ""),
+    "tests": cli_args.bool(default = True),
+    "sdist": cli_args.option(cli_args.string()),
+    "tool": cli_args.list(cli_args.string(), default = []),
+}
 
 generate = bxl_main(
     impl = _generate_impl,
-    cli_args = {
-        "cabal-file": cli_args.option(cli_args.string()),
-        "compiler-prefix": cli_args.option(cli_args.string()),
-        "dep": cli_args.list(cli_args.string(), default = []),
-        "flags": cli_args.string(default = ""),
-        "tests": cli_args.bool(default = True),
-        "sdist": cli_args.option(cli_args.string()),
-        "tool": cli_args.list(cli_args.string(), default = []),
-    },
+    cli_args = _CLI_ARGS,
+)
+
+check = bxl_main(
+    impl = _check_impl,
+    cli_args = _CLI_ARGS | {"against": cli_args.option(cli_args.string())},
 )

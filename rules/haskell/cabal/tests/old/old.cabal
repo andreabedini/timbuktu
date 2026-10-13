@@ -1,0 +1,18 @@
+cabal-version: 2.2
+-- The fields of a .cabal file that a newer cabal-version no longer has, and
+-- that describe_package prints under another name (see ../BUCK).
+name:          old
+version:       0.1
+build-type:    Simple
+license:       BSD-3-Clause
+license-file:  LICENSE
+
+library
+  exposed-modules:  Old
+  hs-source-dir:    src
+  extensions:       CPP
+  -- happy is a build tool Cabal knows the package of, pkg-config one it
+  -- does not.
+  build-tools:      happy >= 1.19, pkg-config
+  build-depends:    base
+  default-language: Haskell2010

@@ -3,15 +3,3 @@ export_file(
     src = "tools/run.sh",
     visibility = ["PUBLIC"],
 )
-
-export_file(
-    name = "register.sh",
-    src = "tools/register.sh",
-    visibility = ["PUBLIC"],
-)
-
-export_file(
-    name = "find_modules.sh",
-    src = "tools/find_modules.sh",
-    visibility = ["PUBLIC"],
-)
