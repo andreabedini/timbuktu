@@ -1,18 +1,11 @@
 """
 The sources of a package of a plan: the sdist, with the revision of the cabal
-file the plan was made with.
+file the plan was made with. `repo_package` is the target the plan
+generator writes for each package (plan_targets.bzl); it and dynamic_plan
+download and unpack it with `fetch_package`.
 """
 
 load("common.bzl", "CabalPackageInfo")
-
-def pkg_src(name: str, package: dict[str, typing.Any]):
-    """The sources of a package entry of a plan.
-
-    Args:
-      name: the name of the target
-      package: the entry, as in the `packages` of the plan
-    """
-    repo_package(name = name, package = package)
 
 def fetch_package(
         actions: AnalysisActions,

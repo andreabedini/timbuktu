@@ -24,9 +24,9 @@ one, and whatever Cabal would have done (the `Paths_<pkg>` module, the
 language extensions, data files) has to be done by hand.
 
 **The plan interpreter** lets the solver of cabal-install choose the
-dependencies: a `plan` target runs
-[cabal-solver-plan](https://github.com/andreabedini/cabal-solver-plan), and
-the plan it prints, pasted into the `BUCK` file, becomes one target per unit,
+dependencies: a BXL script runs
+[cabal-solver-plan](https://github.com/andreabedini/cabal-solver-plan) and
+writes the plan it prints out as a `BUCK` file, with one target per unit,
 named after its unit-id. Each
 unit is built from its sdist by the package's own `Setup.hs`, as cabal-install
 would. This works for any build type, but each unit is an opaque step.
@@ -69,16 +69,16 @@ You also need:
 
 - a C compiler and a linker, since buck2 uses the ones on your system;
 - cabal-solver-plan and a Hackage index downloaded with `cabal update`, only
-  to make a build plan (e.g. `buck2 build //examples/plan/shake:plan`; see
-  [`examples/plan`](examples/plan) for how to tell buck2 where they are).
-  Without them `buck2 build //...` fails on the `:plan` targets alone.
+  to make a build plan (see [`examples/plan`](examples/plan) for how, and
+  how to tell buck2 where they are). Without them `buck2 build //...` fails
+  on the `dynamic_plan` targets alone.
 
 Then, for example:
 
 ```bash
 $ buck2 run //examples/cabal_simple/hello:exe
 $ buck2 run //examples/prelude/alex:alex -- --version
-$ buck2 run //examples/plan/network:socketpair
+$ buck2 run //examples/plan/network/socketpair:socketpair
 $ buck2 test //examples/...
 ```
 

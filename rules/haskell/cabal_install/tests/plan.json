@@ -1,0 +1,79 @@
+{
+  "format": 1,
+  "compiler-id": "ghc-9.12.2",
+  "os": "linux",
+  "arch": "x86_64",
+  "index-state": {
+    "hackage.haskell.org": "2026-05-31T23:08:56Z"
+  },
+  "targets": [
+    "app-1.0-lib",
+    "app-1.0-e-app",
+    "conf-2.0-whole"
+  ],
+  "packages": [
+    {
+      "id": "tool-0.1",
+      "name": "tool",
+      "version": "0.1",
+      "build-type": "Simple",
+      "src": {"type": "repo-tar", "repo": "https://hackage.haskell.org/", "sha256": "1111111111111111111111111111111111111111111111111111111111111111", "size": 100},
+      "cabal-file": {"revision": 2, "sha256": "2222222222222222222222222222222222222222222222222222222222222222", "size": 10}
+    },
+    {
+      "id": "app-1.0",
+      "name": "app",
+      "version": "1.0",
+      "build-type": "Simple",
+      "src": {"type": "repo-tar", "repo": "https://hackage.haskell.org/", "sha256": "3333333333333333333333333333333333333333333333333333333333333333", "size": 200},
+      "cabal-file": {"revision": 0, "sha256": "4444444444444444444444444444444444444444444444444444444444444444", "size": 20}
+    },
+    {
+      "id": "conf-2.0",
+      "name": "conf",
+      "version": "2.0",
+      "build-type": "Configure",
+      "src": {"type": "repo-tar", "repo": "https://hackage.haskell.org/", "sha256": "5555555555555555555555555555555555555555555555555555555555555555", "size": 300},
+      "cabal-file": {"revision": 0, "sha256": "6666666666666666666666666666666666666666666666666666666666666666", "size": 30}
+    },
+    {
+      "id": "custom-3.0",
+      "name": "custom",
+      "version": "3.0",
+      "build-type": "Custom",
+      "src": {"type": "repo-tar", "repo": "https://hackage.haskell.org/", "sha256": "7777777777777777777777777777777777777777777777777777777777777777", "size": 400},
+      "cabal-file": {"revision": 1, "sha256": "8888888888888888888888888888888888888888888888888888888888888888", "size": 40}
+    }
+  ],
+  "units": [
+    {"id": "rts-1.0.2", "type": "pre-existing", "name": "rts", "version": "1.0.2", "component": "lib", "db": "global", "depends": []},
+    {"id": "base-4.21.0.0-b7a5", "type": "pre-existing", "name": "base", "version": "4.21.0.0", "component": "lib", "db": "global", "depends": ["rts-1.0.2"]},
+    {"id": "Cabal-3.14.1.0-8f2a", "type": "pre-existing", "name": "Cabal", "version": "3.14.1.0", "component": "lib", "db": "global", "depends": ["base-4.21.0.0-b7a5"]},
+    {"id": "other-1.0-in-db", "type": "pre-existing", "name": "other", "version": "1.0", "component": "lib:internal", "db": "dbs/other", "depends": ["base-4.21.0.0-b7a5"]},
+    {
+      "id": "tool-0.1-e-tool", "type": "configured", "package": "tool-0.1", "name": "tool", "version": "0.1",
+      "build-style": "per-component", "component": "exe:tool", "flags": {},
+      "depends": ["base-4.21.0.0-b7a5"], "exe-depends": [], "setup-depends": []
+    },
+    {
+      "id": "app-1.0-lib", "type": "configured", "package": "app-1.0", "name": "app", "version": "1.0",
+      "build-style": "per-component", "component": "lib", "flags": {"fast": true, "debug": false},
+      "depends": ["base-4.21.0.0-b7a5", "other-1.0-in-db"], "exe-depends": ["tool-0.1-e-tool"], "setup-depends": []
+    },
+    {
+      "id": "app-1.0-e-app", "type": "configured", "package": "app-1.0", "name": "app", "version": "1.0",
+      "build-style": "per-component", "component": "exe:app", "flags": {"fast": true, "debug": false},
+      "depends": ["app-1.0-lib", "base-4.21.0.0-b7a5"], "exe-depends": [], "setup-depends": []
+    },
+    {
+      "id": "custom-3.0-whole", "type": "configured", "package": "custom-3.0", "name": "custom", "version": "3.0",
+      "build-style": "whole-package", "components": ["lib"], "flags": {},
+      "depends": ["base-4.21.0.0-b7a5"], "exe-depends": [], "setup-depends": ["Cabal-3.14.1.0-8f2a", "app-1.0-lib", "base-4.21.0.0-b7a5"]
+    },
+    {
+      "id": "conf-2.0-whole", "type": "configured", "package": "conf-2.0", "name": "conf", "version": "2.0",
+      "build-style": "whole-package", "components": ["lib", "exe:conf"], "flags": {"devel": false},
+      "depends": ["base-4.21.0.0-b7a5", "custom-3.0-whole"], "exe-depends": ["tool-0.1-e-tool"], "setup-depends": []
+    }
+  ]
+}

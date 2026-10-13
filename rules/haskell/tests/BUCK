@@ -1,0 +1,7 @@
+# What the tests of rules/haskell share. The cases of refusals.sh are not
+# packages: it copies each one to scratch/ while it builds it.
+
+export_file(
+    name = "compare.sh",
+    visibility = ["PUBLIC"],
+)

@@ -10,8 +10,9 @@ Three approaches live side by side:
 1. Hand-written targets using the Haskell rules from the Buck2 prelude
    (`examples/prelude/`, `rules/haskell/helpers/BUCK`).
 2. The plan interpreter: mapping a build plan (made by cabal-solver-plan) onto
-   a Buck2 target graph, building each unit through `Setup.hs` the way
-   cabal-install does (`rules/haskell/cabal_install/`, `examples/plan/`).
+   a Buck2 target graph, written out as a `BUCK` file by a BXL script
+   (`plan.bxl`), building each unit through `Setup.hs` the way cabal-install
+   does (`rules/haskell/cabal_install/`, `examples/plan/`).
 3. The `cabal_simple` rules: targets whose attributes are the fields of a
    `.cabal` stanza, built the way Cabal builds `build-type: Simple` but by
    calling GHC directly, without `Setup.hs` (`rules/haskell/cabal/`,
@@ -27,8 +28,8 @@ build one component with fine-grained outputs, but their targets are
 transcribed by hand and nothing solves dependencies for them. Both use one
 toolchain and the same providers (`rules/haskell/providers.bzl`), so a unit
 of a plan and a `cabal_simple` component can depend on each other; having
-`interpret_plan` emit `cabal_simple` targets for Simple units is the open
-question.
+`plan.bxl` write `cabal_simple` targets for Simple units is the open
+question, and the next step (see "The plan generator").
 
 The direction of travel (Andrea, 2026-10-12): rules covering a spectrum from
 the most dynamic (`cabal build` in one action, a plan computed at build
@@ -79,19 +80,30 @@ passing; buck2 also reports the 5 `http_archive` targets as passed tests):
   `//examples/cabal_simple/...` builds, its tests pass and hello, lexer,
   cparse, alex and happy run. The originals were put back.
 - The Cabal checks (2026-10-13, see "Keeping the Cabal logic in check"):
-  `buck2 test //rules/... //examples/...` runs 17 tests, all passing (with
+  `buck2 test //rules/... //examples/...` ran 17 tests, all passing (with
   `haskell.cabal_solver_plan` set, see "Commands"), `buck2 build` of the
   same builds, and cparse, happy, alex and shake run;
-  `rules/haskell/tests/refusals.sh` gets its 17 refusals, and
+  `rules/haskell/tests/refusals.sh` got its 17 refusals, and
   `examples/cabal_simple/tests/generate.sh` finds the seven transcriptions
   the same as what would be generated. Breaking an expected file, and
   letting a newer `cabal-version` through, made the tests fail.
-- Plan interpreter: `//examples/plan/shake:plan`, and the whole shake plan;
-  the `shake` executable unit builds and prints its version.
-  `//examples/plan/network` is a plan whose `network` unit has
-  `build-type: Configure` and goes through `build_legacy.bzl`, with hsc2hs
-  built from the plan as an exe-depend; `:socketpair`, a prelude binary
-  linked `static`, depends on it and runs (`:socketpair-test`).
+- Plan interpreter: the whole shake plan; the `shake` executable unit
+  builds and prints its version. `//examples/plan/network` is a plan whose
+  `network` unit has `build-type: Configure` and goes through
+  `build_legacy.bzl`, with hsc2hs built from the plan as an exe-depend;
+  `//examples/plan/network/socketpair:socketpair`, a prelude binary linked
+  `static`, depends on it and runs (`:socketpair-test`).
+- The plan generator (2026-10-13, step 1 of "The plan generator"):
+  `plan.bxl` replaced `interpret_plan`. Generated from the plans that were
+  pasted in the two examples (`--plan-file`), the targets of shake (56) and
+  network (29) had the same attributes as `interpret_plan`'s
+  (`buck2 uquery --output-all-attributes --json`, every attribute, rule type
+  and deps included). Made again with the solver, the files differed only
+  in the command of their header. With them in place `buck2 targets //...`
+  parses, `buck2 test //rules/... //examples/...` runs 18 tests, all
+  passing, `buck2 build` of the same builds, shake and both socketpair
+  programs run, `refusals.sh` gets its 18 refusals and `generate.sh` its
+  seven. Plain `buildifier` leaves the generated files as they are.
 - Dynamic plans (2026-10-12): `//examples/plan/dynamic:shake` and
   `:network` make the same two plans at build time and build all their
   units in one dynamic action each; `:shake[shake]` runs (`:shake-test`),
@@ -135,7 +147,7 @@ Known broken or untested:
 
 - Plans: cabal-solver-plan refuses a plan that needs Backpack (since
   b6642ff; 3ea35f7 got it wrong without saying so); local packages (`--local-package`) are in the format but
-  `interpret_plan` does not take them yet; tests and benchmarks are only in a
+  `plan.bxl` does not take them yet; tests and benchmarks are only in a
   plan when the solver enables them, which it does not without being asked.
 - `dynamic_plan`: once in 16 builds from a fresh daemon (2026-10-12, log
   `20261012-123556_build_bfd4165a…` in `buck-out/v2/log`), network's
@@ -169,15 +181,15 @@ Known broken or untested:
   `cabal_simple` component can depend on a prelude `haskell_library` (they
   need `CabalLibraryInfo`).
 - A unit of a plan and a `cabal_simple` component depending on each other:
-  `//examples/plan/network:socketpair-simple` is a `cabal_simple` executable
+  `//examples/plan/network/socketpair:socketpair-simple` is a `cabal_simple` executable
   on the network unit. The rest was checked with throwaway targets on
   2026-10-12: the plan's `random` built by `Setup.hs` against a
   `cabal_simple` splitmix, with a `cabal_simple` executable on top; a plan
   unit with `cabal_simple` alex as a build tool; a `cabal_simple` library
-  with the plan's hsc2hs as a build tool. `interpret_plan` has no way to put
-  a `cabal_simple` target in place of a unit: that took a `build` target
-  written by hand. A sublibrary of a plan used by `cabal_simple` is
-  untested.
+  with the plan's hsc2hs as a build tool. `plan.bxl` has no way to put a
+  `cabal_simple` target in place of a unit: that takes editing the `deps`
+  of the generated `BUCK` file, which the next generation undoes. A
+  sublibrary of a plan used by `cabal_simple` is untested.
 - Prelude rules depending on a `cabal_simple` library: the linker flags of
   `extra-libraries`, `extra-lib-dirs` and
   `ld-options` are passed on but no example has them. A library built with
@@ -205,6 +217,27 @@ Known broken or untested:
   the global package db, which the wrappers in `rules/haskell/defs.bzl` put
   back.
 
+## The plan generator
+
+Agreed with Andrea on 2026-10-13: a BXL script that makes a plan and writes
+it out as a `BUCK` file, in two steps.
+
+1. Done (see "Current state"): `plan.bxl` writes the targets
+   `interpret_plan` made, and `interpret_plan` is gone. One flat file per
+   plan, targets named by unit-id, so the aliases and labels other packages
+   use do not change.
+2. Next: `cabal_simple` targets for Simple units, `build` (`Setup.hs`) only
+   where a package has a field `fields.bzl` refuses (said in a comment of
+   the file) or with `--setup`, which gives step 1's file. The plan has
+   what `describe_package` needs (the revised `.cabal` file by URL, sha256
+   and size, the flags, the GHC), so generating downloads `.cabal` files,
+   not sdists, and dependencies come from the plan instead of `--dep`. The
+   `build-depends` `describe_package` finds have to be the plan's
+   `depends`, or generating fails. Components keep their unit-id names (the
+   `cabal_package` is `<name>-<version>`, the sdist `<name>-<version>-src`),
+   so `package_targets` in `generate.bzl` needs a parameter for the names,
+   and a library's `unit_id` attribute is the plan's.
+
 ## Commands
 
 ```sh
@@ -215,11 +248,11 @@ sh rules/haskell/tests/refusals.sh              # what the rules refuse, by hand
 sh examples/cabal_simple/tests/generate.sh      # transcriptions vs generator, by hand
 buck2 run //examples/prelude/alex:alex -- --version   # prelude rules
 buck2 run //examples/cabal_simple/hello:exe     # cabal_simple rules
-buck2 run //examples/plan/network:socketpair    # a prelude binary on a plan unit
+buck2 run //examples/plan/network/socketpair:socketpair   # a prelude binary on a plan unit
 buck2 run //examples/interop:exe     # prelude rules on top of a cabal_simple library
 buck2 run //examples/interop:ghci    # a GHCi with //examples/interop:lib
 sh examples/interop/tests/ide.sh     # what the IDE script answers, given to GHC
-buck2 build //examples/plan/shake:plan --show-output   # cabal-solver-plan -> plan.json
+buck2 bxl //rules/haskell/cabal_install/plan.bxl:generate -- --target shake --index-state 2026-06-01T00:00:00Z   # plan -> BUCK
 buck2 build toolchains//:haskell   # downloads the GHC bindist (about 290 MB)
 buildifier BUCK path/to/file.bzl   # format Starlark
 buck2 starlark lint path/to/file.bzl
@@ -259,17 +292,21 @@ edit it by hand:
 yq .ghcupDownloads ~/.ghcup/cache/ghcup-0.0.9.yaml -o json | sed 's/null/None/' > rules/haskell/ghcup/metadata.bzl
 ```
 
-To refresh a plan in `examples/plan/<name>`: build `:plan`, then replace the
-JSON inside the `interpret_plan(...)` call in its `BUCK` with the new
-`plan.json`. Targets that use a unit through its alias need no change; one
-that names a unit of the compiler by id (`:base-4.21.0.0-b7a5` in
-`network:socketpair-simple`) changes only with the compiler.
+To refresh a plan in `examples/plan/<name>`: run the command in the header
+of its `BUCK` (changing `--index-state` if that is the point) and copy the
+file whose path it prints over the `BUCK`. `--plan-file` writes out a plan
+made before, without the solver. Targets that use a unit through its alias
+need no change; one that names a unit of the compiler by id
+(`//examples/plan/network:base-4.21.0.0-b7a5` in
+`network/socketpair:socketpair-simple`) changes only with the compiler.
+The generated `BUCK` files are whole: what uses a plan goes in another
+package (`network/socketpair`).
 
-The `:plan` targets need cabal-solver-plan, which is not built here and is
+`plan.bxl` (with no `--plan-file`), the `plan` rule and `dynamic_plan` need cabal-solver-plan, which is not built here and is
 not in `PATH`: `haskell.cabal_solver_plan` in `.buckconfig.local` (or
 `--config`) says where it is, `haskell.hackage_index` where the
 `01-index.tar` is (default: the one `cabal update` downloads). Without them
-`buck2 build //...` fails on the `:plan` and `dynamic_plan` targets alone.
+`buck2 build //...` fails on the `dynamic_plan` targets alone.
 The plans were checked with its commit b6642ff (main in
 `../cabal-solver-plan` on 2026-10-12, not pushed then; 3ea35f7 gave the same
 plans), built with GHC 9.12.2 from a `git archive` into `$TMPDIR` with
@@ -326,7 +363,7 @@ archive in `buck-out` that the build uses.
   It is found by `id` or by the name of its package, when the package db is
   read in a dynamic action. Every rule set can depend on one; the top of the
   file says what each gets out of it. It took the place of
-  `cabal_toolchain_library` and `pre_existing_unit`: `interpret_plan` makes
+  `cabal_toolchain_library` and `pre_existing_unit`: `plan.bxl` writes
   one for each pre-existing unit of a plan. `resolve_unit` is that reading of
   a package db, also used by the plan interpreter for the units it builds.
 - `rules/haskell/providers.bzl` — what a library or an executable hands to
@@ -349,8 +386,26 @@ archive in `buck-out` that the build uses.
   package db) are for the `cabal_simple` rules.
 - `rules/haskell/tests/` — `refusals.sh` and its cases in `refusals/`: a
   `BUCK.in` that has to fail with the message in `expected`, built in
-  `scratch/` (ignored by version control).
+  `scratch/` (ignored by version control). `defs.bzl` has `expected_test`
+  (a target's output against a file, with `compare.sh`), which the tests of
+  both generators use.
+- `rules/haskell/buck_text.bzl` — writing a call to a rule as BUCK text,
+  formatted as buildifier would, for both generators.
 - `rules/haskell/cabal_install/` — the plan interpreter:
+  - `plan.bxl` — `generate`: runs `solve` (or reads `--plan-file`),
+    decodes the plan and prints the path of a `BUCK` file made by
+    `plan_targets.bzl`, with the command that makes it again in its header.
+  - `plan_targets.bzl` — `plan_targets`, the targets of a decoded plan as
+    data (struct(rule, attrs)): a `repo_package` per package, one target
+    per unit, named by unit-id (`haskell_unit`, `build` or `build_legacy`
+    with a `<pkg>-setup` binary, by `build-style`), and an alias for each
+    of the plan's `targets`; `buck_file`, their text. It refuses a
+    whole-package unit as a build tool, and two aliases of the same name.
+    It took the place of `interpret_plan.bzl`, a macro that made the same
+    targets from JSON pasted into the `BUCK` file.
+  - `tests/` — `plan.json`, a plan written by hand with a unit of each
+    kind, and what `buck_file` makes of it (`expected/`); the refusals of
+    `decode_plan` are cases of `refusals.sh` run through the same rule.
   - `plan.bzl` — the `plan` rule: runs cabal-solver-plan with the
     toolchain's GHC and its global package db, a Hackage index and an
     `index_state` (plus `constraints`, `flags`). Its output, format 1, has
@@ -358,7 +413,9 @@ archive in `buck-out` that the build uses.
     checksum and size of the `.cabal` file, all read off the index. It reads
     the index of the machine (`local_only`), so it is not hermetic;
     everything downstream is pinned by checksum. `solve` is the action, and
-    `plan_attrs` the attributes, shared with `dynamic_plan`.
+    `plan_attrs` the attributes, shared with `dynamic_plan`; `plan.bxl`
+    runs `solve` too. No example has a `plan` target any more: it is there
+    to look at a plan.
   - `dynamic_plan.bzl` — `dynamic_plan`: `solve`, then a dynamic action that
     reads the plan and builds every unit with `fetch_package` and the
     functions of `setup.bzl` (`compile_setup` for a whole-package unit's
@@ -370,16 +427,12 @@ archive in `buck-out` that the build uses.
   - `solver_toolchain.bzl` — the rule of `toolchains//:cabal-solver-plan`
     (`CabalSolverPlanInfo`).
   - `cabal_toolchain.bzl` — the rule of `toolchains//:cabal`.
-  - `plan_format.bzl` — `decode_plan`, how `interpret_plan` and
+  - `plan_format.bzl` — `decode_plan`, how `plan.bxl` and
     `dynamic_plan` read a plan: it refuses another format, and any value of
     the closed sets of the format (unit type, build style, component kind,
     build type, source type) it does not list.
-  - `interpret_plan.bzl` — macro that decodes a format-1 plan and emits a
-    target per package (`pkg_src`), one per unit, named by unit-id
-    (`haskell_unit`, `build` or `build_legacy` with a `<pkg>-setup` binary,
-    by `build-style`), and an alias for each of the plan's `targets`. It
-    refuses other formats, and a whole-package unit as a build tool.
-  - `pkg_src.bzl` — `fetch_package`, a function of `actions` that
+  - `pkg_src.bzl` — `repo_package`, the target of a package of a plan, and
+    `fetch_package`, a function of `actions` that
     downloads the sdist from `<repo>package/<id>.tar.gz` (with `size_bytes`,
     so with a content-based path) and overlays the
     `.cabal` revision the plan was made with (`revision/<n>.cabal`, checked
@@ -398,8 +451,8 @@ archive in `buck-out` that the build uses.
     tool's data dir (`<pkg>_datadir`, from `build_env`) is an absolute path,
     because hsc2hs writes it into an `#include` of a generated C file.
     `compile_setup` compiles a package's own Setup.hs with GHC (the
-    `dynamic_plan` path; `interpret_plan` uses a prelude `haskell_binary`).
-  - `build.bzl`, `build_legacy.bzl` — the rules `interpret_plan` emits,
+    `dynamic_plan` path; `plan.bxl` writes a prelude `haskell_binary`).
+  - `build.bzl`, `build_legacy.bzl` — the rules `plan.bxl` writes,
     thin wrappers around `build_component` and `build_package` that add what
     the prelude needs (`mkProviders`).
   - `common.bzl` — `CabalPackageInfo` (not the one of the `cabal_simple`
@@ -460,11 +513,11 @@ archive in `buck-out` that the build uses.
 - `examples/` — one directory per approach, a `README.md` in each example:
   - `prelude/alex` — alex built from its Hackage sdist with `haskell_binary`;
     each source file is a subtarget of the `hackage_package` archive.
-  - `plan/<name>/` — a `BUCK` with a `plan(...)` target (targets and
-    index-state) and an `interpret_plan(...)` call with its output pasted
-    in: `shake` (all Simple) and `network` (Configure, plus a prelude binary
-    and a `cabal_simple` executable using it). The embedded plans make these
-    `BUCK` files 10–30 KB; search them, don't read them whole.
+  - `plan/<name>/` — a `BUCK` written by `plan.bxl`, the command that made
+    it in its header: `shake` (all Simple) and `network` (Configure; a
+    prelude binary and a `cabal_simple` executable using it are in
+    `network/socketpair`). These `BUCK` files are 400–1000 lines of
+    generated targets; search them, don't read them whole.
     `plan/README.md` explains making a plan. `plan/dynamic` has the same two
     plans as `dynamic_plan` targets.
   - `cabal_simple/` — `.cabal` files transcribed to `cabal_simple` targets:
@@ -655,7 +708,7 @@ things in a plan. Write the code for the day they do.
 - Cabal knowledge comes with tests that fail when Cabal changes under it:
   `describe_package` on a `.cabal` file that uses every field, the generator
   against the hand-written transcriptions (the comparison done by hand on
-  2026-10-12), the plan interpreter on a plan with each build style. A
+  2026-10-12), the plan generator on a plan with each build style. A
   refusal is behaviour too: test that an unknown field, an unknown build type
   and a newer `cabal-version` fail, and with which message.
 
@@ -670,7 +723,9 @@ How the code does it (2026-10-13):
   rules make of each; `generate.bzl` fails on a field, a kind of component
   or a format it does not know. `cabal_package` refuses a `cabal-version`
   newer than `CABAL_SPEC_VERSION` and names the build type it refuses.
-- `cabal_install/plan_format.bzl` reads plans for both plan interpreters.
+- `cabal_install/plan_format.bzl` reads plans for `plan.bxl` and
+  `dynamic_plan`; `cabal_install/tests` checks what `plan.bxl` writes for a
+  plan with a unit of each kind.
 - `find_modules` takes its suffixes from Cabal (`knownSuffixHandlers`,
   `builtinHaskellSuffixes`): a preprocessor Cabal adds is found, and refused
   by `_preprocess` in `simple.bzl`, which runs alex, happy and hsc2hs.

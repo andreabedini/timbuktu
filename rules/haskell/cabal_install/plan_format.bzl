@@ -2,8 +2,8 @@
 Reading a build plan: the JSON cabal-solver-plan prints, format 1 (see the
 docs/plan-format.md of cabal-solver-plan).
 
-interpret_plan (at load time) and dynamic_plan (in a dynamic action) read a
-plan with `decode_plan`, which checks the values the format draws from a
+plan.bxl (to write a plan out as targets) and dynamic_plan (in a dynamic
+action) read a plan with `decode_plan`, which checks the values the format draws from a
 fixed set: a value that is not one of those below fails, rather than be
 taken for one of them. A new build type or build style in cabal-install
 reaches the plan interpreter as a new value here, or as a new format.

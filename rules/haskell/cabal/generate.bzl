@@ -24,6 +24,7 @@ says it is, refused fields included: the rules refuse them, not the
 generator. A field that is not in fields.bzl fails generating.
 """
 
+load("//rules/haskell:buck_text.bzl", "call", "expr")
 load(
     ":fields.bzl",
     "BUILD_INFO_FIELDS",
@@ -72,29 +73,6 @@ def _check_keys(what: str, keys: list[str], known: list[str]):
             what,
             ", ".join(["`{}`".format(k) for k in unknown]),
         ))
-
-def _value(value: typing.Any, indent: str) -> str:
-    if type(value) == "list":
-        if len(value) == 0:
-            return "[]"
-        if len(value) == 1:
-            return "[{}]".format(_value(value[0], indent))
-        inner = indent + "    "
-        return "[\n" + "".join(["{}{},\n".format(inner, _value(v, inner)) for v in value]) + indent + "]"
-    if type(value) == "struct":
-        # An expression, as it is
-        return value.expr
-    return repr(value)
-
-def _call(rule: str, attrs: list[(str, typing.Any)]) -> str:
-    return "{}(\n".format(rule) + "".join([
-        "    {} = {},\n".format(name, _value(value, "    "))
-        for name, value in attrs
-        if value != None
-    ]) + ")\n"
-
-def _expr(text: str) -> struct:
-    return struct(expr = text)
 
 def _target_names(components: list[dict[str, typing.Any]]) -> dict[(str, str | None), str]:
     exes = [c for c in components if c["kind"] == "exe"]
@@ -283,7 +261,7 @@ def buck_file(
     lines.append('load("@root//rules/haskell/cabal:defs.bzl", {})'.format(", ".join([repr(r) for r in ["cabal_package"] + rules])))
     lines.append("")
     lines.extend(preamble)
-    out = "\n".join(lines) + "\n" + "\n".join([_call(t.rule, t.attrs) for t in package.targets])
+    out = "\n".join(lines) + "\n" + "\n".join([call(t.rule, t.attrs) for t in package.targets])
     for c in package.skipped:
         out += "\n# The {} {} is left out: {}.\n".format(
             c["kind"],
@@ -298,7 +276,7 @@ def buck_file(
 
 def glob_srcs() -> struct:
     """The `srcs` of a package whose BUCK file is next to its .cabal file."""
-    return _expr('glob(\n        ["**"],\n        exclude = ["BUCK", "dist-newstyle/**"],\n    )')
+    return expr('glob(\n        ["**"],\n        exclude = ["BUCK", "dist-newstyle/**"],\n    )')
 
 def label_srcs(label: str) -> struct:
-    return _expr(repr(label))
+    return expr(repr(label))

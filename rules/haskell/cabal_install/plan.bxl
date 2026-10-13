@@ -1,0 +1,102 @@
+"""
+Make a build plan and write it out as a BUCK file.
+
+    buck2 bxl //rules/haskell/cabal_install/plan.bxl:generate -- --target shake --index-state 2026-06-01T00:00:00Z
+
+runs cabal-solver-plan (see plan.bzl: the GHC of toolchains//:haskell, the
+Hackage index of toolchains//:cabal-solver-plan) and prints the path of a
+BUCK file with a target for each package and unit of the plan (see
+plan_targets.bzl). Copy it where it belongs. Its header says how to make it
+again.
+
+    buck2 bxl //rules/haskell/cabal_install/plan.bxl:generate -- --plan-file path/to/plan.json
+
+writes out a plan made before instead, without the solver.
+
+Options:
+  --target PKG          a package to plan for (more than one: repeat it)
+  --index-state TIME    leave out what was uploaded after, e.g.
+                        2026-06-01T00:00:00Z
+  --constraint C        as in cabal.project, e.g. 'aeson >= 2.2'
+  --flag PKG:FLAGS      flags of a package, e.g. 'aeson:-ordered-keymap'
+  --plan-file PATH      a plan in the repository, rather than the options
+                        above
+"""
+
+load("//rules/haskell:toolchain.bzl", "GhcToolchainInfo")
+load(":plan.bzl", "solve")
+load(":plan_format.bzl", "decode_plan")
+load(":plan_targets.bzl", "buck_file")
+load(":solver_toolchain.bzl", "CabalSolverPlanInfo")
+
+def _quote(arg: str) -> str:
+    for c in arg.elems():
+        if not (c.isalnum() or c in "-_.:/=+@"):
+            return "'" + arg.replace("'", "'\\''") + "'"
+    return arg
+
+def _command(args: typing.Any) -> str:
+    words = ["buck2", "bxl", "//rules/haskell/cabal_install/plan.bxl:generate", "--"]
+    if args.plan_file:
+        words.extend(["--plan-file", args.plan_file])
+    else:
+        for target in args.target:
+            words.extend(["--target", target])
+        words.extend(["--index-state", args.index_state])
+        for c in args.constraint:
+            words.extend(["--constraint", c])
+        for f in args.flag:
+            words.extend(["--flag", f])
+    return " ".join([_quote(w) for w in words])
+
+def _flags(items: list[str]) -> dict[str, str]:
+    out = {}
+    for item in items:
+        pkg, sep, flags = item.partition(":")
+        if not sep or not pkg:
+            fail("--flag wants PKG:FLAGS, not `{}`".format(item))
+        out[pkg] = (out[pkg] + " " + flags) if pkg in out else flags
+    return out
+
+def _plan(ctx: bxl.Context, actions: AnalysisActions) -> (Artifact, str):
+    args = ctx.cli_args
+    if args.plan_file:
+        if args.target or args.index_state or args.constraint or args.flag:
+            fail("--plan-file is a plan made already: it takes no other option")
+        return ctx.fs.source(args.plan_file), args.plan_file
+    if not args.target or not args.index_state:
+        fail("give the packages to plan for (--target) and an --index-state, or a --plan-file")
+    ghc = ctx.analysis(ctx.configured_targets("toolchains//:haskell")).providers()[GhcToolchainInfo]
+    solver = ctx.analysis(ctx.configured_targets("toolchains//:cabal-solver-plan")).providers()[CabalSolverPlanInfo]
+    plan = solve(actions, solver, ghc, struct(
+        targets = args.target,
+        index_state = args.index_state,
+        constraints = args.constraint,
+        flags = _flags(args.flag),
+        args = [],
+    ))
+    return plan, "the plan for " + " ".join(args.target)
+
+def _generate_impl(ctx: bxl.Context):
+    actions = ctx.bxl_actions().actions
+    plan, where = _plan(ctx, actions)
+    command = _command(ctx.cli_args)
+    out = actions.declare_output("BUCK")
+
+    def write(ctx, artifacts, outputs):
+        decoded = decode_plan(where, artifacts[plan].read_string())
+        ctx.bxl_actions().actions.write(outputs[out], buck_file(decoded, command, where))
+
+    actions.dynamic_output(dynamic = [plan], inputs = [], outputs = [out.as_output()], f = write)
+    ctx.output.print(ctx.output.ensure(out).abs_path())
+
+generate = bxl_main(
+    impl = _generate_impl,
+    cli_args = {
+        "constraint": cli_args.list(cli_args.string(), default = []),
+        "flag": cli_args.list(cli_args.string(), default = []),
+        "index-state": cli_args.option(cli_args.string()),
+        "plan-file": cli_args.option(cli_args.string()),
+        "target": cli_args.list(cli_args.string(), default = []),
+    },
+)

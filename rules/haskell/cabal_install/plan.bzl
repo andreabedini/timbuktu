@@ -7,6 +7,10 @@ rules downstream need is in it, read off the index: which revision of each
 cabal file, the checksums and sizes of the downloads. Making it reads the
 index of this machine, so it is not hermetic; everything downstream is
 pinned by checksum.
+
+`solve` is the action, also run by plan.bxl, which writes the plan out as
+targets, and by dynamic_plan. The `plan` rule is that action alone, to look
+at a plan.
 """
 
 load("//rules/haskell:toolchain.bzl", "GhcToolchainInfo")

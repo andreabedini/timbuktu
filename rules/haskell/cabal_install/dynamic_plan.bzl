@@ -8,8 +8,8 @@ A build plan made and built in one target, at build time.
         executables = ["shake"],
     )
 
-Where `plan` and `interpret_plan` make a plan once and turn it into a target
-per unit, this rule runs cabal-solver-plan as one of its actions, reads the
+Where plan.bxl makes a plan once and writes it out as a target per unit,
+this rule runs cabal-solver-plan as one of its actions, reads the
 plan in a dynamic action and builds every unit there, with the functions of
 setup.bzl. Nothing is pasted into a BUCK file, and a new index-state or
 target is a change of attribute. The price is that the units are not targets:

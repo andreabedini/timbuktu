@@ -1,0 +1,51 @@
+# buildifier: disable=module-docstring
+load("@prelude//rules.bzl", "sh_test")
+load("//rules/haskell:defs.bzl", "haskell_binary")
+load("//rules/haskell/cabal:defs.bzl", "cabal_package", "cabal_simple_executable")
+
+# An executable of the prelude depending on the network unit of the plan in
+# .., through the alias the plan makes for its target.
+haskell_binary(
+    name = "socketpair",
+    srcs = {"Main.hs": "Main.hs"},
+    link_style = "static",
+    toolchain_libs = [
+        "base",
+        "bytestring",
+    ],
+    deps = ["//examples/plan/network:network"],
+)
+
+sh_test(
+    name = "socketpair-test",
+    args = ["$(location :socketpair)"],
+    test = "tests/socketpair.sh",
+)
+
+# The same program by the cabal_simple rules, which take the network unit and
+# the libraries of the compiler from the plan as well.
+cabal_package(
+    name = "socketpair-pkg",
+    srcs = ["Main.hs"],
+    build_type = "Simple",
+    version = "0",
+)
+
+cabal_simple_executable(
+    name = "socketpair-simple",
+    build_depends = [
+        "//examples/plan/network:base-4.21.0.0-b7a5",
+        "//examples/plan/network:bytestring-0.12.2.0-d099",
+        "//examples/plan/network:network",
+    ],
+    default_language = "Haskell2010",
+    executable_name = "socketpair",
+    main_is = "Main.hs",
+    package = ":socketpair-pkg",
+)
+
+sh_test(
+    name = "socketpair-simple-test",
+    args = ["$(location :socketpair-simple)"],
+    test = "tests/socketpair.sh",
+)

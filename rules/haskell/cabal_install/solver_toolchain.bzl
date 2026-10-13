@@ -1,10 +1,10 @@
 """
-cabal-solver-plan, which the `plan` rule makes its plans with, and the
-Hackage index it reads.
+cabal-solver-plan, which the `plan` rule, plan.bxl and dynamic_plan make
+their plans with, and the Hackage index it reads.
 
 cabal-solver-plan (https://github.com/andreabedini/cabal-solver-plan) runs
 the solver of cabal-install on inputs given on the command line and prints
-the plan as JSON (see interpret_plan.bzl for the format). It is not built
+the plan as JSON (see plan_format.bzl for the format). It is not built
 here: it is a program on this machine, like the GHC in PATH.
 """
 

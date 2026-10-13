@@ -10,7 +10,8 @@
 # it does not print, so these tests also fail after an upgrade of Cabal that
 # adds one.
 
-load(":defs.bzl", "described_package", "expected_test", "generated_buck_file")
+load("//rules/haskell/tests:defs.bzl", "expected_test")
+load(":defs.bzl", "described_package", "generated_buck_file")
 
 described_package(
     name = "everything",
