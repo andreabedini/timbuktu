@@ -1,0 +1,26 @@
+cabal-version: 3.0
+name:          lp
+version:       1.0
+build-type:    Simple
+
+flag fast
+  default: False
+  manual:  True
+
+library
+  exposed-modules:    Lp
+  build-depends:      base, lp:internal
+  build-tool-depends: tool:tool
+  default-language:   Haskell2010
+  if flag(fast)
+    ghc-options: -O2
+
+library internal
+  exposed-modules:  Lp.Internal
+  build-depends:    base
+  default-language: Haskell2010
+
+executable lp
+  main-is:          Main.hs
+  build-depends:    base, lp
+  default-language: Haskell2010

@@ -121,15 +121,29 @@ passing; buck2 also reports the 5 `http_archive` targets as passed tests):
   `dynamic:network` builds (its units scoped by name, with made-up
   unit-ids), `refusals.sh` gets its 21 refusals and `generate.sh` its
   seven. Plain `buildifier` leaves the generated files as they are.
+- Local packages in a plan (2026-10-13, step 2 of "The plan generator"
+  started): `//examples/plan/local` is the plan for `dice`, a package of
+  the repository needing `random` from Hackage, made by
+  `plan.bxl --local-package` with cabal-solver-plan 0da08c5e. `dice`'s
+  library and executable are `cabal_simple` targets on top of `random` and
+  `splitmix` built by `Setup.hs`; `:exe-dice` runs (`tests:dice-test`).
+  `buck2 test //rules/... //examples/...` runs 20 tests, all passing,
+  `buck2 build` of the same builds, `buck2 targets //...` parses,
+  `refusals.sh` gets its 23 refusals and `generate.sh` its seven; the three
+  plan examples made again are the same files. The local package's
+  targets in `rules/haskell/cabal_install/tests` (a sublibrary, a build
+  tool from the plan, a flag turned on by the plan) are only compared as
+  text: no example builds a local package with a build tool or a
+  sublibrary.
 - Plan format 3 (2026-10-13): units and packages keyed by id, no order
-  promised. The two plan examples made again with cabal-solver-plan
-  badc608e have the same targets as before (56, 29; compared block by
+  promised. The three plan examples made again with cabal-solver-plan
+  badc608e have the same targets as before (56, 29, 21; compared block by
   block, the files differ in the order of the targets, now by name, and in
   the `"id"` the entries of `packages` no longer have). `buck2 targets
-  //...` parses, `buck2 test //rules/... //examples/...` runs 18 tests, all
+  //...` parses, `buck2 test //rules/... //examples/...` runs 20 tests, all
   passing, `buck2 build` of the same builds, shake, both socketpair
-  programs and `dynamic:shake[shake]` run, `dynamic:network` builds,
-  `refusals.sh` gets its 23 refusals and `generate.sh` its seven.
+  programs, dice and `dynamic:shake[shake]` run, `dynamic:network` builds,
+  `refusals.sh` gets its 25 refusals and `generate.sh` its seven.
 - Dynamic plans (2026-10-12): `//examples/plan/dynamic:shake` and
   `:network` make the same two plans at build time and build all their
   units in one dynamic action each; `:shake[shake]` runs (`:shake-test`),
@@ -172,9 +186,13 @@ passing; buck2 also reports the 5 `http_archive` targets as passed tests):
 Known broken or untested:
 
 - Plans: cabal-solver-plan refuses a plan that needs Backpack (since
-  b6642ff; 3ea35f7 got it wrong without saying so); local packages (`--local-package`) are in the format but
-  `plan.bxl` does not take them yet; tests and benchmarks are only in a
-  plan when the solver enables them, which it does not without being asked.
+  b6642ff; 3ea35f7 got it wrong without saying so); tests and benchmarks
+  are only in a plan when the solver enables them, which it does not
+  without being asked. A local package of a build type other than Simple
+  is refused by `plan.bxl` (it would need `Setup.hs` on sources from the
+  repository, which `build_legacy` cannot take yet), and so is one whose
+  `build-depends` differ from the plan's; `--setup` (step 1's targets for a
+  local package) does not exist.
 - `dynamic_plan`: once in 16 builds from a fresh daemon (2026-10-12, log
   `20261012-123556_build_bfd4165a…` in `buck-out/v2/log`), network's
   whole-package action failed because hsc2hs's `template-hsc.h` was not at
@@ -252,7 +270,13 @@ it out as a `BUCK` file, in two steps.
    `interpret_plan` made, and `interpret_plan` is gone. One flat file per
    plan. Then format 2 (2026-10-13): targets named by `unit_names`
    (`plan_format.bzl`), unit-ids made up by the rules (`unit_id.bzl`).
-2. Next: `cabal_simple` targets for Simple units, `build` (`Setup.hs`) only
+2. Started with local packages (2026-10-13, see "Current state"):
+   `plan.bxl --local-package DIR --buck-dir DIR` makes `cabal_simple`
+   targets for a Simple local package, from `describe_package` run on its
+   `.cabal` file with the flags of the plan; the packages from Hackage stay
+   `build` / `build_legacy`. What is left of step 2 is the packages from
+   Hackage, as planned here:
+   `cabal_simple` targets for Simple units, `build` (`Setup.hs`) only
    where a package has a field `fields.bzl` refuses (said in a comment of
    the file) or with `--setup`, which gives step 1's file. The plan has
    what `describe_package` needs (the revised `.cabal` file by URL, sha256
@@ -280,6 +304,7 @@ buck2 run //examples/interop:exe     # prelude rules on top of a cabal_simple li
 buck2 run //examples/interop:ghci    # a GHCi with //examples/interop:lib
 sh examples/interop/tests/ide.sh     # what the IDE script answers, given to GHC
 buck2 bxl //rules/haskell/cabal_install/plan.bxl:generate -- --target shake --index-state 2026-06-01T00:00:00Z   # plan -> BUCK
+buck2 run //examples/plan/local:exe-dice   # a local package as cabal_simple targets, from a plan
 buck2 build toolchains//:haskell   # downloads the GHC bindist (about 290 MB)
 buildifier BUCK path/to/file.bzl   # format Starlark
 buck2 starlark lint path/to/file.bzl
@@ -427,18 +452,34 @@ archive in `buck-out` that the build uses.
   - `plan.bxl` — `generate`: runs `solve` (or reads `--plan-file`),
     decodes the plan and prints the path of a `BUCK` file made by
     `plan_targets.bzl`, with the command that makes it again in its header.
+    With `--local-package DIR` (repeatable) the solver plans for packages
+    of the repository too; their `.cabal` files are inputs of the solve
+    action, and, in a second dynamic action, of `describe_package` (run
+    with the flags the plan chose). `--buck-dir` is where the `BUCK` file
+    goes: the local packages have to be in it, with no `BUCK` file of their
+    own, since their sources are a `glob`, and it needs a `BUCK` file
+    already (an empty one the first time), because buck2 only makes an
+    artifact of a file in a package.
   - `plan_targets.bzl` — `plan_targets`, the targets of a decoded plan as
     data (struct(rule, attrs)): a `repo_package` per package
     (`<pkg-id>-src`), one target per unit, named by `unit_names`
     (`haskell_unit`, `build` or `build_legacy` with a `<pkg-id>-setup`
     binary, by `build-style`), and an alias for each of the plan's
-    `targets`; `buck_file`, their text. It refuses a whole-package unit as
-    a build tool, and two targets of the same name.
+    `targets`; `buck_file`, their text. A local package becomes the
+    targets `package_targets` (`cabal/generate.bzl`) makes of its
+    description, `<pkg-id>-package` and one per unit named by `unit_names`,
+    with `deps` and `tools` from the plan's edges; the description's
+    `build-depends` and `build-tool-depends` have to be the plan's
+    `depends` and `exe-depends`. It refuses a whole-package unit as a build
+    tool, a local package that is not Simple, and two targets of the same
+    name.
     It took the place of `interpret_plan.bzl`, a macro that made the same
     targets from JSON pasted into the `BUCK` file.
   - `tests/` — `plan.json`, a format-3 plan written by hand with a unit of
     each kind and two versions of one package, its units out of dependency
-    order, and what `buck_file` makes of it (`expected/`); the refusals of
+    order, `plan-local.json` with a
+    local package (`lp/lp.cabal`, described by `described_package`), and
+    what `buck_file` makes of them (`expected/`); the refusals of
     `decode_plan` are cases of `refusals.sh` run through the same rule.
   - `plan.bzl` — the `plan` rule: runs cabal-solver-plan with the
     toolchain's GHC and its global package db, a Hackage index and an
@@ -516,7 +557,8 @@ archive in `buck-out` that the build uses.
 - `rules/haskell/cabal/` — the `cabal_simple` rules; load them from `defs.bzl`:
   - `package.bzl` — `cabal_package`: the package-level fields and the source
     tree (a directory, possibly the output of another rule, or a list of
-    files).
+    files, with `root` when they are listed from a directory above the
+    package, as in a plan's `BUCK` file).
   - `simple.bzl` — `cabal_simple_library`, `cabal_simple_executable`,
     `cabal_simple_test`. Its docstring describes
     the steps (configure, preprocess, build, register) and what happens in a
@@ -546,7 +588,10 @@ archive in `buck-out` that the build uses.
     the toolchain's GHC version, lists the compiler's packages with
     `ghc-pkg`, and prints the path of the BUCK file; `--cabal-file` for a
     file in the repository, `--sdist` for a `hackage_package` target. Kept
-    as a `.bzl` function so a plan → BUCK generator can use it.
+    as a `.bzl` function so the plan generator can use it: `package_targets`
+    also takes the target names of the components (only those get targets),
+    the name of the `cabal_package` target and its `root`. `describe.bzl`
+    is the `describe_package` action both BXL scripts declare.
     `generate.bxl:check` (`--against <package>`) compares what would be
     generated with the targets of a package instead.
   - `tests/` — `everything/everything.cabal` (every field Cabal 3.14 has) and
@@ -559,9 +604,11 @@ archive in `buck-out` that the build uses.
   - `prelude/alex` — alex built from its Hackage sdist with `haskell_binary`;
     each source file is a subtarget of the `hackage_package` archive.
   - `plan/<name>/` — a `BUCK` written by `plan.bxl`, the command that made
-    it in its header: `shake` (all Simple) and `network` (Configure; a
+    it in its header: `shake` (all Simple), `network` (Configure; a
     prelude binary and a `cabal_simple` executable using it are in
-    `network/socketpair`). These `BUCK` files are 400–1000 lines of
+    `network/socketpair`) and `local` (the local package `dice`, as
+    `cabal_simple` targets, with `random` from Hackage; its test is in
+    `local/tests`). These `BUCK` files are 400–1000 lines of
     generated targets; search them, don't read them whole.
     `plan/README.md` explains making a plan. `plan/dynamic` has the same two
     plans as `dynamic_plan` targets.

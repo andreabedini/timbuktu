@@ -40,9 +40,19 @@ def _cabal_package_impl(ctx: AnalysisContext) -> list[Provider]:
         fail("{}: build-type {} is not supported, only Simple is; a build plan builds the others".format(ctx.label, build_type))
 
     srcs = ctx.attrs.srcs
+    root = ctx.attrs.root
     if isinstance(srcs, list):
-        # Lay the files out the way they are in the package.
-        srcdir = ctx.actions.symlinked_dir("srcdir", {src.short_path: src for src in srcs})
+        # Lay the files out the way they are in the package, the package
+        # being `root` when it is a directory of the BUCK file's.
+        prefix = root + "/" if root else ""
+        layout = {}
+        for src in srcs:
+            if not src.short_path.startswith(prefix):
+                fail("{}: {} is not in the package's directory, {}".format(ctx.label, src.short_path, root))
+            layout[src.short_path.removeprefix(prefix)] = src
+        srcdir = ctx.actions.symlinked_dir("srcdir", layout)
+    elif root:
+        fail("{}: `root` is for `srcs` given as a list of files".format(ctx.label))
     else:
         srcdir = srcs
 
@@ -78,5 +88,9 @@ cabal_package = rule(
             attrs.source(allow_directory = True),
             attrs.list(attrs.source()),
         ),
+        # Where the package is, when `srcs` lists files from a directory
+        # above it (a BUCK file for several packages, as a plan's is): the
+        # directory, relative to the BUCK file, that has the .cabal file.
+        "root": attrs.option(attrs.string(), default = None),
     } | field_attrs(PACKAGE_FIELDS),
 )

@@ -94,7 +94,10 @@ def package_targets(
         deps: dict[str, str] = {},
         tools: dict[str, str] = {},
         compiler_prefix: str | None = None,
-        tests: bool = True) -> struct:
+        tests: bool = True,
+        names: dict[(str, str | None), str] | None = None,
+        package_target: str | None = None,
+        root: str | None = None) -> struct:
     """The cabal_simple targets for a package, as data.
 
     Args:
@@ -110,6 +113,14 @@ def package_targets(
       compiler_prefix: the label of the packages of the compiler but for
         their name; None to declare haskell_unit targets in the BUCK file
       tests: whether to make targets for the test suites
+      names: the target of each component, by (kind, name), the name None
+        for the main library; only these components get targets. None for
+        the names of the transcriptions (see the top of this file). The
+        plan generator gives the names of the units of its plan.
+      package_target: the name of the cabal_package target, when it is not
+        the name of the package
+      root: the directory of the package, relative to the BUCK file, when
+        `srcs` lists files from above it (see cabal_package)
     Returns:
       struct(targets, units, skipped): the targets, as struct(rule, attrs)
       with the attributes in order, the cabal_package first; the packages of
@@ -132,12 +143,13 @@ def package_targets(
     components = [
         c
         for c in desc["components"]
-        if _KINDS[c["kind"]] and c["buildable"] and (tests or c["kind"] != "test")
+        if _KINDS[c["kind"]] and c["buildable"] and (tests or c["kind"] != "test") and (names == None or (c["kind"], c["name"]) in names)
     ]
     skipped = [c for c in desc["components"] if c not in components]
-    names = _target_names(components)
+    names = _target_names(components) if names == None else names
+    package_target = package_target or name
 
-    taken = {name: "the package"}
+    taken = {package_target: "the package"}
     for (kind, cname), target in names.items():
         if target in taken:
             fail("{}: the {} {} and {} would both be the target `{}`".format(name, kind, cname, taken[target], target))
@@ -171,7 +183,7 @@ def package_targets(
 
     targets = []
     for c in components:
-        attrs = [("name", names[(c["kind"], c["name"])]), ("package", ":" + name)]
+        attrs = [("name", names[(c["kind"], c["name"])]), ("package", ":" + package_target)]
         if c["kind"] == "lib" and c["name"]:
             attrs.append(("library_name", c["name"]))
         if c["kind"] == "exe" and names[("exe", c["name"])] != c["name"]:
@@ -202,7 +214,10 @@ def package_targets(
             "\n  ".join({m: None for m in missing}.keys()),
         ))
 
-    package = [("name", name), ("version", desc["version"]), ("srcs", srcs)]
+    package = [("name", package_target)]
+    if package_target != name:
+        package.append(("package_name", name))
+    package.extend([("version", desc["version"]), ("srcs", srcs), ("root", root)])
     for field, spec in PACKAGE_FIELDS.items():
         if field in desc:
             value = desc[field]

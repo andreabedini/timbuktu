@@ -1,9 +1,10 @@
 # Build plans
 
 A solver chooses the packages, buck2 builds them. The `BUCK` files of
-[`shake`](shake) and [`network`](network) are build plans written out as
-targets by `rules/haskell/cabal_install/plan.bxl`; nothing in them is
-written by hand.
+[`shake`](shake), [`network`](network) and [`local`](local) are build plans
+written out as targets by `rules/haskell/cabal_install/plan.bxl`; nothing
+in them is written by hand. `local` is a plan for a package of the
+repository rather than one from Hackage.
 
 The plans are made by
 [cabal-solver-plan](https://github.com/andreabedini/cabal-solver-plan),
@@ -32,6 +33,9 @@ The BXL script writes a target for each entry of the plan:
   `rules/haskell/cabal_install`. The plan gives a unit to build no unit-id:
   the rule makes one up from the target's label, as the `cabal_simple`
   rules do (`rules/haskell/unit_id.bzl`);
+- each local package (`--local-package`, a directory of the repository
+  with a `.cabal` file): `cabal_simple` targets, `<name>-<version>-package`
+  and one for each of its units, as [`local`](local) explains;
 - for each unit the plan was made for, an alias: the package name for its
   library (`:network`), `<kind>-<name>` for another component
   (`:exe-shake`).
@@ -70,7 +74,9 @@ $ buck2 bxl //rules/haskell/cabal_install/plan.bxl:generate -- --target shake --
 makes the plan and prints the path of a `BUCK` file with its targets: copy
 it into a directory of its own. `--constraint` and `--flag` are those of
 `cabal.project`, `--target` can be repeated, and `--plan-file` writes out a
-plan made before. The first lines of each `BUCK` file here say how it was
+plan made before, and `--local-package DIR` (with `--buck-dir`, where the
+`BUCK` file goes) plans for a package of the repository. The first lines
+of each `BUCK` file here say how it was
 made, which is also how to make it again (with a later index-state, say).
 Nothing else reads the network or the index: everything downstream is pinned
 by checksum.
@@ -84,8 +90,8 @@ global package db: it only builds with the toolchain it was made with, the
 downloaded GHC 9.12.2.
 
 Not supported: packages that use Backpack (cabal-solver-plan refuses to
-plan for them), local packages, and a whole-package unit's executables as
-build tools of another unit.
+plan for them), local packages of a build type other than Simple, and a
+whole-package unit's executables as build tools of another unit.
 
 ## Using a unit elsewhere
 

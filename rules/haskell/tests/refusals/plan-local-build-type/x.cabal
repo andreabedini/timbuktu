@@ -1,0 +1,9 @@
+cabal-version: 3.0
+name:          x
+version:       1
+build-type:    Simple
+
+library
+  exposed-modules:  X
+  build-depends:    base, containers
+  default-language: Haskell2010

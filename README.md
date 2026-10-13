@@ -46,6 +46,7 @@ Not everything works and I keep reworking the code significantly.
 | --- | --- |
 | [`prelude/alex`](examples/prelude/alex) | alex from its sdist with `haskell_binary` |
 | [`plan/shake`](examples/plan/shake) | shake and its dependencies from a build plan, all `build-type: Simple` |
+| [`plan/local`](examples/plan/local) | a package of the repository from a build plan: `cabal_simple` targets for it, `random` from Hackage by `Setup.hs` |
 | [`plan/network`](examples/plan/network) | network (`build-type: Configure`) from a build plan, used by a prelude binary and by a `cabal_simple` executable |
 | [`plan/dynamic`](examples/plan/dynamic) | the same two plans, made and built at build time by one target each |
 | [`cabal_simple/hello`](examples/cabal_simple/hello) | a local package: sublibrary, C sources, hsc2hs, Template Haskell, data files, a test suite |

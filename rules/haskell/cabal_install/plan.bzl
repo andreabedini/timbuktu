@@ -28,11 +28,14 @@ def solve(
       solver: the solver and the index
       ghc: the compiler to plan for
       attrs: the attributes of the `plan` rule: targets, index_state,
-        constraints, flags, args
+        constraints, flags, args; and, from plan.bxl, `local_packages`, a
+        list of struct(path, cabal): the directory of a local package,
+        relative to the root of the repository, and its .cabal file
     Returns:
       the plan, in JSON
     """
     out = actions.declare_output("plan.json")
+    local_packages = getattr(attrs, "local_packages", [])
     index = solver.index or "${XDG_CACHE_HOME:-$HOME/.cache}/cabal/packages/hackage.haskell.org/01-index.tar"
     cmd = cmd_args(
         solver.tool,
@@ -44,13 +47,16 @@ def solve(
         ["--constraint='{}'".format(c) for c in attrs.constraints],
         ["--flag='{}:{}'".format(pkg, flags) for pkg, flags in attrs.flags.items()],
         attrs.args,
+        ["--local-package {}".format(local.path) for local in local_packages],
         attrs.targets,
         ">",
         out.as_output(),
         delimiter = " ",
     )
     actions.run(
-        cmd_args("sh", "-c", cmd),
+        # NOTE: the solver reads the .cabal files of the local packages
+        # itself; they are inputs so that a change makes a new plan.
+        cmd_args("sh", "-c", cmd, hidden = [local.cabal for local in local_packages]),
         category = "cabal_solver_plan",
         # It reads the package index of this machine.
         local_only = True,

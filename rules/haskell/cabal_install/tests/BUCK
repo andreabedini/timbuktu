@@ -7,6 +7,7 @@
 #
 #   cp $(buck2 build //rules/haskell/cabal_install/tests:plan --show-simple-output) rules/haskell/cabal_install/tests/expected/plan.generated
 
+load("//rules/haskell/cabal/tests:defs.bzl", "described_package")
 load("//rules/haskell/tests:defs.bzl", "expected_test")
 load(":defs.bzl", "generated_plan_buck_file")
 
@@ -19,4 +20,27 @@ expected_test(
     name = "plan-test",
     actual = ":plan",
     expected = "expected/plan.generated",
+)
+
+# A plan with a local package, lp/lp.cabal (a sublibrary, an executable, a
+# build tool from the plan, and a flag the plan turns on): it becomes
+# cabal_simple targets, made from what describe_package prints for it with
+# the plan's flags. Update the expected file as above, with :plan-local.
+described_package(
+    name = "lp-description",
+    cabal = "lp/lp.cabal",
+    flags = "+fast",
+)
+
+generated_plan_buck_file(
+    name = "plan-local",
+    local = {"lp-1.0": ":lp-description"},
+    plan = "plan-local.json",
+    roots = {"lp-1.0": "lp"},
+)
+
+expected_test(
+    name = "plan-local-test",
+    actual = ":plan-local",
+    expected = "expected/plan-local.generated",
 )

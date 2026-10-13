@@ -1,0 +1,6 @@
+load("@root//rules/haskell/cabal/tests:defs.bzl", "described_package")
+load("@root//rules/haskell/cabal_install/tests:defs.bzl", "generated_plan_buck_file")
+
+described_package(name = "d", cabal = "x.cabal")
+
+generated_plan_buck_file(name = "g", local = {"x-1": ":d"}, plan = "plan.json")

@@ -13,7 +13,13 @@ docs/plan-format.md of cabal-solver-plan), decoded by `decode_plan`.
   target;
 - a unit built as a whole package (any other build type): a `build_legacy`
   target, and `<name>-<version>-setup`, its Setup.hs compiled by the
-  prelude.
+  prelude;
+- a local package (its sources in the repository, `"src": {"type":
+  "local"}`): the cabal_simple targets generate.bzl makes of what
+  describe_package prints for it, `<name>-<version>-package` and one
+  target for each of its units, with their dependencies taken from the
+  plan. What describe_package finds a component depends on has to be what
+  the plan says, or making the targets fails. Only build-type Simple.
 
 Units are named by `unit_names` (plan_format.bzl), and their unit-ids are
 made up by the rules (unit_id.bzl): the ids the plan gives its units only
@@ -31,7 +37,8 @@ NOTE: every unit uses the toolchain (toolchains//:haskell), which has to be
 the compiler the plan was made with (`compiler-id`).
 """
 
-load("//rules/haskell:buck_text.bzl", "call", "load_order")
+load("//rules/haskell:buck_text.bzl", "call", "expr", "load_order")
+load("//rules/haskell/cabal:generate.bzl", "package_targets")
 load(":plan_format.bzl", "component", "name_version", "unit_names")
 
 # Where each rule the targets use is loaded from; `alias` is built in.
@@ -41,6 +48,10 @@ _LOADS = {
     "haskell_binary": "@root//rules/haskell:defs.bzl",
     "haskell_unit": "@root//rules/haskell:defs.bzl",
     "repo_package": "@root//rules/haskell/cabal_install:pkg_src.bzl",
+    "cabal_package": "@root//rules/haskell/cabal:defs.bzl",
+    "cabal_simple_executable": "@root//rules/haskell/cabal:defs.bzl",
+    "cabal_simple_library": "@root//rules/haskell/cabal:defs.bzl",
+    "cabal_simple_test": "@root//rules/haskell/cabal:defs.bzl",
 }
 
 def _src(package_id: str) -> str:
@@ -108,12 +119,110 @@ def _pre_existing(key: str, unit: dict[str, typing.Any], names: dict[str, str]) 
         ("visibility", ["PUBLIC"]),
     ])
 
-def plan_targets(where: str, plan: dict[str, typing.Any]) -> list[struct]:
+def _dep_key(plan: dict[str, typing.Any], unit: dict[str, typing.Any]) -> str:
+    """How generate.bzl keys a library dependency: `<package>[:<library>]`."""
+    lib = component(unit["component"])[1]
+    return name_version(plan, unit)[0] + (":" + lib if lib else "")
+
+def _tool_key(plan: dict[str, typing.Any], unit: dict[str, typing.Any]) -> str:
+    """How generate.bzl keys a build tool: `<package>:<executable>`."""
+    return "{}:{}".format(name_version(plan, unit)[0], component(unit["component"])[1])
+
+def _local_targets(where: str, pkg_id: str, local: struct, plan: dict[str, typing.Any], names: dict[str, str]) -> list[struct]:
+    """The cabal_simple targets of a local package of a plan."""
+    package = plan["packages"][pkg_id]
+    if package["build-type"] != "Simple":
+        fail("{}: the local package {} has build-type {}; only Simple ones are supported, as cabal_simple targets".format(where, pkg_id, package["build-type"]))
+    desc = local.description
+    if desc["name"] != package["name"] or desc["version"] != package["version"]:
+        fail("{}: the description of {} is of {}-{}".format(where, pkg_id, desc["name"], desc["version"]))
+    plan_flags = None
+    units = plan["units"]
+    own = [key for key, u in units.items() if u["type"] == "configured" and u["package"] == pkg_id]
+
+    components = {(c["kind"], c["name"]): c for c in desc["components"]}
+    targets = {}
+    deps = {}
+    tools = {}
+
+    def set_target(table, key, i):
+        target = ":" + names[i]
+        if table.get(key, target) != target:
+            fail("{}: the units of {} depend on two units for `{}`: {} and {}".format(where, pkg_id, key, table[key], target))
+        table[key] = target
+
+    for key in own:
+        u = units[key]
+        if plan_flags != None and u["flags"] != plan_flags:
+            fail("{}: the units of {} have different flags".format(where, pkg_id))
+        plan_flags = u["flags"]
+        kind, cname = component(u["component"])
+        c = components.get((kind, cname))
+        if not c or not c["buildable"]:
+            fail("{}: the plan builds {} of {}, which describe_package does not find buildable with flags {}".format(where, u["component"], pkg_id, desc["flags"]))
+        targets[(kind, cname)] = names[key]
+
+        # What the plan says the component depends on, and what the .cabal
+        # file says, are the same packages.
+        planned = {}
+        for d in u["depends"]:
+            if units[d].get("package") != pkg_id:
+                planned[_dep_key(plan, units[d])] = None
+                set_target(deps, _dep_key(plan, units[d]), d)
+        described = {}
+        for dep in c.get("build-depends", []):
+            if not dep["internal"]:
+                for lib in dep["libraries"]:
+                    described[dep["package"] if lib == "lib" else "{}:{}".format(dep["package"], lib)] = None
+        planned_tools = {}
+        for e in u["exe-depends"]:
+            if units[e].get("package") != pkg_id:
+                planned_tools[_tool_key(plan, units[e])] = None
+                set_target(tools, _tool_key(plan, units[e]), e)
+        described_tools = {"{}:{}".format(t["package"], t["executable"]): None for t in c.get("build-tool-depends", []) if not t["internal"]}
+        for what, p, d in [("depends on", planned, described), ("uses as build tools", planned_tools, described_tools)]:
+            if sorted(p.keys()) != sorted(d.keys()):
+                fail("{}: the plan and the .cabal file of {} disagree on what {} {}: only in the plan: {}; only in the .cabal file: {}".format(
+                    where,
+                    pkg_id,
+                    u["component"],
+                    what,
+                    ", ".join([k for k in p if k not in d]) or "nothing",
+                    ", ".join([k for k in d if k not in p]) or "nothing",
+                ))
+    if plan_flags != None and plan_flags != desc["flags"]:
+        fail("{}: {} was described with the flags {}, the plan has {}".format(where, pkg_id, desc["flags"], plan_flags))
+
+    root = local.root
+    srcs = expr('glob(\n        ["{0}**"],\n        exclude = ["{0}BUCK", "{0}dist-newstyle/**"],\n    )'.format(root + "/" if root else ""))
+    made = package_targets(
+        desc,
+        [],
+        srcs,
+        deps = deps,
+        tools = tools,
+        names = targets,
+        package_target = pkg_id + "-package",
+        root = root,
+    )
+    if made.units:
+        fail("{}: {} needs units the plan does not have: {}".format(where, pkg_id, ", ".join(made.units)))
+    made_names = [t.attrs[0][1] for t in made.targets]
+    for key, name in targets.items():
+        if name not in made_names:
+            fail("{}: the plan builds {} {} of {}, which has no cabal_simple rule".format(where, key[0], key[1] or "", pkg_id))
+    return made.targets
+
+def plan_targets(where: str, plan: dict[str, typing.Any], local: dict[str, struct] = {}) -> list[struct]:
     """The targets of a plan, as data, in sections.
 
     Args:
       where: what the plan is, for messages
       plan: the plan, as decode_plan returns it
+      local: for each local package of the plan, by its id, struct(description,
+        root): what describe_package printed for it, with the flags of the
+        plan, and its directory relative to the BUCK file (None for the
+        directory of the BUCK file)
     Returns:
       a list of struct(comment, targets): the aliases of the plan's targets,
       then a section for each package with its sources and its units, then
@@ -139,6 +248,11 @@ def plan_targets(where: str, plan: dict[str, typing.Any]) -> list[struct]:
     )]
 
     for pkg_id, package in sorted(plan["packages"].items()):
+        if package["src"]["type"] == "local":
+            if pkg_id not in local:
+                fail("{}: {} is a local package of the plan (at {}) with no description".format(where, pkg_id, package["src"]["path"]))
+            sections.append(struct(comment = pkg_id + ", in " + package["src"]["path"], targets = _local_targets(where, pkg_id, local[pkg_id], plan, names)))
+            continue
         targets = [struct(rule = "repo_package", attrs = [("name", _src(pkg_id)), ("package", package)])]
         for key in sorted(units.keys(), key = lambda k: names[k]):
             if units[key]["type"] == "configured" and units[key]["package"] == pkg_id:
@@ -161,17 +275,18 @@ def plan_targets(where: str, plan: dict[str, typing.Any]) -> list[struct]:
             taken[name] = t.rule
     return sections
 
-def buck_file(plan: dict[str, typing.Any], command: str, where: str = "the plan") -> str:
+def buck_file(plan: dict[str, typing.Any], command: str, where: str = "the plan", local: dict[str, struct] = {}) -> str:
     """The text of a BUCK file with the targets of a plan.
 
     Args:
       plan: the plan, as decode_plan returns it
       command: how to make the file again, for its header
       where: what the plan is, for messages
+      local: see plan_targets
     Returns:
       the text, as buildifier formats it
     """
-    sections = plan_targets(where, plan)
+    sections = plan_targets(where, plan, local)
     rules = {t.rule: None for s in sections for t in s.targets if t.rule in _LOADS}
     loads = {}
     for rule in sorted(rules.keys()):

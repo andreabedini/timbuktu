@@ -1,0 +1,1 @@
+the plan and the .cabal file of x-1 disagree on what lib depends on: only in the plan: nothing; only in the .cabal file: containers

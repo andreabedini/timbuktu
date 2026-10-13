@@ -9,21 +9,36 @@ BUCK file with a target for each package and unit of the plan (see
 plan_targets.bzl). Copy it where it belongs. Its header says how to make it
 again.
 
+    buck2 bxl //rules/haskell/cabal_install/plan.bxl:generate -- --local-package examples/plan/local/dice --buck-dir examples/plan/local --index-state 2026-06-01T00:00:00Z
+
+plans for a package in the repository (a directory with a .cabal file, as
+in the `packages` of a cabal.project), and for what it needs from Hackage.
+A local package becomes cabal_simple targets, made from what
+describe_package prints for its .cabal file with the flags of the plan; its
+sources are a `glob` of its directory, so the BUCK file has to be copied to
+the directory `--buck-dir` names, which has to be the package's or one
+above it, with no BUCK file in between. That directory needs a BUCK file
+already (an empty one the first time), for buck2 to read the .cabal files.
+
     buck2 bxl //rules/haskell/cabal_install/plan.bxl:generate -- --plan-file path/to/plan.json
 
 writes out a plan made before instead, without the solver.
 
 Options:
   --target PKG          a package to plan for (more than one: repeat it)
+  --local-package DIR   a package in the repository, always planned for
+                        (more than one: repeat it)
+  --buck-dir DIR        where the BUCK file goes; needed with local packages
   --index-state TIME    leave out what was uploaded after, e.g.
                         2026-06-01T00:00:00Z
   --constraint C        as in cabal.project, e.g. 'aeson >= 2.2'
   --flag PKG:FLAGS      flags of a package, e.g. 'aeson:-ordered-keymap'
-  --plan-file PATH      a plan in the repository, rather than the options
-                        above
+  --plan-file PATH      a plan in the repository, rather than --target,
+                        --index-state, --constraint and --flag
 """
 
 load("//rules/haskell:toolchain.bzl", "GhcToolchainInfo")
+load("//rules/haskell/cabal:describe.bzl", "describe_package")
 load(":plan.bzl", "solve")
 load(":plan_format.bzl", "decode_plan")
 load(":plan_targets.bzl", "buck_file")
@@ -37,6 +52,10 @@ def _quote(arg: str) -> str:
 
 def _command(args: typing.Any) -> str:
     words = ["buck2", "bxl", "//rules/haskell/cabal_install/plan.bxl:generate", "--"]
+    for local in args.local_package:
+        words.extend(["--local-package", local])
+    if args.buck_dir:
+        words.extend(["--buck-dir", args.buck_dir])
     if args.plan_file:
         words.extend(["--plan-file", args.plan_file])
     else:
@@ -58,15 +77,50 @@ def _flags(items: list[str]) -> dict[str, str]:
         out[pkg] = (out[pkg] + " " + flags) if pkg in out else flags
     return out
 
-def _plan(ctx: bxl.Context, actions: AnalysisActions) -> (Artifact, str):
+def _local_packages(ctx: bxl.Context) -> list[struct]:
+    """The local packages: their directories, .cabal files, and where they
+    are from the BUCK file."""
+    args = ctx.cli_args
+    if not args.local_package:
+        return []
+    if args.buck_dir == None:
+        fail("--local-package needs --buck-dir, the directory the BUCK file goes to")
+    buck_dir = args.buck_dir.rstrip("/")
+
+    # NOTE: buck2 only makes an artifact of a file in a package: the
+    # .cabal files are inputs of the solver and of describe_package.
+    if not ctx.fs.exists(buck_dir + "/BUCK"):
+        fail("{} has no BUCK file yet: create an empty one, the generated file goes there".format(buck_dir))
+    out = []
+    for path in args.local_package:
+        path = path.rstrip("/")
+        if path != buck_dir and not path.startswith(buck_dir + "/"):
+            fail("{} is not in {}: a BUCK file there cannot glob its files".format(path, buck_dir))
+        root = path.removeprefix(buck_dir).removeprefix("/") or None
+        if root:
+            parts = root.split("/")
+            for n in range(1, len(parts) + 1):
+                d = buck_dir + "/" + "/".join(parts[:n])
+                if ctx.fs.exists(d + "/BUCK"):
+                    fail("{} has a BUCK file, which would keep the files below it from a glob in {}".format(d, buck_dir))
+        cabal_files = [
+            str(e).removeprefix("root//")
+            for e in ctx.fs.list(path)
+            if str(e).endswith(".cabal") and ctx.fs.is_file(str(e).removeprefix("root//"))
+        ]
+        if len(cabal_files) != 1:
+            fail("{} has {} .cabal files, not one".format(path, len(cabal_files)))
+        out.append(struct(path = path, root = root, cabal = ctx.fs.source(cabal_files[0])))
+    return out
+
+def _plan(ctx: bxl.Context, actions: AnalysisActions, ghc: GhcToolchainInfo, local_packages: list[struct]) -> (Artifact, str):
     args = ctx.cli_args
     if args.plan_file:
         if args.target or args.index_state or args.constraint or args.flag:
-            fail("--plan-file is a plan made already: it takes no other option")
+            fail("--plan-file is a plan made already: it takes no --target, --index-state, --constraint or --flag")
         return ctx.fs.source(args.plan_file), args.plan_file
-    if not args.target or not args.index_state:
-        fail("give the packages to plan for (--target) and an --index-state, or a --plan-file")
-    ghc = ctx.analysis(ctx.configured_targets("toolchains//:haskell")).providers()[GhcToolchainInfo]
+    if not args.index_state or not (args.target or local_packages):
+        fail("give the packages to plan for (--target, --local-package) and an --index-state, or a --plan-file")
     solver = ctx.analysis(ctx.configured_targets("toolchains//:cabal-solver-plan")).providers()[CabalSolverPlanInfo]
     plan = solve(actions, solver, ghc, struct(
         targets = args.target,
@@ -74,18 +128,64 @@ def _plan(ctx: bxl.Context, actions: AnalysisActions) -> (Artifact, str):
         constraints = args.constraint,
         flags = _flags(args.flag),
         args = [],
+        local_packages = local_packages,
     ))
-    return plan, "the plan for " + " ".join(args.target)
+    return plan, "the plan for " + " ".join(args.target + args.local_package)
 
 def _generate_impl(ctx: bxl.Context):
     actions = ctx.bxl_actions().actions
-    plan, where = _plan(ctx, actions)
+    ghc = ctx.analysis(ctx.configured_targets("toolchains//:haskell")).providers()[GhcToolchainInfo]
+    local_packages = _local_packages(ctx)
+    plan, where = _plan(ctx, actions, ghc, local_packages)
+    helper = ctx.analysis(ctx.configured_targets("root//rules/haskell/helpers:describe_package")).providers()[RunInfo] if local_packages else None
     command = _command(ctx.cli_args)
     out = actions.declare_output("BUCK")
 
     def write(ctx, artifacts, outputs):
         decoded = decode_plan(where, artifacts[plan].read_string())
-        ctx.bxl_actions().actions.write(outputs[out], buck_file(decoded, command, where))
+        actions = ctx.bxl_actions().actions
+
+        # Each local package of the plan, described with the flags the plan
+        # gives it: the solver may have chosen other values than the
+        # defaults.
+        by_path = {local.path: local for local in local_packages}
+        described = {}
+        for pkg_id, package in decoded["packages"].items():
+            if package["src"]["type"] != "local":
+                continue
+            local = by_path.get(package["src"]["path"].rstrip("/"))
+            if not local:
+                fail("{}: {} is a local package of the plan, at {}, which is not one given with --local-package".format(where, pkg_id, package["src"]["path"]))
+            flags = [u["flags"] for u in decoded["units"].values() if u.get("package") == pkg_id]
+            flags = flags[0] if flags else {}
+            described[pkg_id] = struct(
+                root = local.root,
+                json = describe_package(
+                    actions,
+                    helper,
+                    ghc,
+                    local.cabal,
+                    " ".join([("+" if v else "-") + f for f, v in flags.items()]),
+                    name = pkg_id + ".json",
+                ),
+            )
+
+        def write_buck(ctx, artifacts, outputs):
+            local = {
+                pkg_id: struct(description = artifacts[d.json].read_json(), root = d.root)
+                for pkg_id, d in described.items()
+            }
+            ctx.bxl_actions().actions.write(outputs[out], buck_file(decoded, command, where, local))
+
+        if not described:
+            actions.write(outputs[out], buck_file(decoded, command, where))
+            return
+        actions.dynamic_output(
+            dynamic = [d.json for d in described.values()],
+            inputs = [],
+            outputs = [outputs[out].as_output()],
+            f = write_buck,
+        )
 
     actions.dynamic_output(dynamic = [plan], inputs = [], outputs = [out.as_output()], f = write)
     ctx.output.print(ctx.output.ensure(out).abs_path())
@@ -93,9 +193,11 @@ def _generate_impl(ctx: bxl.Context):
 generate = bxl_main(
     impl = _generate_impl,
     cli_args = {
+        "buck-dir": cli_args.option(cli_args.string()),
         "constraint": cli_args.list(cli_args.string(), default = []),
         "flag": cli_args.list(cli_args.string(), default = []),
         "index-state": cli_args.option(cli_args.string()),
+        "local-package": cli_args.list(cli_args.string(), default = []),
         "plan-file": cli_args.option(cli_args.string()),
         "target": cli_args.list(cli_args.string(), default = []),
     },

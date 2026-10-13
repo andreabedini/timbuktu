@@ -33,6 +33,7 @@ Options:
 """
 
 load("//rules/haskell:toolchain.bzl", "GhcToolchainInfo")
+load(":describe.bzl", "describe_package")
 load(":fields.bzl", "attr_name")
 load(":generate.bzl", "RULE_FIELDS", "buck_file", "glob_srcs", "label_srcs", "package_targets")
 
@@ -70,21 +71,7 @@ def _describe(ctx: bxl.Context, actions: AnalysisActions) -> struct:
         loads.append('load("@root//rules/haskell:hackage.bzl", "hackage_package")')
         preamble.append("hackage_package(\n    name = {},\n    sha256 = {},\n)\n".format(repr(name), repr(sha256)))
 
-    description = actions.declare_output("description.json")
-    actions.run(
-        cmd_args(
-            "sh",
-            "-c",
-            'helper=$1; shift; out=$1; shift; version=$("$@" --numeric-version); exec $helper "$CABAL" --ghc-version "$version" --flags "$FLAGS" > "$out"',
-            "--",
-            cmd_args(helper, delimiter = " "),
-            description.as_output(),
-            ghc.ghc,
-        ),
-        env = {"CABAL": cabal, "FLAGS": args.flags},
-        category = "describe_package",
-        local_only = True,
-    )
+    description = describe_package(actions, helper, ghc, cabal, args.flags)
     compiler_packages = actions.declare_output("compiler-packages")
     actions.run(
         cmd_args("sh", "-c", 'out=$1; shift; "$@" list --global --simple-output --names-only > "$out"', "--", compiler_packages.as_output(), ghc.ghc_pkg),

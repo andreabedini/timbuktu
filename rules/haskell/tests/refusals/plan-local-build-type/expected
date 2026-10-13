@@ -1,0 +1,1 @@
+the local package x-1 has build-type Configure; only Simple ones are supported, as cabal_simple targets

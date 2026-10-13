@@ -1,0 +1,10 @@
+# buildifier: disable=module-docstring
+load("@prelude//rules.bzl", "sh_test")
+
+# The BUCK file above is made by plan.bxl, whole; what uses its targets is
+# here.
+sh_test(
+    name = "dice-test",
+    args = ["$(location //examples/plan/local:exe-dice)"],
+    test = "dice.sh",
+)
