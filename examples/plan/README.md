@@ -48,9 +48,10 @@ The rules are in [`rules/haskell/cabal_install`](../../rules/haskell/cabal_insta
 
 ## Making a plan
 
-cabal-solver-plan is not built here, and has to be one that prints format 2
-of its plans (a dependency graph whose units are numbered; what each unit is
-called, and its unit-id, is up to the rules). Install it, or tell buck2 where it is,
+cabal-solver-plan is not built here, and has to be one that prints format 3
+of its plans (a dependency graph whose units are keyed by ids that mean
+nothing else; what each unit is called, and its unit-id, is up to the
+rules). Install it, or tell buck2 where it is,
 and where the Hackage index is if it is not the one `cabal update`
 downloads, in `.buckconfig.local`:
 

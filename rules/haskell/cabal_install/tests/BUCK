@@ -1,9 +1,9 @@
 # What the plan generator (plan_targets.bzl) makes of plan.json, a plan in
-# format 2 written by hand with a unit of each kind: units of the compiler and
+# format 3 written by hand with a unit of each kind: units of the compiler and
 # of another package db, components of a Simple package with flags and a build
 # tool, two versions of one package (one for a Setup.hs), and whole packages
-# with and without setup-depends. When a change is
-# meant, update the expected file with what the target built:
+# with and without setup-depends. Its units are not in dependency order. When
+# a change is meant, update the expected file with what the target built:
 #
 #   cp $(buck2 build //rules/haskell/cabal_install/tests:plan --show-simple-output) rules/haskell/cabal_install/tests/expected/plan.generated
 

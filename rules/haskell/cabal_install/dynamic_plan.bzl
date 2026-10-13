@@ -26,7 +26,7 @@ load("//rules/haskell:unit.bzl", "resolve_unit")
 load("//rules/haskell:unit_id.bzl", "make_unit_id")
 load(":pkg_src.bzl", "fetch_package")
 load(":plan.bzl", "plan_attrs", "solve")
-load(":plan_format.bzl", "component", "decode_plan", "unit_names")
+load(":plan_format.bzl", "component", "decode_plan", "dependencies_first", "name_version", "unit_names")
 load(":setup.bzl", "SetupEnv", "SetupUnit", "build_component", "build_package", "compile_setup")
 load(":solver_toolchain.bzl", "CabalSolverPlanInfo")
 
@@ -38,10 +38,10 @@ def _build_plan_impl(
         arg: typing.Any) -> list[Provider]:
     plan = decode_plan(str(arg.label), plan.read_string())
 
-    # Units are scoped by their names; the plan's numbers are only keys here.
+    # Units are scoped by their names; the plan's ids are only keys here.
     names = unit_names(str(arg.label), plan)
 
-    packages = {package["id"]: package for package in plan["packages"]}
+    packages = plan["packages"]
     srcdirs = {}
     libraries = {}
     exes = {}
@@ -52,19 +52,19 @@ def _build_plan_impl(
             srcdirs[package_id] = fetch_package(actions, "src/" + package_id, packages[package_id]).srcdir
         return srcdirs[package_id]
 
-    # Dependencies come before what needs them.
-    for unit in plan["units"]:
-        key = unit["id"]
+    for key in dependencies_first(str(arg.label), plan):
+        unit = plan["units"][key]
         name = names[key]
+        pkg_name, pkg_version = name_version(plan, unit)
         if unit["type"] == "pre-existing":
             if unit.get("db", "global") != "global":
                 fail("{}: {} is in the package db {}; only the compiler's is supported".format(arg.label, name, unit["db"]))
             lib_name = component(unit["component"])[1]
             libraries[key] = CabalLibraryInfo(
-                name = unit["name"],
+                name = pkg_name,
                 lib_name = lib_name,
                 id = unit["unit-id"],
-                unit = resolve_unit(actions, arg.ghc, arg.label, None, unit["unit-id"], None if lib_name else unit["name"], unit["version"], scope = "unit/" + name).unit,
+                unit = resolve_unit(actions, arg.ghc, arg.label, None, unit["unit-id"], None if lib_name else pkg_name, pkg_version, scope = "unit/" + name).unit,
                 units = actions.tset(CabalUnitTSet, children = [libraries[d].units for d in unit["depends"]]),
             )
             continue
@@ -76,9 +76,9 @@ def _build_plan_impl(
         env = SetupEnv(actions = actions, ghc = arg.ghc, label = arg.label, scope = "unit/" + name)
         per_component = unit["build-style"] == "per-component"
         setup_unit = SetupUnit(
-            id = make_unit_id(arg.label, unit["name"], unit["version"], component(unit["component"])[1] if per_component else None, scope = name),
-            name = unit["name"],
-            version = unit["version"],
+            id = make_unit_id(arg.label, pkg_name, pkg_version, component(unit["component"])[1] if per_component else None, scope = name),
+            name = pkg_name,
+            version = pkg_version,
             flags = unit["flags"],
             component = unit["component"] if per_component else None,
         )

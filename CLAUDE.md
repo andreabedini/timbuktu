@@ -41,12 +41,15 @@ those levels, unfinished rather than abandoned. The plans are made by
 `../cabal-solver-plan`, cabal-install's solver on explicit inputs, which
 prints a JSON format of its own (its `docs/plan-format.md`); it replaced
 `cabal build --dry-run` on 2026-10-12. Since format 2 (2026-10-13) a plan
-is a dependency graph and nothing more: units are numbered by position,
-the numbers mean nothing outside the plan, a unit to build has no unit-id,
-and every unit lists its `qualified-names`. What a unit is called and its
-unit-id are ours to choose (Andrea's decision): a plan says what to build,
-not what to call it. Backpack instantiations, when they come, will be unit
-data referring to other units by number.
+is a dependency graph and nothing more: the ids of its units mean nothing
+outside the plan, a unit to build has no unit-id, and every unit lists its
+`qualified-names`. Since format 3 (2026-10-13) `packages` and `units` are
+objects keyed by package id and by unit id (strings), the order of `units`
+says nothing about dependencies, and a unit to build has no name or version
+of its own (its package's). What a unit is called and its unit-id are ours
+to choose (Andrea's decision): a plan says what to build, not what to call
+it. Backpack instantiations, when they come, will be unit data referring to
+other units by id.
 
 This is a research sandbox, not a product. History is mostly `wip` commits and
 the code is reworked wholesale. The repository was cleaned up on 2026-10-06:
@@ -118,6 +121,15 @@ passing; buck2 also reports the 5 `http_archive` targets as passed tests):
   `dynamic:network` builds (its units scoped by name, with made-up
   unit-ids), `refusals.sh` gets its 21 refusals and `generate.sh` its
   seven. Plain `buildifier` leaves the generated files as they are.
+- Plan format 3 (2026-10-13): units and packages keyed by id, no order
+  promised. The two plan examples made again with cabal-solver-plan
+  badc608e have the same targets as before (56, 29; compared block by
+  block, the files differ in the order of the targets, now by name, and in
+  the `"id"` the entries of `packages` no longer have). `buck2 targets
+  //...` parses, `buck2 test //rules/... //examples/...` runs 18 tests, all
+  passing, `buck2 build` of the same builds, shake, both socketpair
+  programs and `dynamic:shake[shake]` run, `dynamic:network` builds,
+  `refusals.sh` gets its 23 refusals and `generate.sh` its seven.
 - Dynamic plans (2026-10-12): `//examples/plan/dynamic:shake` and
   `:network` make the same two plans at build time and build all their
   units in one dynamic action each; `:shake[shake]` runs (`:shake-test`),
@@ -324,13 +336,9 @@ not in `PATH`: `haskell.cabal_solver_plan` in `.buckconfig.local` (or
 `--config`) says where it is, `haskell.hackage_index` where the
 `01-index.tar` is (default: the one `cabal update` downloads). Without them
 `buck2 build //...` fails on the `dynamic_plan` targets alone.
-timbuktu reads format 2, which needs cabal-solver-plan from fedb5b6
-(2026-10-13) on. The examples were made with its commit 0da08c5e (not
-pushed then), exported with `jj file show` into `$TMPDIR` and built with
-`cabal build -w ~/.ghcup/bin/ghc-9.12.2 --builddir=...`, and passed with
-`--config haskell.cabal_solver_plan=...`. The binary `.buckconfig.local`
-named on 2026-10-13 was built before local packages (3ea35f7) and prints
-format 1: build a newer one and point it there. cabal-solver-plan reads the index without writing anything
+timbuktu reads format 3, which needs cabal-solver-plan from badc608e
+(2026-10-13) on. The examples were made with that commit, the binary in
+its `dist-newstyle` that `.buckconfig.local` names. cabal-solver-plan reads the index without writing anything
 next to it. Building it while a buck2 daemon starts fails ("the version of
 ghc-pkg could not be determined"): a new daemon re-materialises the GHC
 archive in `buck-out` that the build uses.
@@ -428,13 +436,13 @@ archive in `buck-out` that the build uses.
     a build tool, and two targets of the same name.
     It took the place of `interpret_plan.bzl`, a macro that made the same
     targets from JSON pasted into the `BUCK` file.
-  - `tests/` — `plan.json`, a format-2 plan written by hand with a unit of
-    each kind and two versions of one package, and what `buck_file` makes
-    of it (`expected/`); the refusals of
+  - `tests/` — `plan.json`, a format-3 plan written by hand with a unit of
+    each kind and two versions of one package, its units out of dependency
+    order, and what `buck_file` makes of it (`expected/`); the refusals of
     `decode_plan` are cases of `refusals.sh` run through the same rule.
   - `plan.bzl` — the `plan` rule: runs cabal-solver-plan with the
     toolchain's GHC and its global package db, a Hackage index and an
-    `index_state` (plus `constraints`, `flags`). Its output, format 2, has
+    `index_state` (plus `constraints`, `flags`). Its output, format 3, has
     for each package the sdist's checksum and size and the revision,
     checksum and size of the `.cabal` file, all read off the index. It reads
     the index of the machine (`local_only`), so it is not hermetic;
@@ -457,8 +465,12 @@ archive in `buck-out` that the build uses.
   - `plan_format.bzl` — `decode_plan`, how `plan.bxl` and
     `dynamic_plan` read a plan: it refuses another format, any value of
     the closed sets of the format (unit type, build style, component kind,
-    build type, source type) it does not list, a unit whose `id` is not
-    its position, and an edge to a unit that does not come before. And
+    build type, source type) it does not list, a package whose key is not
+    `<name>-<version>`, a unit of a package the plan does not have, an
+    edge to a unit that is not in the plan, and a cycle. And
+    `dependencies_first`, the order to build units in, which the format
+    does not promise (`dynamic_plan` needs it), `name_version` (a
+    configured unit's are its package's), and
     `unit_names`, the one place that says what a unit is called:
     `<name>-<version>[-<kind>-<component>]` for a unit to build, its
     unit-id for one of a package db; a clash fails, naming the qualified

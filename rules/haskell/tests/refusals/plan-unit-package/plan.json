@@ -1,0 +1,1 @@
+{"format": 3, "targets": [], "packages": {"x-1": {"name": "x", "version": "1", "build-type": "Simple", "src": {"type": "repo-tar"}}}, "units": {"0": {"type": "configured", "package": "y-1", "qualified-names": ["x"], "build-style": "per-component", "flags": {}, "depends": [], "exe-depends": [], "setup-depends": [], "component": "lib"}}}

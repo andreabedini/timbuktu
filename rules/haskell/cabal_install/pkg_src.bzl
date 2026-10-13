@@ -17,21 +17,22 @@ def fetch_package(
       actions: where to declare the actions
       scope: a directory for the outputs and an identifier for the actions,
         when a target fetches more than one package
-      package: the entry, as in the `packages` of the plan
+      package: the entry, as in the `packages` of the plan (its key there,
+        the package id, is `<name>-<version>`)
     Returns:
       a struct with the source tree (`srcdir`) and the list of its files
       (`filelist`)
     """
+    pkg_id = "{}-{}".format(package["name"], package["version"])
     src = package["src"]
     if src["type"] != "repo-tar":
-        fail("{}: packages of type `{}` are not supported yet".format(package["id"], src["type"]))
+        fail("{}: packages of type `{}` are not supported yet".format(pkg_id, src["type"]))
     if not src["sha256"]:
-        fail("{}: the index has no checksum for the sdist, and buck2 does not download a file without one".format(package["id"]))
+        fail("{}: the index has no checksum for the sdist, and buck2 does not download a file without one".format(pkg_id))
 
     def declare(name, **kwargs):
         return actions.declare_output(scope, name, **kwargs) if scope else actions.declare_output(name, **kwargs)
 
-    pkg_id = package["id"]
     filename = "{}.tar.gz".format(pkg_id)
 
     # NOTE: the repository's URI ends in a slash.

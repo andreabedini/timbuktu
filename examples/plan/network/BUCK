@@ -28,7 +28,6 @@ repo_package(
             "sha256": "39b25fd929b02b01a3fe59fec7ca8b2da6f0f9e282276b7a84e63a4702c4d725",
             "size": 3131,
         },
-        "id": "hsc2hs-0.68.10",
         "name": "hsc2hs",
         "src": {
             "repo": "https://hackage.haskell.org/",
@@ -70,7 +69,6 @@ repo_package(
             "sha256": "c6f02f2626d1d83b3e3521fc2a9832c366e31dd391cb8478bd2d83528459e786",
             "size": 5305,
         },
-        "id": "network-3.2.8.0",
         "name": "network",
         "src": {
             "repo": "https://hackage.haskell.org/",
@@ -116,41 +114,11 @@ build_legacy(
 # What is already built: units of the compiler or of another package db
 
 haskell_unit(
-    name = "rts-1.0.2",
-    id = "rts-1.0.2",
-    package_name = "rts",
-    version = "1.0.2",
-    visibility = ["PUBLIC"],
-)
-
-haskell_unit(
-    name = "ghc-prim-0.13.0-00de",
-    id = "ghc-prim-0.13.0-00de",
-    package_name = "ghc-prim",
-    version = "0.13.0",
-    deps = [":rts-1.0.2"],
-    visibility = ["PUBLIC"],
-)
-
-haskell_unit(
-    name = "ghc-bignum-1.3-4dbb",
-    id = "ghc-bignum-1.3-4dbb",
-    package_name = "ghc-bignum",
-    version = "1.3",
-    deps = [":ghc-prim-0.13.0-00de"],
-    visibility = ["PUBLIC"],
-)
-
-haskell_unit(
-    name = "ghc-internal-9.1202.0-7700",
-    id = "ghc-internal-9.1202.0-7700",
-    package_name = "ghc-internal",
-    version = "9.1202.0",
-    deps = [
-        ":ghc-bignum-1.3-4dbb",
-        ":ghc-prim-0.13.0-00de",
-        ":rts-1.0.2",
-    ],
+    name = "array-0.5.8.0-8724",
+    id = "array-0.5.8.0-8724",
+    package_name = "array",
+    version = "0.5.8.0",
+    deps = [":base-4.21.0.0-b7a5"],
     visibility = ["PUBLIC"],
 )
 
@@ -162,57 +130,6 @@ haskell_unit(
     deps = [
         ":ghc-internal-9.1202.0-7700",
         ":ghc-prim-0.13.0-00de",
-    ],
-    visibility = ["PUBLIC"],
-)
-
-haskell_unit(
-    name = "deepseq-1.5.1.0-58c3",
-    id = "deepseq-1.5.1.0-58c3",
-    package_name = "deepseq",
-    version = "1.5.1.0",
-    deps = [
-        ":base-4.21.0.0-b7a5",
-        ":ghc-prim-0.13.0-00de",
-    ],
-    visibility = ["PUBLIC"],
-)
-
-haskell_unit(
-    name = "pretty-1.1.3.6-66c0",
-    id = "pretty-1.1.3.6-66c0",
-    package_name = "pretty",
-    version = "1.1.3.6",
-    deps = [
-        ":base-4.21.0.0-b7a5",
-        ":deepseq-1.5.1.0-58c3",
-        ":ghc-prim-0.13.0-00de",
-    ],
-    visibility = ["PUBLIC"],
-)
-
-haskell_unit(
-    name = "ghc-boot-th-9.12.2-612d",
-    id = "ghc-boot-th-9.12.2-612d",
-    package_name = "ghc-boot-th",
-    version = "9.12.2",
-    deps = [
-        ":base-4.21.0.0-b7a5",
-        ":ghc-internal-9.1202.0-7700",
-        ":ghc-prim-0.13.0-00de",
-        ":pretty-1.1.3.6-66c0",
-    ],
-    visibility = ["PUBLIC"],
-)
-
-haskell_unit(
-    name = "template-haskell-2.23.0.0-1f7b",
-    id = "template-haskell-2.23.0.0-1f7b",
-    package_name = "template-haskell",
-    version = "2.23.0.0",
-    deps = [
-        ":base-4.21.0.0-b7a5",
-        ":ghc-boot-th-9.12.2-612d",
     ],
     visibility = ["PUBLIC"],
 )
@@ -232,100 +149,13 @@ haskell_unit(
 )
 
 haskell_unit(
-    name = "transformers-0.6.1.2-c7d6",
-    id = "transformers-0.6.1.2-c7d6",
-    package_name = "transformers",
-    version = "0.6.1.2",
-    deps = [":base-4.21.0.0-b7a5"],
-    visibility = ["PUBLIC"],
-)
-
-haskell_unit(
-    name = "mtl-2.3.1-6d75",
-    id = "mtl-2.3.1-6d75",
-    package_name = "mtl",
-    version = "2.3.1",
-    deps = [
-        ":base-4.21.0.0-b7a5",
-        ":transformers-0.6.1.2-c7d6",
-    ],
-    visibility = ["PUBLIC"],
-)
-
-haskell_unit(
-    name = "array-0.5.8.0-8724",
-    id = "array-0.5.8.0-8724",
-    package_name = "array",
-    version = "0.5.8.0",
-    deps = [":base-4.21.0.0-b7a5"],
-    visibility = ["PUBLIC"],
-)
-
-haskell_unit(
-    name = "stm-2.5.3.1-6dd9",
-    id = "stm-2.5.3.1-6dd9",
-    package_name = "stm",
-    version = "2.5.3.1",
+    name = "containers-0.7-e3bc",
+    id = "containers-0.7-e3bc",
+    package_name = "containers",
+    version = "0.7",
     deps = [
         ":array-0.5.8.0-8724",
         ":base-4.21.0.0-b7a5",
-    ],
-    visibility = ["PUBLIC"],
-)
-
-haskell_unit(
-    name = "exceptions-0.10.9-fdde",
-    id = "exceptions-0.10.9-fdde",
-    package_name = "exceptions",
-    version = "0.10.9",
-    deps = [
-        ":base-4.21.0.0-b7a5",
-        ":mtl-2.3.1-6d75",
-        ":stm-2.5.3.1-6dd9",
-        ":template-haskell-2.23.0.0-1f7b",
-        ":transformers-0.6.1.2-c7d6",
-    ],
-    visibility = ["PUBLIC"],
-)
-
-haskell_unit(
-    name = "os-string-2.0.7-3307",
-    id = "os-string-2.0.7-3307",
-    package_name = "os-string",
-    version = "2.0.7",
-    deps = [
-        ":base-4.21.0.0-b7a5",
-        ":bytestring-0.12.2.0-d099",
-        ":deepseq-1.5.1.0-58c3",
-        ":exceptions-0.10.9-fdde",
-        ":template-haskell-2.23.0.0-1f7b",
-    ],
-    visibility = ["PUBLIC"],
-)
-
-haskell_unit(
-    name = "filepath-1.5.4.0-c656",
-    id = "filepath-1.5.4.0-c656",
-    package_name = "filepath",
-    version = "1.5.4.0",
-    deps = [
-        ":base-4.21.0.0-b7a5",
-        ":bytestring-0.12.2.0-d099",
-        ":deepseq-1.5.1.0-58c3",
-        ":exceptions-0.10.9-fdde",
-        ":os-string-2.0.7-3307",
-        ":template-haskell-2.23.0.0-1f7b",
-    ],
-    visibility = ["PUBLIC"],
-)
-
-haskell_unit(
-    name = "time-1.14-3339",
-    id = "time-1.14-3339",
-    package_name = "time",
-    version = "1.14",
-    deps = [
-        ":base-4.21.0.0-b7a5",
         ":deepseq-1.5.1.0-58c3",
         ":template-haskell-2.23.0.0-1f7b",
     ],
@@ -333,32 +163,13 @@ haskell_unit(
 )
 
 haskell_unit(
-    name = "unix-2.8.6.0-2805",
-    id = "unix-2.8.6.0-2805",
-    package_name = "unix",
-    version = "2.8.6.0",
+    name = "deepseq-1.5.1.0-58c3",
+    id = "deepseq-1.5.1.0-58c3",
+    package_name = "deepseq",
+    version = "1.5.1.0",
     deps = [
         ":base-4.21.0.0-b7a5",
-        ":bytestring-0.12.2.0-d099",
-        ":filepath-1.5.4.0-c656",
-        ":os-string-2.0.7-3307",
-        ":time-1.14-3339",
-    ],
-    visibility = ["PUBLIC"],
-)
-
-haskell_unit(
-    name = "file-io-0.1.5-5775",
-    id = "file-io-0.1.5-5775",
-    package_name = "file-io",
-    version = "0.1.5",
-    deps = [
-        ":base-4.21.0.0-b7a5",
-        ":bytestring-0.12.2.0-d099",
-        ":deepseq-1.5.1.0-58c3",
-        ":filepath-1.5.4.0-c656",
-        ":os-string-2.0.7-3307",
-        ":unix-2.8.6.0-2805",
+        ":ghc-prim-0.13.0-00de",
     ],
     visibility = ["PUBLIC"],
 )
@@ -380,15 +191,133 @@ haskell_unit(
 )
 
 haskell_unit(
-    name = "containers-0.7-e3bc",
-    id = "containers-0.7-e3bc",
-    package_name = "containers",
-    version = "0.7",
+    name = "exceptions-0.10.9-fdde",
+    id = "exceptions-0.10.9-fdde",
+    package_name = "exceptions",
+    version = "0.10.9",
     deps = [
-        ":array-0.5.8.0-8724",
+        ":base-4.21.0.0-b7a5",
+        ":mtl-2.3.1-6d75",
+        ":stm-2.5.3.1-6dd9",
+        ":template-haskell-2.23.0.0-1f7b",
+        ":transformers-0.6.1.2-c7d6",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+haskell_unit(
+    name = "file-io-0.1.5-5775",
+    id = "file-io-0.1.5-5775",
+    package_name = "file-io",
+    version = "0.1.5",
+    deps = [
+        ":base-4.21.0.0-b7a5",
+        ":bytestring-0.12.2.0-d099",
+        ":deepseq-1.5.1.0-58c3",
+        ":filepath-1.5.4.0-c656",
+        ":os-string-2.0.7-3307",
+        ":unix-2.8.6.0-2805",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+haskell_unit(
+    name = "filepath-1.5.4.0-c656",
+    id = "filepath-1.5.4.0-c656",
+    package_name = "filepath",
+    version = "1.5.4.0",
+    deps = [
+        ":base-4.21.0.0-b7a5",
+        ":bytestring-0.12.2.0-d099",
+        ":deepseq-1.5.1.0-58c3",
+        ":exceptions-0.10.9-fdde",
+        ":os-string-2.0.7-3307",
+        ":template-haskell-2.23.0.0-1f7b",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+haskell_unit(
+    name = "ghc-bignum-1.3-4dbb",
+    id = "ghc-bignum-1.3-4dbb",
+    package_name = "ghc-bignum",
+    version = "1.3",
+    deps = [":ghc-prim-0.13.0-00de"],
+    visibility = ["PUBLIC"],
+)
+
+haskell_unit(
+    name = "ghc-boot-th-9.12.2-612d",
+    id = "ghc-boot-th-9.12.2-612d",
+    package_name = "ghc-boot-th",
+    version = "9.12.2",
+    deps = [
+        ":base-4.21.0.0-b7a5",
+        ":ghc-internal-9.1202.0-7700",
+        ":ghc-prim-0.13.0-00de",
+        ":pretty-1.1.3.6-66c0",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+haskell_unit(
+    name = "ghc-internal-9.1202.0-7700",
+    id = "ghc-internal-9.1202.0-7700",
+    package_name = "ghc-internal",
+    version = "9.1202.0",
+    deps = [
+        ":ghc-bignum-1.3-4dbb",
+        ":ghc-prim-0.13.0-00de",
+        ":rts-1.0.2",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+haskell_unit(
+    name = "ghc-prim-0.13.0-00de",
+    id = "ghc-prim-0.13.0-00de",
+    package_name = "ghc-prim",
+    version = "0.13.0",
+    deps = [":rts-1.0.2"],
+    visibility = ["PUBLIC"],
+)
+
+haskell_unit(
+    name = "mtl-2.3.1-6d75",
+    id = "mtl-2.3.1-6d75",
+    package_name = "mtl",
+    version = "2.3.1",
+    deps = [
+        ":base-4.21.0.0-b7a5",
+        ":transformers-0.6.1.2-c7d6",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+haskell_unit(
+    name = "os-string-2.0.7-3307",
+    id = "os-string-2.0.7-3307",
+    package_name = "os-string",
+    version = "2.0.7",
+    deps = [
+        ":base-4.21.0.0-b7a5",
+        ":bytestring-0.12.2.0-d099",
+        ":deepseq-1.5.1.0-58c3",
+        ":exceptions-0.10.9-fdde",
+        ":template-haskell-2.23.0.0-1f7b",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+haskell_unit(
+    name = "pretty-1.1.3.6-66c0",
+    id = "pretty-1.1.3.6-66c0",
+    package_name = "pretty",
+    version = "1.1.3.6",
+    deps = [
         ":base-4.21.0.0-b7a5",
         ":deepseq-1.5.1.0-58c3",
-        ":template-haskell-2.23.0.0-1f7b",
+        ":ghc-prim-0.13.0-00de",
     ],
     visibility = ["PUBLIC"],
 )
@@ -404,6 +333,75 @@ haskell_unit(
         ":directory-1.3.9.0-ca9f",
         ":filepath-1.5.4.0-c656",
         ":unix-2.8.6.0-2805",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+haskell_unit(
+    name = "rts-1.0.2",
+    id = "rts-1.0.2",
+    package_name = "rts",
+    version = "1.0.2",
+    visibility = ["PUBLIC"],
+)
+
+haskell_unit(
+    name = "stm-2.5.3.1-6dd9",
+    id = "stm-2.5.3.1-6dd9",
+    package_name = "stm",
+    version = "2.5.3.1",
+    deps = [
+        ":array-0.5.8.0-8724",
+        ":base-4.21.0.0-b7a5",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+haskell_unit(
+    name = "template-haskell-2.23.0.0-1f7b",
+    id = "template-haskell-2.23.0.0-1f7b",
+    package_name = "template-haskell",
+    version = "2.23.0.0",
+    deps = [
+        ":base-4.21.0.0-b7a5",
+        ":ghc-boot-th-9.12.2-612d",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+haskell_unit(
+    name = "time-1.14-3339",
+    id = "time-1.14-3339",
+    package_name = "time",
+    version = "1.14",
+    deps = [
+        ":base-4.21.0.0-b7a5",
+        ":deepseq-1.5.1.0-58c3",
+        ":template-haskell-2.23.0.0-1f7b",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+haskell_unit(
+    name = "transformers-0.6.1.2-c7d6",
+    id = "transformers-0.6.1.2-c7d6",
+    package_name = "transformers",
+    version = "0.6.1.2",
+    deps = [":base-4.21.0.0-b7a5"],
+    visibility = ["PUBLIC"],
+)
+
+haskell_unit(
+    name = "unix-2.8.6.0-2805",
+    id = "unix-2.8.6.0-2805",
+    package_name = "unix",
+    version = "2.8.6.0",
+    deps = [
+        ":base-4.21.0.0-b7a5",
+        ":bytestring-0.12.2.0-d099",
+        ":filepath-1.5.4.0-c656",
+        ":os-string-2.0.7-3307",
+        ":time-1.14-3339",
     ],
     visibility = ["PUBLIC"],
 )

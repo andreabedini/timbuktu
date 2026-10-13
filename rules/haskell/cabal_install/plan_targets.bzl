@@ -1,7 +1,7 @@
 """
 A build plan as targets, and as the text of a BUCK file.
 
-The plan is the JSON that cabal-solver-plan prints (format 2, see the
+The plan is the JSON that cabal-solver-plan prints (format 3, see the
 docs/plan-format.md of cabal-solver-plan), decoded by `decode_plan`.
 `plan_targets` makes, for each entry:
 
@@ -16,8 +16,10 @@ docs/plan-format.md of cabal-solver-plan), decoded by `decode_plan`.
   prelude.
 
 Units are named by `unit_names` (plan_format.bzl), and their unit-ids are
-made up by the rules (unit_id.bzl): the numbers the plan gives its units
-only say where the edges go.
+made up by the rules (unit_id.bzl): the ids the plan gives its units only
+say where the edges go. The targets are in the order of their names, the
+packages in the order of their ids, so the file does not depend on the ids
+either.
 
 The units the plan was made for (its `targets`) get an alias too: the name
 of the package for the main library, `<kind>-<name>` for another component
@@ -30,7 +32,7 @@ the compiler the plan was made with (`compiler-id`).
 """
 
 load("//rules/haskell:buck_text.bzl", "call", "load_order")
-load(":plan_format.bzl", "component", "unit_names")
+load(":plan_format.bzl", "component", "name_version", "unit_names")
 
 # Where each rule the targets use is loaded from; `alias` is built in.
 _LOADS = {
@@ -44,27 +46,29 @@ _LOADS = {
 def _src(package_id: str) -> str:
     return package_id + "-src"
 
-def _alias_name(unit: dict[str, typing.Any]) -> str:
+def _alias_name(plan: dict[str, typing.Any], unit: dict[str, typing.Any]) -> str:
     kind, cname = component(unit["component"]) if "component" in unit else ("lib", None)
     if kind == "lib" and not cname:
-        return unit["name"]
+        return name_version(plan, unit)[0]
     return "{}-{}".format(kind, cname)
 
-def _unit_targets(where: str, unit: dict[str, typing.Any], plan: dict[str, typing.Any], names: list[str]) -> list[struct]:
+def _unit_targets(where: str, key: str, plan: dict[str, typing.Any], names: dict[str, str]) -> list[struct]:
     """The targets of a configured unit."""
     units = plan["units"]
+    unit = units[key]
 
     def target(i):
         return ":" + names[i]
 
     for exe in unit["exe-depends"]:
         if units[exe]["build-style"] != "per-component":
-            fail("{}: {} needs an executable of {}, which is built as a whole package; only its library is available".format(where, names[unit["id"]], names[exe]))
+            fail("{}: {} needs an executable of {}, which is built as a whole package; only its library is available".format(where, names[key], names[exe]))
 
-    name = names[unit["id"]]
+    name = names[key]
+    package = plan["packages"][unit["package"]]
     common = [
-        ("pkg_name", unit["name"]),
-        ("pkg_version", unit["version"]),
+        ("pkg_name", package["name"]),
+        ("pkg_version", package["version"]),
     ]
     rest = [
         ("src", ":" + _src(unit["package"])),
@@ -91,10 +95,10 @@ def _unit_targets(where: str, unit: dict[str, typing.Any], plan: dict[str, typin
         struct(rule = "build_legacy", attrs = [("name", name)] + common + [("setup", ":" + setup)] + rest),
     ]
 
-def _pre_existing(unit: dict[str, typing.Any], names: list[str]) -> struct:
+def _pre_existing(key: str, unit: dict[str, typing.Any], names: dict[str, str]) -> struct:
     db = unit.get("db", "global")
     return struct(rule = "haskell_unit", attrs = [
-        ("name", names[unit["id"]]),
+        ("name", names[key]),
         ("id", unit["unit-id"]),
         ("package_name", unit["name"]),
         ("version", unit["version"]),
@@ -120,8 +124,8 @@ def plan_targets(where: str, plan: dict[str, typing.Any]) -> list[struct]:
     names = unit_names(where, plan)
 
     aliases = {}
-    for i in plan["targets"]:
-        alias_name = _alias_name(units[i])
+    for i in sorted(plan["targets"], key = lambda i: names[i]):
+        alias_name = _alias_name(plan, units[i])
         if alias_name in aliases:
             fail("{}: the targets {} and {} would both be called `{}`".format(where, names[aliases[alias_name]], names[i], alias_name))
         aliases[alias_name] = i
@@ -130,20 +134,20 @@ def plan_targets(where: str, plan: dict[str, typing.Any]) -> list[struct]:
         comment = "What the plan was made for",
         targets = [
             struct(rule = "alias", attrs = [("name", alias_name), ("actual", ":" + names[i]), ("visibility", ["PUBLIC"])])
-            for alias_name, i in aliases.items()
+            for alias_name, i in sorted(aliases.items())
         ],
     )]
 
-    for package in plan["packages"]:
-        targets = [struct(rule = "repo_package", attrs = [("name", _src(package["id"])), ("package", package)])]
-        for unit in units:
-            if unit["type"] == "configured" and unit["package"] == package["id"]:
-                targets.extend(_unit_targets(where, unit, plan, names))
-        sections.append(struct(comment = package["id"], targets = targets))
+    for pkg_id, package in sorted(plan["packages"].items()):
+        targets = [struct(rule = "repo_package", attrs = [("name", _src(pkg_id)), ("package", package)])]
+        for key in sorted(units.keys(), key = lambda k: names[k]):
+            if units[key]["type"] == "configured" and units[key]["package"] == pkg_id:
+                targets.extend(_unit_targets(where, key, plan, names))
+        sections.append(struct(comment = pkg_id, targets = targets))
 
     sections.append(struct(
         comment = "What is already built: units of the compiler or of another package db",
-        targets = [_pre_existing(unit, names) for unit in units if unit["type"] == "pre-existing"],
+        targets = [_pre_existing(key, units[key], names) for key in sorted(units.keys(), key = lambda k: names[k]) if units[key]["type"] == "pre-existing"],
     ))
 
     # Every name is taken once; unit_names has checked the units' names

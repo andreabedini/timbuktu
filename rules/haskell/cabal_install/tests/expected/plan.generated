@@ -18,48 +18,14 @@ alias(
 )
 
 alias(
-    name = "exe-app",
-    actual = ":app-1.0-exe-app",
-    visibility = ["PUBLIC"],
-)
-
-alias(
     name = "conf",
     actual = ":conf-2.0",
     visibility = ["PUBLIC"],
 )
 
-# tool-0.1
-
-repo_package(
-    name = "tool-0.1-src",
-    package = {
-        "build-type": "Simple",
-        "cabal-file": {
-            "revision": 2,
-            "sha256": "2222222222222222222222222222222222222222222222222222222222222222",
-            "size": 10,
-        },
-        "id": "tool-0.1",
-        "name": "tool",
-        "src": {
-            "repo": "https://hackage.haskell.org/",
-            "sha256": "1111111111111111111111111111111111111111111111111111111111111111",
-            "size": 100,
-            "type": "repo-tar",
-        },
-        "version": "0.1",
-    },
-)
-
-build(
-    name = "tool-0.1-exe-tool",
-    pkg_name = "tool",
-    pkg_version = "0.1",
-    component_name = "exe:tool",
-    src = ":tool-0.1-src",
-    flags = {},
-    deps = [":base-4.21.0.0-b7a5"],
+alias(
+    name = "exe-app",
+    actual = ":app-1.0-exe-app",
     visibility = ["PUBLIC"],
 )
 
@@ -74,7 +40,6 @@ repo_package(
             "sha256": "4444444444444444444444444444444444444444444444444444444444444444",
             "size": 10,
         },
-        "id": "app-1.0",
         "name": "app",
         "src": {
             "repo": "https://hackage.haskell.org/",
@@ -121,71 +86,53 @@ build(
     visibility = ["PUBLIC"],
 )
 
-# dep-1.0
+# conf-2.0
 
 repo_package(
-    name = "dep-1.0-src",
+    name = "conf-2.0-src",
     package = {
-        "build-type": "Simple",
+        "build-type": "Configure",
         "cabal-file": {
             "revision": 0,
-            "sha256": "6666666666666666666666666666666666666666666666666666666666666666",
+            "sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
             "size": 10,
         },
-        "id": "dep-1.0",
-        "name": "dep",
+        "name": "conf",
         "src": {
             "repo": "https://hackage.haskell.org/",
-            "sha256": "5555555555555555555555555555555555555555555555555555555555555555",
+            "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
             "size": 100,
             "type": "repo-tar",
         },
-        "version": "1.0",
+        "version": "2.0",
     },
 )
 
-build(
-    name = "dep-1.0",
-    pkg_name = "dep",
-    pkg_version = "1.0",
-    component_name = "lib",
-    src = ":dep-1.0-src",
-    flags = {},
-    deps = [":base-4.21.0.0-b7a5"],
-    visibility = ["PUBLIC"],
-)
-
-# dep-0.9
-
-repo_package(
-    name = "dep-0.9-src",
-    package = {
-        "build-type": "Simple",
-        "cabal-file": {
-            "revision": 1,
-            "sha256": "8888888888888888888888888888888888888888888888888888888888888888",
-            "size": 10,
-        },
-        "id": "dep-0.9",
-        "name": "dep",
-        "src": {
-            "repo": "https://hackage.haskell.org/",
-            "sha256": "7777777777777777777777777777777777777777777777777777777777777777",
-            "size": 100,
-            "type": "repo-tar",
-        },
-        "version": "0.9",
+haskell_binary(
+    name = "conf-2.0-setup",
+    srcs = {
+        "Main.hs": ":conf-2.0-src[Setup.hs]",
     },
+    toolchain_libs = [
+        "base",
+        "Cabal",
+    ],
 )
 
-build(
-    name = "dep-0.9",
-    pkg_name = "dep",
-    pkg_version = "0.9",
-    component_name = "lib",
-    src = ":dep-0.9-src",
-    flags = {},
-    deps = [":base-4.21.0.0-b7a5"],
+build_legacy(
+    name = "conf-2.0",
+    pkg_name = "conf",
+    pkg_version = "2.0",
+    setup = ":conf-2.0-setup",
+    src = ":conf-2.0-src",
+    flags = {
+        "devel": False,
+    },
+    deps = [
+        ":base-4.21.0.0-b7a5",
+        ":custom-3.0",
+    ],
+    exec_deps = [":tool-0.1-exe-tool"],
     visibility = ["PUBLIC"],
 )
 
@@ -200,7 +147,6 @@ repo_package(
             "sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
             "size": 10,
         },
-        "id": "custom-3.0",
         "name": "custom",
         "src": {
             "repo": "https://hackage.haskell.org/",
@@ -241,64 +187,113 @@ build_legacy(
     visibility = ["PUBLIC"],
 )
 
-# conf-2.0
+# dep-0.9
 
 repo_package(
-    name = "conf-2.0-src",
+    name = "dep-0.9-src",
     package = {
-        "build-type": "Configure",
+        "build-type": "Simple",
         "cabal-file": {
-            "revision": 0,
-            "sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+            "revision": 1,
+            "sha256": "8888888888888888888888888888888888888888888888888888888888888888",
             "size": 10,
         },
-        "id": "conf-2.0",
-        "name": "conf",
+        "name": "dep",
         "src": {
             "repo": "https://hackage.haskell.org/",
-            "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "sha256": "7777777777777777777777777777777777777777777777777777777777777777",
             "size": 100,
             "type": "repo-tar",
         },
-        "version": "2.0",
+        "version": "0.9",
     },
 )
 
-haskell_binary(
-    name = "conf-2.0-setup",
-    srcs = {
-        "Main.hs": ":conf-2.0-src[Setup.hs]",
-    },
-    toolchain_libs = [
-        "base",
-        "Cabal",
-    ],
+build(
+    name = "dep-0.9",
+    pkg_name = "dep",
+    pkg_version = "0.9",
+    component_name = "lib",
+    src = ":dep-0.9-src",
+    flags = {},
+    deps = [":base-4.21.0.0-b7a5"],
+    visibility = ["PUBLIC"],
 )
 
-build_legacy(
-    name = "conf-2.0",
-    pkg_name = "conf",
-    pkg_version = "2.0",
-    setup = ":conf-2.0-setup",
-    src = ":conf-2.0-src",
-    flags = {
-        "devel": False,
+# dep-1.0
+
+repo_package(
+    name = "dep-1.0-src",
+    package = {
+        "build-type": "Simple",
+        "cabal-file": {
+            "revision": 0,
+            "sha256": "6666666666666666666666666666666666666666666666666666666666666666",
+            "size": 10,
+        },
+        "name": "dep",
+        "src": {
+            "repo": "https://hackage.haskell.org/",
+            "sha256": "5555555555555555555555555555555555555555555555555555555555555555",
+            "size": 100,
+            "type": "repo-tar",
+        },
+        "version": "1.0",
     },
-    deps = [
-        ":base-4.21.0.0-b7a5",
-        ":custom-3.0",
-    ],
-    exec_deps = [":tool-0.1-exe-tool"],
+)
+
+build(
+    name = "dep-1.0",
+    pkg_name = "dep",
+    pkg_version = "1.0",
+    component_name = "lib",
+    src = ":dep-1.0-src",
+    flags = {},
+    deps = [":base-4.21.0.0-b7a5"],
+    visibility = ["PUBLIC"],
+)
+
+# tool-0.1
+
+repo_package(
+    name = "tool-0.1-src",
+    package = {
+        "build-type": "Simple",
+        "cabal-file": {
+            "revision": 2,
+            "sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+            "size": 10,
+        },
+        "name": "tool",
+        "src": {
+            "repo": "https://hackage.haskell.org/",
+            "sha256": "1111111111111111111111111111111111111111111111111111111111111111",
+            "size": 100,
+            "type": "repo-tar",
+        },
+        "version": "0.1",
+    },
+)
+
+build(
+    name = "tool-0.1-exe-tool",
+    pkg_name = "tool",
+    pkg_version = "0.1",
+    component_name = "exe:tool",
+    src = ":tool-0.1-src",
+    flags = {},
+    deps = [":base-4.21.0.0-b7a5"],
     visibility = ["PUBLIC"],
 )
 
 # What is already built: units of the compiler or of another package db
 
 haskell_unit(
-    name = "rts-1.0.2",
-    id = "rts-1.0.2",
-    package_name = "rts",
-    version = "1.0.2",
+    name = "Cabal-3.14.1.0-8f2a",
+    id = "Cabal-3.14.1.0-8f2a",
+    package_name = "Cabal",
+    version = "3.14.1.0",
+    deps = [":base-4.21.0.0-b7a5"],
     visibility = ["PUBLIC"],
 )
 
@@ -312,15 +307,6 @@ haskell_unit(
 )
 
 haskell_unit(
-    name = "Cabal-3.14.1.0-8f2a",
-    id = "Cabal-3.14.1.0-8f2a",
-    package_name = "Cabal",
-    version = "3.14.1.0",
-    deps = [":base-4.21.0.0-b7a5"],
-    visibility = ["PUBLIC"],
-)
-
-haskell_unit(
     name = "other-1.0-in-db",
     id = "other-1.0-in-db",
     package_name = "other",
@@ -328,5 +314,13 @@ haskell_unit(
     lib_name = "internal",
     db = "dbs/other",
     deps = [":base-4.21.0.0-b7a5"],
+    visibility = ["PUBLIC"],
+)
+
+haskell_unit(
+    name = "rts-1.0.2",
+    id = "rts-1.0.2",
+    package_name = "rts",
+    version = "1.0.2",
     visibility = ["PUBLIC"],
 )
