@@ -720,7 +720,12 @@ What is left:
 ### Running buck2 from Claude's sandbox
 
 - buck2 needs `~/.buck` writable; otherwise it fails with "Error creating
-  daemon dir".
+  daemon dir". When the sandbox does not allow it (2026-10-13), run buck2
+  with `HOME` set to a directory under `$TMPDIR`, by the path of the real
+  binary (`~/.local/share/mise/installs/buck2/latest/.mise-bins` first in
+  `PATH`: with another `HOME` the mise shim tries to install buck2), and
+  with `XDG_CACHE_HOME=~/.cache` so that the `plan` rule still finds the
+  Hackage index.
 - A sandboxed run leaves `buckd.pid` and `buckd.info` behind in
   `~/.buck/buckd/<absolute project path>/v2/`, naming a daemon that died with
   its sandbox. The next run tries to kill that pid, and inside a new sandbox
