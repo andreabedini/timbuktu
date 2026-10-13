@@ -18,9 +18,10 @@ def _build_impl(ctx: AnalysisContext) -> list[Provider]:
     # WARN: What a library unit hands to the prelude's Haskell rules is in
     # mkProviders. It is not all they expect: the libraries of the units that
     # come from the global package db are missing.
+    unit = setup_unit(ctx, ctx.attrs.component_name)
     built = build_component(
         setup_env(ctx),
-        setup_unit(ctx, ctx.attrs.component_name),
+        unit,
         ctx.attrs.src[CabalPackageInfo].srcdir,
         ctx.attrs.setup[RunInfo],
         [dep[CabalLibraryInfo] for dep in ctx.attrs.deps],
@@ -35,7 +36,7 @@ def _build_impl(ctx: AnalysisContext) -> list[Provider]:
 
     if built.library:
         providers.append(built.library)
-        providers.extend(mkProviders(ctx, built.package_db, built.installdirs))
+        providers.extend(mkProviders(ctx, unit.id, built.package_db, built.installdirs))
 
     if built.executable:
         providers.append(RunInfo(args = built.executable.exe))

@@ -51,6 +51,8 @@ load(
 )
 load("//rules/haskell:providers.bzl", "CabalExecutableInfo", "CabalLibraryInfo")
 load("//rules/haskell:toolchain.bzl", "GhcToolchainInfo")
+load("//rules/haskell:unit_id.bzl", "make_unit_id")
+load(":plan_format.bzl", "component")
 load(":setup.bzl", "SetupEnv", "SetupUnit")
 
 CabalPackageInfo = provider(
@@ -76,7 +78,6 @@ common_unit_attrs = {
     "labels": attrs.list(attrs.string(), default = []),
     "pkg_name": attrs.string(),
     "pkg_version": attrs.string(),
-    "unit_id": attrs.string(),
 }
 
 source_unit_attrs = haskell_toolchain_attrs | {
@@ -94,17 +95,23 @@ def setup_env(ctx: AnalysisContext) -> SetupEnv:
         scope = None,
     )
 
-def setup_unit(ctx: AnalysisContext, component: str | None) -> SetupUnit:
-    """The unit a rule's attributes describe."""
+def setup_unit(ctx: AnalysisContext, component_name: str | None) -> SetupUnit:
+    """The unit a rule's attributes describe, with its unit-id (unit_id.bzl).
+
+    Args:
+      ctx: the rule's context
+      component_name: the component, as cabal-install calls it ("lib",
+        "exe:x", ...), None for a whole package
+    """
     return SetupUnit(
-        id = ctx.attrs.unit_id,
+        id = make_unit_id(ctx.label, ctx.attrs.pkg_name, ctx.attrs.pkg_version, component(component_name)[1] if component_name else None),
         name = ctx.attrs.pkg_name,
         version = ctx.attrs.pkg_version,
         flags = ctx.attrs.flags,
-        component = component,
+        component = component_name,
     )
 
-def mkProviders(ctx, package_db, installdirs) -> list[Provider]:
+def mkProviders(ctx, unit_id: str, package_db, installdirs) -> list[Provider]:
     # NOTE: the name of the shared library has the version of GHC in it,
     # which is not known here for the GHC in PATH. The archive is all the
     # prelude gets then.
@@ -126,13 +133,13 @@ def mkProviders(ctx, package_db, installdirs) -> list[Provider]:
         prof_libs = []
         if link_style == LinkStyle("shared") and ghc_version:
             # FIXME extension
-            libs.append(installdirs.libdir.project("libHS{}-ghc{}.so".format(ctx.attrs.unit_id, ghc_version)))
+            libs.append(installdirs.libdir.project("libHS{}-ghc{}.so".format(unit_id, ghc_version)))
         else:
             # NOTE: Cabal builds one archive, without -fPIC. It is good enough
             # to link an executable with the static_pic style, not to link a
             # shared object.
             # FIXME extension
-            libs.append(installdirs.libdir.project("libHS{}.a".format(ctx.attrs.unit_id)))
+            libs.append(installdirs.libdir.project("libHS{}.a".format(unit_id)))
 
         hlibinfo = HaskellLibraryInfo(
             name = ctx.attrs.pkg_name,
@@ -141,7 +148,7 @@ def mkProviders(ctx, package_db, installdirs) -> list[Provider]:
             # only makes an input of the compiler through this field.
             import_dirs = {False: installdirs.prefix},
             stub_dirs = [],
-            id = ctx.attrs.unit_id,
+            id = unit_id,
             libs = libs,
             version = ctx.attrs.pkg_version,
             is_prebuilt = True,
@@ -154,7 +161,7 @@ def mkProviders(ctx, package_db, installdirs) -> list[Provider]:
             # import_dirs = { False: prefix.project("lib"), },
             import_dirs = {},
             stub_dirs = [],
-            id = ctx.attrs.unit_id,
+            id = unit_id,
             libs = prof_libs,
             version = ctx.attrs.pkg_version,
             is_prebuilt = True,
@@ -236,7 +243,7 @@ def mkProviders(ctx, package_db, installdirs) -> list[Provider]:
 
     solibs = {}
     if ghc_version:
-        soname = "libHS{}-ghc{}.so".format(ctx.attrs.unit_id, ghc_version)
+        soname = "libHS{}-ghc{}.so".format(unit_id, ghc_version)
         so = installdirs.libdir.project(soname)
         solibs[soname] = LinkedObject(output = so, unstripped_output = so)
     shared_libs = create_shared_libraries(ctx, solibs)

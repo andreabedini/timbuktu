@@ -39,8 +39,14 @@ static (a `.cabal` file into `cabal_simple` targets, a plan into targets).
 The plan read in a dynamic action that was deleted on 2026-10-06 is one of
 those levels, unfinished rather than abandoned. The plans are made by
 `../cabal-solver-plan`, cabal-install's solver on explicit inputs, which
-prints a JSON format of its own (format 1, its `docs/plan-format.md`); it
-replaced `cabal build --dry-run` on 2026-10-12.
+prints a JSON format of its own (its `docs/plan-format.md`); it replaced
+`cabal build --dry-run` on 2026-10-12. Since format 2 (2026-10-13) a plan
+is a dependency graph and nothing more: units are numbered by position,
+the numbers mean nothing outside the plan, a unit to build has no unit-id,
+and every unit lists its `qualified-names`. What a unit is called and its
+unit-id are ours to choose (Andrea's decision): a plan says what to build,
+not what to call it. Backpack instantiations, when they come, will be unit
+data referring to other units by number.
 
 This is a research sandbox, not a product. History is mostly `wip` commits and
 the code is reworked wholesale. The repository was cleaned up on 2026-10-06:
@@ -103,6 +109,14 @@ passing; buck2 also reports the 5 `http_archive` targets as passed tests):
   parses, `buck2 test //rules/... //examples/...` runs 18 tests, all
   passing, `buck2 build` of the same builds, shake and both socketpair
   programs run, `refusals.sh` gets its 18 refusals and `generate.sh` its
+  seven. Plain `buildifier` leaves the generated files as they are.
+- Plan format 2 (2026-10-13): the two examples made again with
+  cabal-solver-plan 0da08c5e have the same 56 and 29 targets under the new
+  names. `buck2 targets //...` parses, `buck2 test //rules/...
+  //examples/...` runs 18 tests, all passing, `buck2 build` of the same
+  builds, shake, both socketpair programs and `dynamic:shake[shake]` run,
+  `dynamic:network` builds (its units scoped by name, with made-up
+  unit-ids), `refusals.sh` gets its 21 refusals and `generate.sh` its
   seven. Plain `buildifier` leaves the generated files as they are.
 - Dynamic plans (2026-10-12): `//examples/plan/dynamic:shake` and
   `:network` make the same two plans at build time and build all their
@@ -224,8 +238,8 @@ it out as a `BUCK` file, in two steps.
 
 1. Done (see "Current state"): `plan.bxl` writes the targets
    `interpret_plan` made, and `interpret_plan` is gone. One flat file per
-   plan, targets named by unit-id, so the aliases and labels other packages
-   use do not change.
+   plan. Then format 2 (2026-10-13): targets named by `unit_names`
+   (`plan_format.bzl`), unit-ids made up by the rules (`unit_id.bzl`).
 2. Next: `cabal_simple` targets for Simple units, `build` (`Setup.hs`) only
    where a package has a field `fields.bzl` refuses (said in a comment of
    the file) or with `--setup`, which gives step 1's file. The plan has
@@ -233,10 +247,11 @@ it out as a `BUCK` file, in two steps.
    and size, the flags, the GHC), so generating downloads `.cabal` files,
    not sdists, and dependencies come from the plan instead of `--dep`. The
    `build-depends` `describe_package` finds have to be the plan's
-   `depends`, or generating fails. Components keep their unit-id names (the
-   `cabal_package` is `<name>-<version>`, the sdist `<name>-<version>-src`),
-   so `package_targets` in `generate.bzl` needs a parameter for the names,
-   and a library's `unit_id` attribute is the plan's.
+   `depends`, or generating fails. Components keep the names `unit_names`
+   gives them (the sdist is `<name>-<version>-src`, the `cabal_package`
+   needs a name of its own), so `package_targets` in `generate.bzl` needs a
+   parameter for the names. Unit-ids need nothing: both rule sets make
+   them up the same way.
 
 ## Commands
 
@@ -258,9 +273,11 @@ buildifier BUCK path/to/file.bzl   # format Starlark
 buck2 starlark lint path/to/file.bzl
 ```
 
-Units of an interpreted plan are targets named by unit-id, for example
-`//examples/plan/shake:shake-0.19.9-e-shake-<hash>`, and the units the plan
-was made for have aliases (`:shake`, `:exe-shake`, `:network`):
+Units of a plan are targets named `<name>-<version>[-<kind>-<component>]`
+(the units of the compiler by their unit-id), for example
+`//examples/plan/shake:shake-0.19.9-exe-shake`, the sources of a package
+`<name>-<version>-src`, and the units the plan was made for have aliases
+(`:shake`, `:exe-shake`, `:network`):
 `buck2 run //examples/plan/shake:exe-shake -- --version`.
 
 Every Haskell rule takes its compiler from `toolchains//:haskell`, an alias
@@ -307,11 +324,13 @@ not in `PATH`: `haskell.cabal_solver_plan` in `.buckconfig.local` (or
 `--config`) says where it is, `haskell.hackage_index` where the
 `01-index.tar` is (default: the one `cabal update` downloads). Without them
 `buck2 build //...` fails on the `dynamic_plan` targets alone.
-The plans were checked with its commit b6642ff (main in
-`../cabal-solver-plan` on 2026-10-12, not pushed then; 3ea35f7 gave the same
-plans), built with GHC 9.12.2 from a `git archive` into `$TMPDIR` with
-`cabal build -w <ghc> --builddir=...`; its output was byte-identical to the
-samples in its `examples/`. It reads the index without writing anything
+timbuktu reads format 2, which needs cabal-solver-plan from fedb5b6
+(2026-10-13) on. The examples were made with its commit 0da08c5e (not
+pushed then), exported with `jj file show` into `$TMPDIR` and built with
+`cabal build -w ~/.ghcup/bin/ghc-9.12.2 --builddir=...`, and passed with
+`--config haskell.cabal_solver_plan=...`. The binary `.buckconfig.local`
+named on 2026-10-13 was built before local packages (3ea35f7) and prints
+format 1: build a newer one and point it there. cabal-solver-plan reads the index without writing anything
 next to it. Building it while a buck2 daemon starts fails ("the version of
 ghc-pkg could not be determined"): a new daemon re-materialises the GHC
 archive in `buck-out` that the build uses.
@@ -389,6 +408,11 @@ archive in `buck-out` that the build uses.
   `scratch/` (ignored by version control). `defs.bzl` has `expected_test`
   (a target's output against a file, with `compare.sh`), which the tests of
   both generators use.
+- `rules/haskell/unit_id.bzl` — `make_unit_id`, the unit-id of a unit we
+  build: `<package>-<version>[-<component>]-<hash>`, the hash being of the
+  label of the configured target (and a scope, for a target that builds
+  several units). The `cabal_simple` rules, `build`, `build_legacy` and
+  `dynamic_plan` all use it.
 - `rules/haskell/buck_text.bzl` — writing a call to a rule as BUCK text,
   formatted as buildifier would, for both generators.
 - `rules/haskell/cabal_install/` — the plan interpreter:
@@ -396,19 +420,21 @@ archive in `buck-out` that the build uses.
     decodes the plan and prints the path of a `BUCK` file made by
     `plan_targets.bzl`, with the command that makes it again in its header.
   - `plan_targets.bzl` — `plan_targets`, the targets of a decoded plan as
-    data (struct(rule, attrs)): a `repo_package` per package, one target
-    per unit, named by unit-id (`haskell_unit`, `build` or `build_legacy`
-    with a `<pkg>-setup` binary, by `build-style`), and an alias for each
-    of the plan's `targets`; `buck_file`, their text. It refuses a
-    whole-package unit as a build tool, and two aliases of the same name.
+    data (struct(rule, attrs)): a `repo_package` per package
+    (`<pkg-id>-src`), one target per unit, named by `unit_names`
+    (`haskell_unit`, `build` or `build_legacy` with a `<pkg-id>-setup`
+    binary, by `build-style`), and an alias for each of the plan's
+    `targets`; `buck_file`, their text. It refuses a whole-package unit as
+    a build tool, and two targets of the same name.
     It took the place of `interpret_plan.bzl`, a macro that made the same
     targets from JSON pasted into the `BUCK` file.
-  - `tests/` — `plan.json`, a plan written by hand with a unit of each
-    kind, and what `buck_file` makes of it (`expected/`); the refusals of
+  - `tests/` — `plan.json`, a format-2 plan written by hand with a unit of
+    each kind and two versions of one package, and what `buck_file` makes
+    of it (`expected/`); the refusals of
     `decode_plan` are cases of `refusals.sh` run through the same rule.
   - `plan.bzl` — the `plan` rule: runs cabal-solver-plan with the
     toolchain's GHC and its global package db, a Hackage index and an
-    `index_state` (plus `constraints`, `flags`). Its output, format 1, has
+    `index_state` (plus `constraints`, `flags`). Its output, format 2, has
     for each package the sdist's checksum and size and the revision,
     checksum and size of the `.cabal` file, all read off the index. It reads
     the index of the machine (`local_only`), so it is not hermetic;
@@ -419,7 +445,8 @@ archive in `buck-out` that the build uses.
   - `dynamic_plan.bzl` — `dynamic_plan`: `solve`, then a dynamic action that
     reads the plan and builds every unit with `fetch_package` and the
     functions of `setup.bzl` (`compile_setup` for a whole-package unit's
-    Setup.hs), scoped `src/<pkg-id>` and `unit/<unit-id>`. The units are not
+    Setup.hs), scoped `src/<pkg-id>` and `unit/<name>` (`unit_names`),
+    with unit-ids from `unit_id.bzl` and the name as scope. The units are not
     targets: it offers the named `executables` of the plan's targets as
     subtargets (copied to `bin/<name>`), `[plan.json]`, and `units.txt`, a
     line per unit with its prefix and registration. A pre-existing unit
@@ -428,9 +455,16 @@ archive in `buck-out` that the build uses.
     (`CabalSolverPlanInfo`).
   - `cabal_toolchain.bzl` — the rule of `toolchains//:cabal`.
   - `plan_format.bzl` — `decode_plan`, how `plan.bxl` and
-    `dynamic_plan` read a plan: it refuses another format, and any value of
+    `dynamic_plan` read a plan: it refuses another format, any value of
     the closed sets of the format (unit type, build style, component kind,
-    build type, source type) it does not list.
+    build type, source type) it does not list, a unit whose `id` is not
+    its position, and an edge to a unit that does not come before. And
+    `unit_names`, the one place that says what a unit is called:
+    `<name>-<version>[-<kind>-<component>]` for a unit to build, its
+    unit-id for one of a package db; a clash fails, naming the qualified
+    names of both. The solver gives a package version one configuration
+    in a plan (its single instance restriction), but two versions of one
+    package can be in a plan, under different qualified names.
   - `pkg_src.bzl` — `repo_package`, the target of a package of a plan, and
     `fetch_package`, a function of `actions` that
     downloads the sdist from `<repo>package/<id>.tar.gz` (with `size_bytes`,
@@ -474,9 +508,8 @@ archive in `buck-out` that the build uses.
   - `simple.bzl` — `cabal_simple_library`, `cabal_simple_executable`,
     `cabal_simple_test`. Its docstring describes
     the steps (configure, preprocess, build, register) and what happens in a
-    dynamic action. A unit-id is `<package>-<version>[-<component>]-<hash>`,
-    the hash being of the label of the configured target, unless the
-    `unit_id` attribute of a library gives one.
+    dynamic action. Unit-ids come from `unit_id.bzl`, unless the `unit_id`
+    attribute of a library gives one.
   - `prelude.bzl` — what the Haskell rules of the prelude need to depend on a
     `cabal_simple_library` (the same five providers as `mkProviders`), and to
     link a `haskell_unit` (linker flags only, see "Design rules").
@@ -536,8 +569,9 @@ archive in `buck-out` that the build uses.
 
 - In the plan interpreter, dependencies are always passed by unit-id:
   `--exact-configuration`, `--dependency=<pkg>[:<lib>]=<unit-id>`. Never let
-  Cabal choose a unit by name there. Both the global package db and
-  cabal-install plans speak unit-ids.
+  Cabal choose a unit by name there. The unit-ids of a package db are
+  fixed; those of the units a plan builds are made up from the target's
+  label (`unit_id.bzl`), since the plan gives them none.
 - Hand-written targets name compiler-provided packages in one of two ways.
   `toolchain_libs` on the `haskell_binary` and `haskell_library` from
   `rules/haskell/defs.bzl` becomes `-hide-all-packages -package <name>` when

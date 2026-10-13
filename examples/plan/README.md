@@ -16,18 +16,22 @@ dependencies.
 
 The BXL script writes a target for each entry of the plan:
 
-- each package, `<name>-<version>`: its sdist from Hackage, with the
+- each package, `<name>-<version>-src`: its sdist from Hackage, with the
   revision of its `.cabal` file (`repo_package`);
 - each unit that comes with the compiler: a `haskell_unit`, named after its
   unit-id;
-- each unit to build, named after its unit-id, built from its sdist by the
-  package's own `Setup.hs`, with `--exact-configuration` and each dependency
-  given by unit-id. A unit of a package with `build-type: Simple` is one
+- each unit to build, `<name>-<version>` for a main library or a whole
+  package, `<name>-<version>-<kind>-<component>` for another component
+  (`shake-0.19.9-exe-shake`), built from its sdist by the package's own
+  `Setup.hs`, with `--exact-configuration` and each dependency given by
+  unit-id. A unit of a package with `build-type: Simple` is one
   component (`build`), configured, built, copied and registered by separate
   actions; a package of any other build type is one unit (`build_legacy`),
   built in a single action by its `Setup.hs`, itself a target
   (`<name>-<version>-setup`); see `setup.bzl` in
-  `rules/haskell/cabal_install`;
+  `rules/haskell/cabal_install`. The plan gives a unit to build no unit-id:
+  the rule makes one up from the target's label, as the `cabal_simple`
+  rules do (`rules/haskell/unit_id.bzl`);
 - for each unit the plan was made for, an alias: the package name for its
   library (`:network`), `<kind>-<name>` for another component
   (`:exe-shake`).
@@ -44,7 +48,9 @@ The rules are in [`rules/haskell/cabal_install`](../../rules/haskell/cabal_insta
 
 ## Making a plan
 
-cabal-solver-plan is not built here. Install it, or tell buck2 where it is,
+cabal-solver-plan is not built here, and has to be one that prints format 2
+of its plans (a dependency graph whose units are numbered; what each unit is
+called, and its unit-id, is up to the rules). Install it, or tell buck2 where it is,
 and where the Hackage index is if it is not the one `cabal update`
 downloads, in `.buckconfig.local`:
 

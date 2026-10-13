@@ -53,6 +53,7 @@ load(
     "mangle",
 )
 load("//rules/haskell:toolchain.bzl", "GhcDynamicInfo", "GhcToolchainInfo", "ghc_toolchain_attrs")
+load("//rules/haskell:unit_id.bzl", "make_unit_id")
 load(
     ":fields.bzl",
     "BUILD_INFO_FIELDS",
@@ -89,25 +90,6 @@ def _check_supported(ctx: AnalysisContext, fields: dict[str, struct]):
 ##
 ## Analysis: what is known from the package description alone
 ##
-
-def _unit_id(ctx: AnalysisContext, pkg: CabalPackageInfo, component: str | None) -> str:
-    """Make up the unit-id of a component.
-
-    A unit-id has to tell a unit from every other unit that can end up in the
-    same package db. cabal-install gets there by hashing what goes into the
-    build; here buck2 already tells builds apart, and the label of the
-    configured target (the target and the configuration it is built in) is
-    what identifies one.
-
-    Args:
-      ctx: the context of the component's rule
-      pkg: its package
-      component: the name of the component, None for the main library
-    Returns:
-      <package>-<version>[-<component>]-<hash>
-    """
-    parts = [pkg.name, pkg.version] + ([component] if component else [])
-    return "-".join(parts + [sha256(str(ctx.label))[:8]])
 
 def _find_modules(ctx: AnalysisContext, srcdir: Artifact, source_dirs: list[str], modules: list[str], main_is: str | None) -> Artifact:
     located = ctx.actions.declare_output("modules.json")
@@ -764,7 +746,7 @@ def _cabal_simple_library_impl(ctx: AnalysisContext) -> list[Provider]:
     pkg = ctx.attrs.package[CabalPackageInfo]
     lib_name = ctx.attrs.library_name
 
-    unit_id = ctx.attrs.unit_id or _unit_id(ctx, pkg, lib_name)
+    unit_id = ctx.attrs.unit_id or make_unit_id(ctx.label, pkg.name, pkg.version, lib_name)
 
     modules = _dedupe(ctx.attrs.exposed_modules + ctx.attrs.other_modules)
 
@@ -861,7 +843,7 @@ cabal_simple_library = rule(
         "library_name": attrs.option(attrs.string(), default = None),
         # What GHC knows the library by. Not a field of a package
         # description: cabal-install makes one up, and so do we when it is
-        # not given (see _unit_id).
+        # not given (see unit_id.bzl).
         "unit_id": attrs.option(attrs.string(), default = None),
         "_cxx_toolchain": toolchains_common.cxx(),
     } | field_attrs(LIBRARY_FIELDS) | _component_attrs | prelude_library_attrs,
@@ -876,7 +858,7 @@ def _executable(ctx: AnalysisContext, exe_name: str, fields: dict[str, struct]) 
     _component(
         ctx,
         kind = "exe",
-        unit_id = _unit_id(ctx, pkg, exe_name),
+        unit_id = make_unit_id(ctx.label, pkg.name, pkg.version, exe_name),
         modules = _dedupe(ctx.attrs.other_modules),
         outputs = {"exe": exe},
         main_is = ctx.attrs.main_is,

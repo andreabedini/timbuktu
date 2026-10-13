@@ -13,14 +13,14 @@ load("@root//rules/haskell/cabal_install:pkg_src.bzl", "repo_package")
 
 alias(
     name = "network",
-    actual = ":network-3.2.8.0-e16e604cbfb3d2f644f7fef6c9685d743a797e6aab2f67db0e4a61f7b4949eda",
+    actual = ":network-3.2.8.0",
     visibility = ["PUBLIC"],
 )
 
 # hsc2hs-0.68.10
 
 repo_package(
-    name = "hsc2hs-0.68.10",
+    name = "hsc2hs-0.68.10-src",
     package = {
         "build-type": "Simple",
         "cabal-file": {
@@ -41,12 +41,11 @@ repo_package(
 )
 
 build(
-    name = "hsc2hs-0.68.10-e-hsc2hs-f70e13052773e846b03c3682fac380a2a19bdbd233a7f1e3bd1c9e52a7a01f32",
+    name = "hsc2hs-0.68.10-exe-hsc2hs",
     pkg_name = "hsc2hs",
     pkg_version = "0.68.10",
-    unit_id = "hsc2hs-0.68.10-e-hsc2hs-f70e13052773e846b03c3682fac380a2a19bdbd233a7f1e3bd1c9e52a7a01f32",
     component_name = "exe:hsc2hs",
-    src = ":hsc2hs-0.68.10",
+    src = ":hsc2hs-0.68.10-src",
     flags = {
         "in-ghc-tree": False,
     },
@@ -63,7 +62,7 @@ build(
 # network-3.2.8.0
 
 repo_package(
-    name = "network-3.2.8.0",
+    name = "network-3.2.8.0-src",
     package = {
         "build-type": "Configure",
         "cabal-file": {
@@ -86,7 +85,7 @@ repo_package(
 haskell_binary(
     name = "network-3.2.8.0-setup",
     srcs = {
-        "Main.hs": ":network-3.2.8.0[Setup.hs]",
+        "Main.hs": ":network-3.2.8.0-src[Setup.hs]",
     },
     toolchain_libs = [
         "base",
@@ -95,12 +94,11 @@ haskell_binary(
 )
 
 build_legacy(
-    name = "network-3.2.8.0-e16e604cbfb3d2f644f7fef6c9685d743a797e6aab2f67db0e4a61f7b4949eda",
+    name = "network-3.2.8.0",
     pkg_name = "network",
     pkg_version = "3.2.8.0",
-    unit_id = "network-3.2.8.0-e16e604cbfb3d2f644f7fef6c9685d743a797e6aab2f67db0e4a61f7b4949eda",
     setup = ":network-3.2.8.0-setup",
-    src = ":network-3.2.8.0",
+    src = ":network-3.2.8.0-src",
     flags = {
         "devel": False,
     },
@@ -111,7 +109,7 @@ build_legacy(
         ":directory-1.3.9.0-ca9f",
         ":stm-2.5.3.1-6dd9",
     ],
-    exec_deps = [":hsc2hs-0.68.10-e-hsc2hs-f70e13052773e846b03c3682fac380a2a19bdbd233a7f1e3bd1c9e52a7a01f32"],
+    exec_deps = [":hsc2hs-0.68.10-exe-hsc2hs"],
     visibility = ["PUBLIC"],
 )
 

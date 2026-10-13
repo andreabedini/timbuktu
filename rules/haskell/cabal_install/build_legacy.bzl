@@ -15,9 +15,10 @@ load(
 load("setup.bzl", "build_package")
 
 def _build_legacy_impl(ctx: AnalysisContext) -> list[Provider]:
+    unit = setup_unit(ctx, None)
     built = build_package(
         setup_env(ctx),
-        setup_unit(ctx, None),
+        unit,
         ctx.attrs.src[CabalPackageInfo].srcdir,
         ctx.attrs.setup[RunInfo],
         [dep[CabalLibraryInfo] for dep in ctx.attrs.deps],
@@ -26,7 +27,7 @@ def _build_legacy_impl(ctx: AnalysisContext) -> list[Provider]:
     return [
         DefaultInfo(default_outputs = [built.installdirs.prefix, built.package_conf]),
         built.library,
-    ] + mkProviders(ctx, built.package_db, built.installdirs)
+    ] + mkProviders(ctx, unit.id, built.package_db, built.installdirs)
 
 build_legacy = rule(
     doc = "A whole package of a build type other than Simple, built with its own Setup.hs (see setup.bzl).",

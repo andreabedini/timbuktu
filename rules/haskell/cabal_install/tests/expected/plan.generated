@@ -13,26 +13,26 @@ load("@root//rules/haskell/cabal_install:pkg_src.bzl", "repo_package")
 
 alias(
     name = "app",
-    actual = ":app-1.0-lib",
+    actual = ":app-1.0",
     visibility = ["PUBLIC"],
 )
 
 alias(
     name = "exe-app",
-    actual = ":app-1.0-e-app",
+    actual = ":app-1.0-exe-app",
     visibility = ["PUBLIC"],
 )
 
 alias(
     name = "conf",
-    actual = ":conf-2.0-whole",
+    actual = ":conf-2.0",
     visibility = ["PUBLIC"],
 )
 
 # tool-0.1
 
 repo_package(
-    name = "tool-0.1",
+    name = "tool-0.1-src",
     package = {
         "build-type": "Simple",
         "cabal-file": {
@@ -53,12 +53,11 @@ repo_package(
 )
 
 build(
-    name = "tool-0.1-e-tool",
+    name = "tool-0.1-exe-tool",
     pkg_name = "tool",
     pkg_version = "0.1",
-    unit_id = "tool-0.1-e-tool",
     component_name = "exe:tool",
-    src = ":tool-0.1",
+    src = ":tool-0.1-src",
     flags = {},
     deps = [":base-4.21.0.0-b7a5"],
     visibility = ["PUBLIC"],
@@ -67,20 +66,20 @@ build(
 # app-1.0
 
 repo_package(
-    name = "app-1.0",
+    name = "app-1.0-src",
     package = {
         "build-type": "Simple",
         "cabal-file": {
             "revision": 0,
             "sha256": "4444444444444444444444444444444444444444444444444444444444444444",
-            "size": 20,
+            "size": 10,
         },
         "id": "app-1.0",
         "name": "app",
         "src": {
             "repo": "https://hackage.haskell.org/",
             "sha256": "3333333333333333333333333333333333333333333333333333333333333333",
-            "size": 200,
+            "size": 100,
             "type": "repo-tar",
         },
         "version": "1.0",
@@ -88,12 +87,11 @@ repo_package(
 )
 
 build(
-    name = "app-1.0-lib",
+    name = "app-1.0",
     pkg_name = "app",
     pkg_version = "1.0",
-    unit_id = "app-1.0-lib",
     component_name = "lib",
-    src = ":app-1.0",
+    src = ":app-1.0-src",
     flags = {
         "debug": False,
         "fast": True,
@@ -102,97 +100,112 @@ build(
         ":base-4.21.0.0-b7a5",
         ":other-1.0-in-db",
     ],
-    exec_deps = [":tool-0.1-e-tool"],
+    exec_deps = [":tool-0.1-exe-tool"],
     visibility = ["PUBLIC"],
 )
 
 build(
-    name = "app-1.0-e-app",
+    name = "app-1.0-exe-app",
     pkg_name = "app",
     pkg_version = "1.0",
-    unit_id = "app-1.0-e-app",
     component_name = "exe:app",
-    src = ":app-1.0",
+    src = ":app-1.0-src",
     flags = {
         "debug": False,
         "fast": True,
     },
     deps = [
-        ":app-1.0-lib",
+        ":app-1.0",
         ":base-4.21.0.0-b7a5",
     ],
     visibility = ["PUBLIC"],
 )
 
-# conf-2.0
+# dep-1.0
 
 repo_package(
-    name = "conf-2.0",
+    name = "dep-1.0-src",
     package = {
-        "build-type": "Configure",
+        "build-type": "Simple",
         "cabal-file": {
             "revision": 0,
             "sha256": "6666666666666666666666666666666666666666666666666666666666666666",
-            "size": 30,
+            "size": 10,
         },
-        "id": "conf-2.0",
-        "name": "conf",
+        "id": "dep-1.0",
+        "name": "dep",
         "src": {
             "repo": "https://hackage.haskell.org/",
             "sha256": "5555555555555555555555555555555555555555555555555555555555555555",
-            "size": 300,
+            "size": 100,
             "type": "repo-tar",
         },
-        "version": "2.0",
+        "version": "1.0",
     },
 )
 
-haskell_binary(
-    name = "conf-2.0-setup",
-    srcs = {
-        "Main.hs": ":conf-2.0[Setup.hs]",
-    },
-    toolchain_libs = [
-        "base",
-        "Cabal",
-    ],
+build(
+    name = "dep-1.0",
+    pkg_name = "dep",
+    pkg_version = "1.0",
+    component_name = "lib",
+    src = ":dep-1.0-src",
+    flags = {},
+    deps = [":base-4.21.0.0-b7a5"],
+    visibility = ["PUBLIC"],
 )
 
-build_legacy(
-    name = "conf-2.0-whole",
-    pkg_name = "conf",
-    pkg_version = "2.0",
-    unit_id = "conf-2.0-whole",
-    setup = ":conf-2.0-setup",
-    src = ":conf-2.0",
-    flags = {
-        "devel": False,
+# dep-0.9
+
+repo_package(
+    name = "dep-0.9-src",
+    package = {
+        "build-type": "Simple",
+        "cabal-file": {
+            "revision": 1,
+            "sha256": "8888888888888888888888888888888888888888888888888888888888888888",
+            "size": 10,
+        },
+        "id": "dep-0.9",
+        "name": "dep",
+        "src": {
+            "repo": "https://hackage.haskell.org/",
+            "sha256": "7777777777777777777777777777777777777777777777777777777777777777",
+            "size": 100,
+            "type": "repo-tar",
+        },
+        "version": "0.9",
     },
-    deps = [
-        ":base-4.21.0.0-b7a5",
-        ":custom-3.0-whole",
-    ],
-    exec_deps = [":tool-0.1-e-tool"],
+)
+
+build(
+    name = "dep-0.9",
+    pkg_name = "dep",
+    pkg_version = "0.9",
+    component_name = "lib",
+    src = ":dep-0.9-src",
+    flags = {},
+    deps = [":base-4.21.0.0-b7a5"],
     visibility = ["PUBLIC"],
 )
 
 # custom-3.0
 
 repo_package(
-    name = "custom-3.0",
+    name = "custom-3.0-src",
     package = {
         "build-type": "Custom",
         "cabal-file": {
             "revision": 1,
-            "sha256": "8888888888888888888888888888888888888888888888888888888888888888",
-            "size": 40,
+            "sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+            "size": 10,
         },
         "id": "custom-3.0",
         "name": "custom",
         "src": {
             "repo": "https://hackage.haskell.org/",
-            "sha256": "7777777777777777777777777777777777777777777777777777777777777777",
-            "size": 400,
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "size": 100,
             "type": "repo-tar",
         },
         "version": "3.0",
@@ -202,24 +215,80 @@ repo_package(
 haskell_binary(
     name = "custom-3.0-setup",
     srcs = {
-        "Main.hs": ":custom-3.0[Setup.hs]",
+        "Main.hs": ":custom-3.0-src[Setup.hs]",
     },
     toolchain_libs = [
         "Cabal",
         "base",
     ],
-    deps = [":app-1.0-lib"],
+    deps = [
+        ":app-1.0",
+        ":dep-0.9",
+    ],
 )
 
 build_legacy(
-    name = "custom-3.0-whole",
+    name = "custom-3.0",
     pkg_name = "custom",
     pkg_version = "3.0",
-    unit_id = "custom-3.0-whole",
     setup = ":custom-3.0-setup",
-    src = ":custom-3.0",
+    src = ":custom-3.0-src",
     flags = {},
-    deps = [":base-4.21.0.0-b7a5"],
+    deps = [
+        ":base-4.21.0.0-b7a5",
+        ":dep-1.0",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# conf-2.0
+
+repo_package(
+    name = "conf-2.0-src",
+    package = {
+        "build-type": "Configure",
+        "cabal-file": {
+            "revision": 0,
+            "sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+            "size": 10,
+        },
+        "id": "conf-2.0",
+        "name": "conf",
+        "src": {
+            "repo": "https://hackage.haskell.org/",
+            "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "size": 100,
+            "type": "repo-tar",
+        },
+        "version": "2.0",
+    },
+)
+
+haskell_binary(
+    name = "conf-2.0-setup",
+    srcs = {
+        "Main.hs": ":conf-2.0-src[Setup.hs]",
+    },
+    toolchain_libs = [
+        "base",
+        "Cabal",
+    ],
+)
+
+build_legacy(
+    name = "conf-2.0",
+    pkg_name = "conf",
+    pkg_version = "2.0",
+    setup = ":conf-2.0-setup",
+    src = ":conf-2.0-src",
+    flags = {
+        "devel": False,
+    },
+    deps = [
+        ":base-4.21.0.0-b7a5",
+        ":custom-3.0",
+    ],
+    exec_deps = [":tool-0.1-exe-tool"],
     visibility = ["PUBLIC"],
 )
 

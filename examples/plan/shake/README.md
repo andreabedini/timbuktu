@@ -9,6 +9,5 @@ $ buck2 run //examples/plan/shake:exe-shake -- --version
 ```
 
 `:exe-shake` and `:shake` are aliases of the units the plan was made for,
-the executable `shake-<version>-e-shake-<hash>` and the library
-`shake-<version>-<hash>`. See [`../README.md`](../README.md) for how the
+the executable `shake-0.19.9-exe-shake` and the library `shake-0.19.9`. See [`../README.md`](../README.md) for how the
 plan is made and written out as targets.

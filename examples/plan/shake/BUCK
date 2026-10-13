@@ -12,20 +12,20 @@ load("@root//rules/haskell/cabal_install:pkg_src.bzl", "repo_package")
 
 alias(
     name = "shake",
-    actual = ":shake-0.19.9-618c032686f048b41caa7a29415282b3a80d57cd421d9b2b95e5e527072accaa",
+    actual = ":shake-0.19.9",
     visibility = ["PUBLIC"],
 )
 
 alias(
     name = "exe-shake",
-    actual = ":shake-0.19.9-e-shake-652cc762a120c3d145bdda7d151adc5b1899a38cf7427d243fff0f606fcc577e",
+    actual = ":shake-0.19.9-exe-shake",
     visibility = ["PUBLIC"],
 )
 
 # clock-0.8.4
 
 repo_package(
-    name = "clock-0.8.4",
+    name = "clock-0.8.4-src",
     package = {
         "build-type": "Simple",
         "cabal-file": {
@@ -46,12 +46,11 @@ repo_package(
 )
 
 build(
-    name = "clock-0.8.4-49c12d9ce7aa0a9bb51ced66e7a0103a239210bfd4d593dfc56e83a69468e91d",
+    name = "clock-0.8.4",
     pkg_name = "clock",
     pkg_version = "0.8.4",
-    unit_id = "clock-0.8.4-49c12d9ce7aa0a9bb51ced66e7a0103a239210bfd4d593dfc56e83a69468e91d",
     component_name = "lib",
-    src = ":clock-0.8.4",
+    src = ":clock-0.8.4-src",
     flags = {
         "llvm": False,
     },
@@ -62,7 +61,7 @@ build(
 # extra-1.8.1
 
 repo_package(
-    name = "extra-1.8.1",
+    name = "extra-1.8.1-src",
     package = {
         "build-type": "Simple",
         "cabal-file": {
@@ -83,16 +82,15 @@ repo_package(
 )
 
 build(
-    name = "extra-1.8.1-a3a243ce64329374a9aee0eff5960fd7297f1ddddcbd77ef78e839baad1b1ec9",
+    name = "extra-1.8.1",
     pkg_name = "extra",
     pkg_version = "1.8.1",
-    unit_id = "extra-1.8.1-a3a243ce64329374a9aee0eff5960fd7297f1ddddcbd77ef78e839baad1b1ec9",
     component_name = "lib",
-    src = ":extra-1.8.1",
+    src = ":extra-1.8.1-src",
     flags = {},
     deps = [
         ":base-4.21.0.0-b7a5",
-        ":clock-0.8.4-49c12d9ce7aa0a9bb51ced66e7a0103a239210bfd4d593dfc56e83a69468e91d",
+        ":clock-0.8.4",
         ":directory-1.3.9.0-ca9f",
         ":filepath-1.5.4.0-c656",
         ":process-1.6.25.0-0514",
@@ -105,7 +103,7 @@ build(
 # filepattern-0.1.3
 
 repo_package(
-    name = "filepattern-0.1.3",
+    name = "filepattern-0.1.3-src",
     package = {
         "build-type": "Simple",
         "cabal-file": {
@@ -126,17 +124,16 @@ repo_package(
 )
 
 build(
-    name = "filepattern-0.1.3-fde503e17b7554880d1833cf4ad52f1fb60cdb552e24511989ae3729619e89cb",
+    name = "filepattern-0.1.3",
     pkg_name = "filepattern",
     pkg_version = "0.1.3",
-    unit_id = "filepattern-0.1.3-fde503e17b7554880d1833cf4ad52f1fb60cdb552e24511989ae3729619e89cb",
     component_name = "lib",
-    src = ":filepattern-0.1.3",
+    src = ":filepattern-0.1.3-src",
     flags = {},
     deps = [
         ":base-4.21.0.0-b7a5",
         ":directory-1.3.9.0-ca9f",
-        ":extra-1.8.1-a3a243ce64329374a9aee0eff5960fd7297f1ddddcbd77ef78e839baad1b1ec9",
+        ":extra-1.8.1",
         ":filepath-1.5.4.0-c656",
     ],
     visibility = ["PUBLIC"],
@@ -145,7 +142,7 @@ build(
 # hashable-1.5.1.0
 
 repo_package(
-    name = "hashable-1.5.1.0",
+    name = "hashable-1.5.1.0-src",
     package = {
         "build-type": "Simple",
         "cabal-file": {
@@ -166,12 +163,11 @@ repo_package(
 )
 
 build(
-    name = "hashable-1.5.1.0-2ea018dba429306fb6a8467a8d1bcb18c160ecf8ace3a3954c29bd57aead54dd",
+    name = "hashable-1.5.1.0",
     pkg_name = "hashable",
     pkg_version = "1.5.1.0",
-    unit_id = "hashable-1.5.1.0-2ea018dba429306fb6a8467a8d1bcb18c160ecf8ace3a3954c29bd57aead54dd",
     component_name = "lib",
-    src = ":hashable-1.5.1.0",
+    src = ":hashable-1.5.1.0-src",
     flags = {
         "arch-native": False,
         "random-initial-seed": False,
@@ -191,7 +187,7 @@ build(
 # heaps-0.4.1
 
 repo_package(
-    name = "heaps-0.4.1",
+    name = "heaps-0.4.1-src",
     package = {
         "build-type": "Simple",
         "cabal-file": {
@@ -212,12 +208,11 @@ repo_package(
 )
 
 build(
-    name = "heaps-0.4.1-ba8bed3de9935315895e8820e0027d3ab70ad8c831c8dabd76be90f96391b002",
+    name = "heaps-0.4.1",
     pkg_name = "heaps",
     pkg_version = "0.4.1",
-    unit_id = "heaps-0.4.1-ba8bed3de9935315895e8820e0027d3ab70ad8c831c8dabd76be90f96391b002",
     component_name = "lib",
-    src = ":heaps-0.4.1",
+    src = ":heaps-0.4.1-src",
     flags = {},
     deps = [":base-4.21.0.0-b7a5"],
     visibility = ["PUBLIC"],
@@ -226,7 +221,7 @@ build(
 # js-dgtable-0.5.2
 
 repo_package(
-    name = "js-dgtable-0.5.2",
+    name = "js-dgtable-0.5.2-src",
     package = {
         "build-type": "Simple",
         "cabal-file": {
@@ -247,12 +242,11 @@ repo_package(
 )
 
 build(
-    name = "js-dgtable-0.5.2-a2a9bd92a87fcdf7463b0cefe4580fe9d5015fc224447cccab149bf9135bd2ab",
+    name = "js-dgtable-0.5.2",
     pkg_name = "js-dgtable",
     pkg_version = "0.5.2",
-    unit_id = "js-dgtable-0.5.2-a2a9bd92a87fcdf7463b0cefe4580fe9d5015fc224447cccab149bf9135bd2ab",
     component_name = "lib",
-    src = ":js-dgtable-0.5.2",
+    src = ":js-dgtable-0.5.2-src",
     flags = {},
     deps = [":base-4.21.0.0-b7a5"],
     visibility = ["PUBLIC"],
@@ -261,7 +255,7 @@ build(
 # js-flot-0.8.3
 
 repo_package(
-    name = "js-flot-0.8.3",
+    name = "js-flot-0.8.3-src",
     package = {
         "build-type": "Simple",
         "cabal-file": {
@@ -282,12 +276,11 @@ repo_package(
 )
 
 build(
-    name = "js-flot-0.8.3-6c4bfe0a46634b6caf388eb4147db83f1f2a73e19e8c11a1ecf753b0ddfe343e",
+    name = "js-flot-0.8.3",
     pkg_name = "js-flot",
     pkg_version = "0.8.3",
-    unit_id = "js-flot-0.8.3-6c4bfe0a46634b6caf388eb4147db83f1f2a73e19e8c11a1ecf753b0ddfe343e",
     component_name = "lib",
-    src = ":js-flot-0.8.3",
+    src = ":js-flot-0.8.3-src",
     flags = {},
     deps = [":base-4.21.0.0-b7a5"],
     visibility = ["PUBLIC"],
@@ -296,7 +289,7 @@ build(
 # js-jquery-3.7.1
 
 repo_package(
-    name = "js-jquery-3.7.1",
+    name = "js-jquery-3.7.1-src",
     package = {
         "build-type": "Simple",
         "cabal-file": {
@@ -317,12 +310,11 @@ repo_package(
 )
 
 build(
-    name = "js-jquery-3.7.1-e5ff0445e7a31b5f17fa7fdc4983f251950b343d3820624e139cb5fc8e6144db",
+    name = "js-jquery-3.7.1",
     pkg_name = "js-jquery",
     pkg_version = "3.7.1",
-    unit_id = "js-jquery-3.7.1-e5ff0445e7a31b5f17fa7fdc4983f251950b343d3820624e139cb5fc8e6144db",
     component_name = "lib",
-    src = ":js-jquery-3.7.1",
+    src = ":js-jquery-3.7.1-src",
     flags = {},
     deps = [":base-4.21.0.0-b7a5"],
     visibility = ["PUBLIC"],
@@ -331,7 +323,7 @@ build(
 # primitive-0.9.1.0
 
 repo_package(
-    name = "primitive-0.9.1.0",
+    name = "primitive-0.9.1.0-src",
     package = {
         "build-type": "Simple",
         "cabal-file": {
@@ -352,12 +344,11 @@ repo_package(
 )
 
 build(
-    name = "primitive-0.9.1.0-b26dc75232ebb05cab27b7be6b319f341de01be92568d031b81bd5211be761cc",
+    name = "primitive-0.9.1.0",
     pkg_name = "primitive",
     pkg_version = "0.9.1.0",
-    unit_id = "primitive-0.9.1.0-b26dc75232ebb05cab27b7be6b319f341de01be92568d031b81bd5211be761cc",
     component_name = "lib",
-    src = ":primitive-0.9.1.0",
+    src = ":primitive-0.9.1.0-src",
     flags = {},
     deps = [
         ":base-4.21.0.0-b7a5",
@@ -371,7 +362,7 @@ build(
 # random-1.3.1
 
 repo_package(
-    name = "random-1.3.1",
+    name = "random-1.3.1-src",
     package = {
         "build-type": "Simple",
         "cabal-file": {
@@ -392,19 +383,18 @@ repo_package(
 )
 
 build(
-    name = "random-1.3.1-ea4666a27aa99a079970b341a2fe48baa5dbd57e140c6461d34d31f014e9a67b",
+    name = "random-1.3.1",
     pkg_name = "random",
     pkg_version = "1.3.1",
-    unit_id = "random-1.3.1-ea4666a27aa99a079970b341a2fe48baa5dbd57e140c6461d34d31f014e9a67b",
     component_name = "lib",
-    src = ":random-1.3.1",
+    src = ":random-1.3.1-src",
     flags = {},
     deps = [
         ":base-4.21.0.0-b7a5",
         ":bytestring-0.12.2.0-d099",
         ":deepseq-1.5.1.0-58c3",
         ":mtl-2.3.1-6d75",
-        ":splitmix-0.1.3.2-6485c38e605e399e61b00674f785a5c088bf9b5db12f705e3a873457b8f5898b",
+        ":splitmix-0.1.3.2",
         ":transformers-0.6.1.2-c7d6",
     ],
     visibility = ["PUBLIC"],
@@ -413,7 +403,7 @@ build(
 # shake-0.19.9
 
 repo_package(
-    name = "shake-0.19.9",
+    name = "shake-0.19.9-src",
     package = {
         "build-type": "Simple",
         "cabal-file": {
@@ -434,12 +424,11 @@ repo_package(
 )
 
 build(
-    name = "shake-0.19.9-618c032686f048b41caa7a29415282b3a80d57cd421d9b2b95e5e527072accaa",
+    name = "shake-0.19.9",
     pkg_name = "shake",
     pkg_version = "0.19.9",
-    unit_id = "shake-0.19.9-618c032686f048b41caa7a29415282b3a80d57cd421d9b2b95e5e527072accaa",
     component_name = "lib",
-    src = ":shake-0.19.9",
+    src = ":shake-0.19.9-src",
     flags = {
         "cloud": False,
         "embed-files": False,
@@ -452,33 +441,32 @@ build(
         ":bytestring-0.12.2.0-d099",
         ":deepseq-1.5.1.0-58c3",
         ":directory-1.3.9.0-ca9f",
-        ":extra-1.8.1-a3a243ce64329374a9aee0eff5960fd7297f1ddddcbd77ef78e839baad1b1ec9",
+        ":extra-1.8.1",
         ":filepath-1.5.4.0-c656",
-        ":filepattern-0.1.3-fde503e17b7554880d1833cf4ad52f1fb60cdb552e24511989ae3729619e89cb",
-        ":hashable-1.5.1.0-2ea018dba429306fb6a8467a8d1bcb18c160ecf8ace3a3954c29bd57aead54dd",
-        ":heaps-0.4.1-ba8bed3de9935315895e8820e0027d3ab70ad8c831c8dabd76be90f96391b002",
-        ":js-dgtable-0.5.2-a2a9bd92a87fcdf7463b0cefe4580fe9d5015fc224447cccab149bf9135bd2ab",
-        ":js-flot-0.8.3-6c4bfe0a46634b6caf388eb4147db83f1f2a73e19e8c11a1ecf753b0ddfe343e",
-        ":js-jquery-3.7.1-e5ff0445e7a31b5f17fa7fdc4983f251950b343d3820624e139cb5fc8e6144db",
-        ":primitive-0.9.1.0-b26dc75232ebb05cab27b7be6b319f341de01be92568d031b81bd5211be761cc",
+        ":filepattern-0.1.3",
+        ":hashable-1.5.1.0",
+        ":heaps-0.4.1",
+        ":js-dgtable-0.5.2",
+        ":js-flot-0.8.3",
+        ":js-jquery-3.7.1",
+        ":primitive-0.9.1.0",
         ":process-1.6.25.0-0514",
-        ":random-1.3.1-ea4666a27aa99a079970b341a2fe48baa5dbd57e140c6461d34d31f014e9a67b",
+        ":random-1.3.1",
         ":time-1.14-3339",
         ":transformers-0.6.1.2-c7d6",
         ":unix-2.8.6.0-2805",
-        ":unordered-containers-0.2.21-814534a1d0c16a875a0aeb1c577004829e024870dded3780b7fdc04fa2ef3fb3",
-        ":utf8-string-1.0.2-be632dc95227ddabc3b59203e51290e0700f80369999d407685bd8483827df5c",
+        ":unordered-containers-0.2.21",
+        ":utf8-string-1.0.2",
     ],
     visibility = ["PUBLIC"],
 )
 
 build(
-    name = "shake-0.19.9-e-shake-652cc762a120c3d145bdda7d151adc5b1899a38cf7427d243fff0f606fcc577e",
+    name = "shake-0.19.9-exe-shake",
     pkg_name = "shake",
     pkg_version = "0.19.9",
-    unit_id = "shake-0.19.9-e-shake-652cc762a120c3d145bdda7d151adc5b1899a38cf7427d243fff0f606fcc577e",
     component_name = "exe:shake",
-    src = ":shake-0.19.9",
+    src = ":shake-0.19.9-src",
     flags = {
         "cloud": False,
         "embed-files": False,
@@ -491,22 +479,22 @@ build(
         ":bytestring-0.12.2.0-d099",
         ":deepseq-1.5.1.0-58c3",
         ":directory-1.3.9.0-ca9f",
-        ":extra-1.8.1-a3a243ce64329374a9aee0eff5960fd7297f1ddddcbd77ef78e839baad1b1ec9",
+        ":extra-1.8.1",
         ":filepath-1.5.4.0-c656",
-        ":filepattern-0.1.3-fde503e17b7554880d1833cf4ad52f1fb60cdb552e24511989ae3729619e89cb",
-        ":hashable-1.5.1.0-2ea018dba429306fb6a8467a8d1bcb18c160ecf8ace3a3954c29bd57aead54dd",
-        ":heaps-0.4.1-ba8bed3de9935315895e8820e0027d3ab70ad8c831c8dabd76be90f96391b002",
-        ":js-dgtable-0.5.2-a2a9bd92a87fcdf7463b0cefe4580fe9d5015fc224447cccab149bf9135bd2ab",
-        ":js-flot-0.8.3-6c4bfe0a46634b6caf388eb4147db83f1f2a73e19e8c11a1ecf753b0ddfe343e",
-        ":js-jquery-3.7.1-e5ff0445e7a31b5f17fa7fdc4983f251950b343d3820624e139cb5fc8e6144db",
-        ":primitive-0.9.1.0-b26dc75232ebb05cab27b7be6b319f341de01be92568d031b81bd5211be761cc",
+        ":filepattern-0.1.3",
+        ":hashable-1.5.1.0",
+        ":heaps-0.4.1",
+        ":js-dgtable-0.5.2",
+        ":js-flot-0.8.3",
+        ":js-jquery-3.7.1",
+        ":primitive-0.9.1.0",
         ":process-1.6.25.0-0514",
-        ":random-1.3.1-ea4666a27aa99a079970b341a2fe48baa5dbd57e140c6461d34d31f014e9a67b",
+        ":random-1.3.1",
         ":time-1.14-3339",
         ":transformers-0.6.1.2-c7d6",
         ":unix-2.8.6.0-2805",
-        ":unordered-containers-0.2.21-814534a1d0c16a875a0aeb1c577004829e024870dded3780b7fdc04fa2ef3fb3",
-        ":utf8-string-1.0.2-be632dc95227ddabc3b59203e51290e0700f80369999d407685bd8483827df5c",
+        ":unordered-containers-0.2.21",
+        ":utf8-string-1.0.2",
     ],
     visibility = ["PUBLIC"],
 )
@@ -514,7 +502,7 @@ build(
 # splitmix-0.1.3.2
 
 repo_package(
-    name = "splitmix-0.1.3.2",
+    name = "splitmix-0.1.3.2-src",
     package = {
         "build-type": "Simple",
         "cabal-file": {
@@ -535,12 +523,11 @@ repo_package(
 )
 
 build(
-    name = "splitmix-0.1.3.2-6485c38e605e399e61b00674f785a5c088bf9b5db12f705e3a873457b8f5898b",
+    name = "splitmix-0.1.3.2",
     pkg_name = "splitmix",
     pkg_version = "0.1.3.2",
-    unit_id = "splitmix-0.1.3.2-6485c38e605e399e61b00674f785a5c088bf9b5db12f705e3a873457b8f5898b",
     component_name = "lib",
-    src = ":splitmix-0.1.3.2",
+    src = ":splitmix-0.1.3.2-src",
     flags = {
         "optimised-mixer": False,
     },
@@ -554,7 +541,7 @@ build(
 # unordered-containers-0.2.21
 
 repo_package(
-    name = "unordered-containers-0.2.21",
+    name = "unordered-containers-0.2.21-src",
     package = {
         "build-type": "Simple",
         "cabal-file": {
@@ -575,19 +562,18 @@ repo_package(
 )
 
 build(
-    name = "unordered-containers-0.2.21-814534a1d0c16a875a0aeb1c577004829e024870dded3780b7fdc04fa2ef3fb3",
+    name = "unordered-containers-0.2.21",
     pkg_name = "unordered-containers",
     pkg_version = "0.2.21",
-    unit_id = "unordered-containers-0.2.21-814534a1d0c16a875a0aeb1c577004829e024870dded3780b7fdc04fa2ef3fb3",
     component_name = "lib",
-    src = ":unordered-containers-0.2.21",
+    src = ":unordered-containers-0.2.21-src",
     flags = {
         "debug": False,
     },
     deps = [
         ":base-4.21.0.0-b7a5",
         ":deepseq-1.5.1.0-58c3",
-        ":hashable-1.5.1.0-2ea018dba429306fb6a8467a8d1bcb18c160ecf8ace3a3954c29bd57aead54dd",
+        ":hashable-1.5.1.0",
         ":template-haskell-2.23.0.0-1f7b",
     ],
     visibility = ["PUBLIC"],
@@ -596,7 +582,7 @@ build(
 # utf8-string-1.0.2
 
 repo_package(
-    name = "utf8-string-1.0.2",
+    name = "utf8-string-1.0.2-src",
     package = {
         "build-type": "Simple",
         "cabal-file": {
@@ -617,12 +603,11 @@ repo_package(
 )
 
 build(
-    name = "utf8-string-1.0.2-be632dc95227ddabc3b59203e51290e0700f80369999d407685bd8483827df5c",
+    name = "utf8-string-1.0.2",
     pkg_name = "utf8-string",
     pkg_version = "1.0.2",
-    unit_id = "utf8-string-1.0.2-be632dc95227ddabc3b59203e51290e0700f80369999d407685bd8483827df5c",
     component_name = "lib",
-    src = ":utf8-string-1.0.2",
+    src = ":utf8-string-1.0.2-src",
     flags = {},
     deps = [
         ":base-4.21.0.0-b7a5",

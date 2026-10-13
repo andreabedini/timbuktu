@@ -27,7 +27,7 @@ language extensions, data files) has to be done by hand.
 dependencies: a BXL script runs
 [cabal-solver-plan](https://github.com/andreabedini/cabal-solver-plan) and
 writes the plan it prints out as a `BUCK` file, with one target per unit,
-named after its unit-id. Each
+named after its package, version and component. Each
 unit is built from its sdist by the package's own `Setup.hs`, as cabal-install
 would. This works for any build type, but each unit is an opaque step.
 
@@ -109,8 +109,9 @@ opinionated and do not support more general use cases. In particular BUCK should
 not use `-package` to pass dependencies to GHC since this will leave GHC to
 figure out which unit to pick for a given package name. The build-system should
 be extremely precise in the instructions it gives to the compiler.
-The dependencies in both the global packagedb and cabal-install build plans are
-indeed expressed in terms of unit-id.
+The dependencies in the global packagedb are indeed expressed in terms of
+unit-id; a build plan is a graph of units, whose unit-ids, but for the ones
+of a package db, are ours to choose.
 
 For a while I used a fork of the prelude, customised to use `-package-id` in
 place of `-package`. Now I am back on the prelude that comes with buck2 and the
