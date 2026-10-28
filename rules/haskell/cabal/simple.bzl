@@ -664,9 +664,14 @@ def _registration(arg, deps: list[CabalUnitInfo], exposed: dict[str, (str, str)]
         ("includes", " ".join(bi.includes)),
         ("depends", " ".join([d.id for d in deps])),
         ("cc-options", " ".join(bi.cc_options)),
-        ("ld-options", " ".join(bi.ld_options + [o for o in arg.cxx.ld_options if type(o) == "string"])),
     ]
     lines = [_ipi_field(name, value) for name, value in fields if value]
+
+    # The linker flags of cxx_deps are not all strings (those of
+    # exported_linker_flags are not), so not something to look at here; the
+    # system libraries of a prebuilt_cxx_library are among them.
+    if bi.ld_options or arg.cxx.ld_options:
+        lines.append(cmd_args("ld-options:", bi.ld_options, arg.cxx.ld_options, delimiter = " "))
 
     if arg.modules:
         lines.append(_ipi_path("import-dirs", artifacts["hi"]))
@@ -756,7 +761,8 @@ def _build_library(actions: AnalysisActions, arg, outputs: dict[str, OutputArtif
     # register
 
     exposed = _resolve_reexports(arg, deps)
-    conf = actions.write("registration.conf", _registration(arg, deps, exposed))
+    # NOTE: allow_args for the linker flags of cxx_deps, see _registration.
+    conf, macros = actions.write("registration.conf", _registration(arg, deps, exposed), allow_args = True)
 
     if arg.exposed_modules:
         abi_hash = actions.declare_output("abi-hash")
@@ -782,16 +788,16 @@ def _build_library(actions: AnalysisActions, arg, outputs: dict[str, OutputArtif
         abi_hash = actions.write("abi-hash", "")
 
     actions.run(
-        cmd_args(arg.register, outputs["package_db"], arg.unit_id, conf, abi_hash, tc.ghc_pkg),
+        cmd_args(arg.register, outputs["package_db"], arg.unit_id, conf, abi_hash, tc.ghc_pkg, hidden = macros),
         category = "cabal_register",
         identifier = "package db",
     )
 
     # A sublibrary has a second registration, see _prelude_package_name.
     if "prelude_package_db" in outputs:
-        prelude_conf = actions.write("prelude-registration.conf", _registration(arg, deps, exposed, for_prelude = True))
+        prelude_conf, prelude_macros = actions.write("prelude-registration.conf", _registration(arg, deps, exposed, for_prelude = True), allow_args = True)
         actions.run(
-            cmd_args(arg.register, outputs["prelude_package_db"], arg.unit_id, prelude_conf, abi_hash, tc.ghc_pkg),
+            cmd_args(arg.register, outputs["prelude_package_db"], arg.unit_id, prelude_conf, abi_hash, tc.ghc_pkg, hidden = prelude_macros),
             category = "cabal_register",
             identifier = "package db for the prelude",
         )
