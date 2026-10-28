@@ -165,6 +165,14 @@ def _local_targets(where: str, pkg_id: str, local: struct, plan: dict[str, typin
         if plan_flags != None and u["flags"] != plan_flags:
             fail("{}: the units of {} have different flags".format(where, pkg_id))
         plan_flags = u["flags"]
+        if "component" not in u:
+            # The solver plans a package with nothing to build (test suites
+            # only, say) as a whole: it gets its cabal_package and nothing
+            # else, which other rules may use.
+            built = [c for c in desc["components"] if c["kind"] in ("lib", "exe") and c["buildable"]]
+            if built:
+                fail("{}: the plan builds {} as a whole, which has components to build".format(where, pkg_id))
+            continue
         kind, cname = component(u["component"])
         c = components.get((kind, cname))
         if not c or not c["buildable"]:
@@ -253,6 +261,10 @@ def plan_targets(where: str, plan: dict[str, typing.Any], local: dict[str, struc
 
     aliases = {}
     for i in sorted(plan["targets"], key = lambda i: names[i]):
+        # A local package with nothing to build has no target (see
+        # _local_targets).
+        if "component" not in units[i] and plan["packages"][units[i]["package"]]["src"]["type"] == "local":
+            continue
         alias_name = _alias_name(plan, units[i])
         if alias_name in aliases:
             fail("{}: the targets {} and {} would both be called `{}`".format(where, names[aliases[alias_name]], names[i], alias_name))

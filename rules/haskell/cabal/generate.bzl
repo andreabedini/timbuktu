@@ -258,8 +258,9 @@ def package_targets(
             package.append((attr_name(field, spec), value))
 
     # The rules making the directories of `generated` may use the package,
-    # from another BUCK file.
-    if generated:
+    # from another BUCK file; and a package with nothing to build is there
+    # for other rules only.
+    if generated or not targets:
         package.append(("visibility", ["PUBLIC"]))
 
     return struct(
