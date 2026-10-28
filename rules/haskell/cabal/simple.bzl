@@ -1042,7 +1042,7 @@ cabal_simple_library = rule(
     } | field_attrs(LIBRARY_FIELDS) | _component_attrs | prelude_library_attrs,
 )
 
-def _executable(ctx: AnalysisContext, exe_name: str, fields: dict[str, struct]) -> list[Provider]:
+def _executable(ctx: AnalysisContext, exe_name: str, fields: dict[str, struct], test: bool = False) -> list[Provider]:
     _check_supported(ctx, fields)
 
     pkg = _package(ctx)
@@ -1062,14 +1062,22 @@ def _executable(ctx: AnalysisContext, exe_name: str, fields: dict[str, struct]) 
     # The executable finds the data-files of its package, and of the
     # libraries it is made of, through the environment.
     env = dict([unit.data_dir for unit in _dep_units(ctx).traverse() if unit.data_dir] + [_data_dir_env(pkg)])
+    env_args = [cmd_args(name + "=", value, delimiter = "") for name, value in env.items()]
 
-    return [
+    if test:
+        # Cabal runs a test suite from the root of its package: tests read
+        # files there by relative paths.
+        test_info = [ExternalRunnerTestInfo(
+            type = "cabal",
+            command = [cmd_args("sh", ctx.attrs._run, pkg.srcdir, cmd_args(env_args, "--", exe, relative_to = pkg.srcdir))],
+            run_from_project_root = True,
+        )]
+    else:
+        test_info = []
+
+    return test_info + [
         DefaultInfo(default_output = exe),
-        RunInfo(args = cmd_args(
-            "env",
-            [cmd_args(name + "=", value, delimiter = "") for name, value in env.items()],
-            exe,
-        )),
+        RunInfo(args = cmd_args("env", env_args, exe)),
         CabalExecutableInfo(name = exe_name, exe = exe, env = env),
     ]
 
@@ -1093,17 +1101,7 @@ def _cabal_simple_test_impl(ctx: AnalysisContext) -> list[Provider]:
         fail("{}: test suites of type `{}` are not supported yet".format(ctx.label, ctx.attrs.type))
     if not ctx.attrs.main_is:
         fail("{}: a test suite of type exitcode-stdio-1.0 needs main-is".format(ctx.label))
-    providers = _executable(ctx, ctx.label.name, TEST_SUITE_FIELDS)
-    run_info = [p for p in providers if isinstance(p, RunInfo)][0]
-    return providers + [
-        ExternalRunnerTestInfo(
-            type = "cabal",
-            command = [run_info.args],
-            # NOTE: Cabal runs test suites from the root of the package
-            # instead, tests that read files with a relative path need it.
-            run_from_project_root = True,
-        ),
-    ]
+    return _executable(ctx, ctx.label.name, TEST_SUITE_FIELDS, test = True)
 
 # The types of test suite of Cabal 3.14 (TestSuiteInterface).
 _TEST_SUITE_TYPES = ["exitcode-stdio-1.0", "detailed-0.9"]
