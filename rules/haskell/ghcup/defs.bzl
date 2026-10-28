@@ -94,12 +94,18 @@ GHC_DISTRIBUTION_SUB_TARGETS = [
     "lib",
 ]
 
+# Older binary distributions (9.6, for one) cannot be used where they are
+# unpacked: `lib/settings` and the package db cache are written by their
+# `./configure && make install`. With `configure = True` the archive is
+# copied, and those two are made in the copy, which is then used in place
+# like a newer distribution. 9.12 has them already.
 def download_ghc_distribution(
         name: str,
         version: str,
         arch: [None, str] = None,
         os: [None, str] = None,
-        os_version: [None, str] = None):
+        os_version: [None, str] = None,
+        configure: bool = False):
     if not arch:
         arch = host_arch()
 
@@ -118,6 +124,13 @@ def download_ghc_distribution(
         sub_targets = GHC_DISTRIBUTION_SUB_TARGETS,
     )
 
+    if configure:
+        configure_ghc_distribution(
+            name = name + "-configured",
+            archive = ":" + archive_name,
+        )
+        archive_name = name + "-configured"
+
     ghc_distribution(
         name = name,
         archive = ":" + archive_name,
@@ -126,6 +139,40 @@ def download_ghc_distribution(
         os = os,
         os_version = os_version,
     )
+
+def _configure_ghc_distribution_impl(ctx: AnalysisContext) -> list[Provider]:
+    out = ctx.actions.declare_output("ghc", dir = True)
+    script = ctx.actions.write(
+        "configure.sh",
+        [
+            "set -eu",
+            "cp -a --reflink=auto \"$1\" \"$2\"",
+            "cd \"$2\"",
+            "./configure >&2",
+            "make lib/settings >&2",
+            "bin/ghc-pkg recache --global >&2",
+        ],
+    )
+    ctx.actions.run(
+        cmd_args("/bin/sh", script, ctx.attrs.archive[DefaultInfo].default_outputs[0], out.as_output()),
+        category = "ghc_configure",
+        # It runs the C compiler and the tools configure finds in PATH.
+        local_only = True,
+    )
+    return [DefaultInfo(
+        default_output = out,
+        sub_targets = {
+            p: [DefaultInfo(default_output = out.project(p))]
+            for p in GHC_DISTRIBUTION_SUB_TARGETS
+        },
+    )]
+
+configure_ghc_distribution = rule(
+    impl = _configure_ghc_distribution_impl,
+    attrs = {
+        "archive": attrs.dep(providers = [DefaultInfo]),
+    },
+)
 
 GhcDistributionInfo = provider(
     # @unsorted-dict-items

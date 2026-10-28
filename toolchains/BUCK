@@ -61,6 +61,21 @@ bindist_ghc_toolchain(
     visibility = ["PUBLIC"],
 )
 
+# For projects that do not build with 9.12 yet (hsthrift: ghc < 9.9):
+#
+#   buck2 build --config haskell.toolchain=toolchains//:ghc-9.6.7-bindist ...
+download_ghc_distribution(
+    name = "ghc-9.6.7",
+    version = "9.6.7",
+    configure = True,
+)
+
+bindist_ghc_toolchain(
+    name = "ghc-9.6.7-bindist",
+    distribution = ":ghc-9.6.7",
+    visibility = ["PUBLIC"],
+)
+
 # Whatever GHC is in PATH. Not hermetic.
 system_ghc_toolchain(
     name = "ghc",

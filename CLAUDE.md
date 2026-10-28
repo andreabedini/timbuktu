@@ -402,7 +402,12 @@ archive in `buck-out` that the build uses.
 - `rules/haskell/ghcup/` — `defs.bzl` picks a bindist URL and hash for GHC or
   cabal-install out of GHCup's metadata (`metadata.bzl`) for the host OS/arch
   and wraps it in `http_archive`. buildifier cannot parse a type annotation
-  in `defs.bzl`.
+  in `defs.bzl`. Older GHC bindists (9.6) have no `lib/settings` and no
+  package db cache until `./configure && make install`; with
+  `configure = True` (`toolchains//:ghc-9.6.7`) a copy of the archive gets
+  both and is used in place. 9.6.7 runs `//examples/interop:count`, but the
+  helpers in `rules/haskell/helpers` and `setup_simple` need Cabal 3.12 or
+  later and do not compile with its Cabal 3.10.3 (2026-10-28).
 - `rules/haskell/ghci/` — the two script templates `haskell_ghci` needs from
   the toolchain, exported by `rules/haskell/BUCK` and the default of
   `bindist_ghc_toolchain`. The prelude does not come with any. Their names
