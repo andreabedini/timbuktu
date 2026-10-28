@@ -612,12 +612,20 @@ def _registration(arg, deps: list[CabalUnitInfo], exposed: dict[str, (str, str)]
     if arg.modules:
         lines.append(_ipi_path("import-dirs", artifacts["hi"]))
     library_dirs = []
+    dynamic_library_dirs = []
     if "static_lib" in artifacts:
         lines.append("hs-libraries: HS" + arg.unit_id)
         library_dirs.append(cmd_args(artifacts["static_lib"], parent = 1))
-        lines.append(_ipi_path("dynamic-library-dirs", artifacts["dynlib"]))
+        dynamic_library_dirs.append(artifacts["dynlib"])
+
+    # The archives of cxx_deps are in extra-libraries, which GHC links
+    # whatever the way: a dynamic link (a shared library of a package
+    # depending on this one) looks for them in dynamic-library-dirs.
     if arg.cxx.lib_dir:
         library_dirs.append(arg.cxx.lib_dir)
+        dynamic_library_dirs.append(arg.cxx.lib_dir)
+    if dynamic_library_dirs:
+        lines.append(_ipi_path("dynamic-library-dirs", *dynamic_library_dirs))
     if library_dirs:
         lines.append(_ipi_path("library-dirs", *library_dirs))
     if bi.include_dirs:
