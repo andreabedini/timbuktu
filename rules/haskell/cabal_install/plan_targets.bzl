@@ -121,6 +121,10 @@ def _pre_existing(key: str, unit: dict[str, typing.Any], names: dict[str, str]) 
 
 def _dep_key(plan: dict[str, typing.Any], unit: dict[str, typing.Any]) -> str:
     """How generate.bzl keys a library dependency: `<package>[:<library>]`."""
+    if "component" not in unit:
+        # A whole-package unit (built by its Setup.hs, see plan_format.bzl)
+        # is a dependency on its main library: its target is that library.
+        return name_version(plan, unit)[0]
     lib = component(unit["component"])[1]
     return name_version(plan, unit)[0] + (":" + lib if lib else "")
 
