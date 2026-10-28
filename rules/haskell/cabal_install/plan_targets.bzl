@@ -217,6 +217,7 @@ def _local_targets(where: str, pkg_id: str, local: struct, plan: dict[str, typin
         root = root,
         pkgconfig = local.pkgconfig,
         generated = local.generated,
+        extra_libraries = local.extra_libraries,
     )
     if made.units:
         fail("{}: {} needs units the plan does not have: {}".format(where, pkg_id, ", ".join(made.units)))
@@ -233,10 +234,12 @@ def plan_targets(where: str, plan: dict[str, typing.Any], local: dict[str, struc
       where: what the plan is, for messages
       plan: the plan, as decode_plan returns it
       local: for each local package of the plan, by its id, struct(description,
-        root, pkgconfig, generated): what describe_package printed for it,
+        root, pkgconfig, generated, extra_libraries): what describe_package
+        printed for it,
         with the flags of the plan; its directory relative to the BUCK file
         (None for the directory of the BUCK file); the targets of the C
-        libraries of pkgconfig-depends, by name; and the targets of the
+        libraries of pkgconfig-depends, by name; the targets of the libraries
+        of extra-libraries, by name (see package_targets); and the targets of the
         directories made by other rules, by their path in the package (see
         `generated` in package_targets)
     Returns:

@@ -20,7 +20,9 @@ test suite after itself. Dependencies become targets as follows:
   fails and says which.
 
 The C libraries of pkgconfig-depends become the targets `pkgconfig` says,
-by pkg-config name, in `cxx_deps`; the field itself is copied as it is.
+by pkg-config name, in `cxx_deps`; the field itself is copied as it is. So do
+the libraries of extra-libraries that `extra_libraries` names, which are left
+out of the field: the others are linked with `-l`, as Cabal does.
 
 Every field describe_package prints is copied to the attribute fields.bzl
 says it is, refused fields included: the rules refuse them, not the
@@ -102,7 +104,8 @@ def package_targets(
         pkgconfig: dict[str, str] = {},
         package_target: str | None = None,
         root: str | None = None,
-        generated: dict[str, str] = {}) -> struct:
+        generated: dict[str, str] = {},
+        extra_libraries: dict[str, str] = {}) -> struct:
     """The cabal_simple targets for a package, as data.
 
     Args:
@@ -131,6 +134,9 @@ def package_targets(
       generated: the target of each directory of the package made by
         another rule, by its path in the package: every component gets them
         (see `generated` in simple.bzl)
+      extra_libraries: the target of a library of extra-libraries, by its
+        name (as `-l` takes it): several names can be the one target, e.g.
+        the archives of a project that it builds as one
     Returns:
       struct(targets, units, skipped): the targets, as struct(rule, attrs)
       with the attributes in order, the cabal_package first; the packages of
@@ -201,7 +207,10 @@ def package_targets(
         for field, spec in (_KINDS[c["kind"]].fields | BUILD_INFO_FIELDS).items():
             # NOTE: "." is where Cabal and the rules look anyway.
             if field in c and field not in _SPECIAL and not (field == "hs-source-dirs" and c[field] == ["."]):
-                attrs.append((attr_name(field, spec), c[field]))
+                value = c[field]
+                if field == "extra-libraries":
+                    value = [lib for lib in value if lib not in extra_libraries] or None
+                attrs.append((attr_name(field, spec), value))
         build_depends = []
         for dep in c.get("build-depends", []):
             for lib in dep["libraries"]:
@@ -219,6 +228,9 @@ def package_targets(
                 missing.append("--pkgconfig {}=<target>".format(pc_name))
             elif pkgconfig[pc_name] not in cxx_deps:
                 cxx_deps.append(pkgconfig[pc_name])
+        for lib in c.get("extra-libraries", []):
+            if lib in extra_libraries and extra_libraries[lib] not in cxx_deps:
+                cxx_deps.append(extra_libraries[lib])
         attrs.append(("cxx_deps", cxx_deps or None))
         attrs.append(("generated", generated or None))
 

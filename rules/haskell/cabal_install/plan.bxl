@@ -36,6 +36,10 @@ Options:
   --pkgconfig NAME=TARGET   the target of a C library of the pkgconfig-depends
                         of a local package, by its pkg-config name (it goes
                         to cxx_deps; more than one: repeat it)
+  --extra-library NAME=TARGET   the target of a library of the
+                        extra-libraries of a local package, by its name: it
+                        goes to cxx_deps rather than being linked with -l
+                        (more than one: repeat it)
   --generated DIR=TARGET    a directory of a local package that TARGET makes,
                         e.g. Haskell from an IDL: its components see it in
                         place of what the glob finds there (it goes to
@@ -63,6 +67,8 @@ def _command(args: typing.Any) -> str:
         words.extend(["--local-package", local])
     for p in args.pkgconfig:
         words.extend(["--pkgconfig", p])
+    for e in args.extra_library:
+        words.extend(["--extra-library", e])
     for g in args.generated:
         words.extend(["--generated", g])
     if args.buck_dir:
@@ -88,14 +94,17 @@ def _flags(items: list[str]) -> dict[str, str]:
         out[pkg] = (out[pkg] + " " + flags) if pkg in out else flags
     return out
 
-def _pkgconfig(items: list[str]) -> dict[str, str]:
+def _targets(option: str, items: list[str]) -> dict[str, str]:
     out = {}
     for item in items:
         name, sep, target = item.partition("=")
         if not sep or not name or not target:
-            fail("--pkgconfig wants NAME=TARGET, not `{}`".format(item))
+            fail("{} wants NAME=TARGET, not `{}`".format(option, item))
         out[name] = target
     return out
+
+def _pkgconfig(items: list[str]) -> dict[str, str]:
+    return _targets("--pkgconfig", items)
 
 def _normal_dir(path: str) -> str:
     """A directory of the repository as buck2 wants it: no `./`, no trailing
@@ -194,6 +203,7 @@ def _generate_impl(ctx: bxl.Context):
     helper = describer if local_packages else None
     command = _command(ctx.cli_args)
     pkgconfig = _pkgconfig(ctx.cli_args.pkgconfig)
+    extra_libraries = _targets("--extra-library", ctx.cli_args.extra_library)
     out = actions.declare_output("BUCK")
 
     def write(ctx, artifacts, outputs):
@@ -228,7 +238,7 @@ def _generate_impl(ctx: bxl.Context):
 
         def write_buck(ctx, artifacts, outputs):
             local = {
-                pkg_id: struct(description = artifacts[d.json].read_json(), root = d.root, pkgconfig = pkgconfig, generated = d.generated)
+                pkg_id: struct(description = artifacts[d.json].read_json(), root = d.root, pkgconfig = pkgconfig, generated = d.generated, extra_libraries = extra_libraries)
                 for pkg_id, d in described.items()
             }
             ctx.bxl_actions().actions.write(outputs[out], buck_file(decoded, command, where, local))
@@ -251,6 +261,7 @@ generate = bxl_main(
     cli_args = {
         "buck-dir": cli_args.option(cli_args.string()),
         "constraint": cli_args.list(cli_args.string(), default = []),
+        "extra-library": cli_args.list(cli_args.string(), default = []),
         "flag": cli_args.list(cli_args.string(), default = []),
         "generated": cli_args.list(cli_args.string(), default = []),
         "index-state": cli_args.option(cli_args.string()),
