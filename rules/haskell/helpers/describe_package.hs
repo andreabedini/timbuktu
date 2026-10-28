@@ -16,7 +16,7 @@
 -- Every field the Cabal this program is built with knows is printed, or is
 -- in 'folded' or 'otherCompilers': when a new version of Cabal has a field
 -- that is none of these, the program stops before reading anything. Decide
--- what the cabal_simple rules make of it (root//rules/haskell/cabal/fields.bzl)
+-- what the cabal_simple rules make of it (timbuktu//rules/haskell/cabal/fields.bzl)
 -- and add it here.
 --
 -- Dependencies are not checked against anything: a flag is resolved as if

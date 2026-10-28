@@ -1,6 +1,6 @@
 """
 Providers of the cabal_simple rules. What a library or an executable hands to
-its dependents is in root//rules/haskell:providers.bzl, shared with the other
+its dependents is in timbuktu//rules/haskell:providers.bzl, shared with the other
 rule sets.
 """
 

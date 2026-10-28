@@ -1,5 +1,5 @@
-load("@root//rules/haskell:hackage.bzl", "hackage_package")
-load("@root//rules/haskell/cabal:defs.bzl", "cabal_package", "cabal_simple_executable")
+load("@timbuktu//rules/haskell:hackage.bzl", "hackage_package")
+load("@timbuktu//rules/haskell/cabal:defs.bzl", "cabal_package", "cabal_simple_executable")
 
 # happy, straight from its sdist: a transcription of happy.cabal, except for
 # its test-suite.

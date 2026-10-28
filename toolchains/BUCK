@@ -3,9 +3,9 @@ load("@prelude//toolchains:cxx.bzl", "system_cxx_toolchain")
 load("@prelude//toolchains:genrule.bzl", "system_genrule_toolchain")
 load("@prelude//toolchains:python.bzl", "system_python_bootstrap_toolchain", "system_python_toolchain")
 load("@prelude//toolchains:remote_test_execution.bzl", "remote_test_execution_toolchain")
-load("@root//rules/haskell:toolchain.bzl", "ghc_toolchain", "system_ghc_toolchain")
-load("@root//rules/haskell/cabal_install:cabal_toolchain.bzl", "cabal_toolchain")
-load("@root//rules/haskell/cabal_install:solver_toolchain.bzl", "cabal_solver_plan_toolchain")
+load("@timbuktu//rules/haskell:toolchain.bzl", "ghc_toolchain", "system_ghc_toolchain")
+load("@timbuktu//rules/haskell/cabal_install:cabal_toolchain.bzl", "cabal_toolchain")
+load("@timbuktu//rules/haskell/cabal_install:solver_toolchain.bzl", "cabal_solver_plan_toolchain")
 
 system_cxx_toolchain(
     name = "cxx",
@@ -39,13 +39,13 @@ remote_test_execution_toolchain(
 )
 
 # The GHC of every Haskell rule: the ones of the prelude, the plan interpreter
-# and the cabal_simple rules (see root//rules/haskell:toolchain.bzl).
+# and the cabal_simple rules (see timbuktu//rules/haskell:toolchain.bzl).
 # The default is the binary distribution. To use the GHC in PATH instead:
 #
 #   buck2 build --config haskell.toolchain=toolchains//:ghc ...
 #
 # The tools the rules run (exec deps, like the helpers in
-# root//rules/haskell/helpers) are built with their own GHC, whatever the
+# timbuktu//rules/haskell/helpers) are built with their own GHC, whatever the
 # packages are built with: the helpers need Cabal 3.12 or later. Buck2 puts
 # the exec platform marker in the configuration of every exec dep. To change
 # it: --config haskell.tools_toolchain=...
@@ -59,7 +59,7 @@ toolchain_alias(
 )
 
 # The binary distributions of GHC and cabal-install are pinned in
-# toolchains//ghcup, a package made by root//rules/haskell/ghcup/ghcup.bxl
+# toolchains//ghcup, a package made by timbuktu//rules/haskell/ghcup/ghcup.bxl
 # from GHCup's metadata. To pin another one:
 #
 #   buck2 bxl //rules/haskell/ghcup/ghcup.bxl:pin -- --ghc 9.8.4

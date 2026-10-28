@@ -1,5 +1,5 @@
 """
-Running describe_package (root//rules/haskell/helpers:describe_package) on a
+Running describe_package (timbuktu//rules/haskell/helpers:describe_package) on a
 .cabal file, for the GHC of a toolchain: the action both generators declare,
 generate.bxl for a package and plan.bxl for the local packages of a plan.
 """

@@ -71,7 +71,7 @@ CabalLibraryInfo = provider(
     # @unsorted-dict-items
     fields = {
         # Package name. None for a unit only known by its id (see
-        # root//rules/haskell:unit.bzl).
+        # timbuktu//rules/haskell:unit.bzl).
         "name": provider_field(str | None),
         # None for the main library, the name of the sublibrary otherwise.
         "lib_name": provider_field(str | None, default = None),

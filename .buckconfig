@@ -1,10 +1,14 @@
 [cells]
-  root = .
+  timbuktu = .
   prelude = prelude
   toolchains = toolchains
   none = none
 
 [cell_aliases]
+  # The root cell is called timbuktu, which is how the rules refer to
+  # themselves: in a project that uses them as an external cell, that cell
+  # has to be called timbuktu too.
+  root = timbuktu
   config = prelude
   ovr_config = prelude
   fbcode = none

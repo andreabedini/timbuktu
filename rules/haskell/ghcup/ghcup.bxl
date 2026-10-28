@@ -105,7 +105,7 @@ def _buck_file(pinned: dict[str, dict[str, struct]]) -> str:
         "# pin again a version, run it with `--ghc VERSION` or `--cabal VERSION` and",
         "# copy the file it prints here; the versions here are kept.",
         "",
-        'load("@root//rules/haskell/ghcup:defs.bzl", "cabal_bindist", "ghc_bindist")',
+        'load("@timbuktu//rules/haskell/ghcup:defs.bzl", "cabal_bindist", "ghc_bindist")',
     ]
     for tool in sorted(_TOOLS.keys()):
         for version in sorted(pinned[tool].keys(), key = _version_key):

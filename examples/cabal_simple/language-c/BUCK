@@ -1,5 +1,5 @@
-load("@root//rules/haskell:hackage.bzl", "hackage_package")
-load("@root//rules/haskell/cabal:defs.bzl", "cabal_package", "cabal_simple_library")
+load("@timbuktu//rules/haskell:hackage.bzl", "hackage_package")
+load("@timbuktu//rules/haskell/cabal:defs.bzl", "cabal_package", "cabal_simple_library")
 
 # language-c, straight from its sdist: a transcription of language-c.cabal,
 # except for its test-suite. Its lexer and its parser go through alex and

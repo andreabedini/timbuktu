@@ -1,4 +1,4 @@
-load("@root//rules/haskell:defs.bzl", "haskell_unit")
+load("@timbuktu//rules/haskell:defs.bzl", "haskell_unit")
 
 # The libraries that come with GHC, for the examples to depend on. Which
 # version one gets depends on the toolchain.

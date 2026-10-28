@@ -1,5 +1,5 @@
-load("@root//rules/haskell:defs.bzl", "haskell_unit")
-load("@root//rules/haskell/cabal:defs.bzl", "cabal_package", "cabal_simple_executable", "cabal_simple_library")
+load("@timbuktu//rules/haskell:defs.bzl", "haskell_unit")
+load("@timbuktu//rules/haskell/cabal:defs.bzl", "cabal_package", "cabal_simple_executable", "cabal_simple_library")
 
 # A transcription of lexer.cabal. Lexer.x goes through alex, which is itself
 # built from source (see //examples/cabal_simple/alex).

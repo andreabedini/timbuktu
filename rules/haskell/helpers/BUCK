@@ -13,7 +13,7 @@ haskell_binary(
     ],
 )
 
-# What generate.bxl in root//rules/haskell/cabal reads a .cabal file with.
+# What generate.bxl in timbuktu//rules/haskell/cabal reads a .cabal file with.
 haskell_binary(
     name = "describe_package",
     srcs = {
@@ -31,7 +31,7 @@ haskell_binary(
     visibility = ["PUBLIC"],
 )
 
-# What the cabal_simple rules (root//rules/haskell/cabal) find the source of
+# What the cabal_simple rules (timbuktu//rules/haskell/cabal) find the source of
 # a module with.
 haskell_binary(
     name = "find_modules",

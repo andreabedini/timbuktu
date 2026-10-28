@@ -1,5 +1,5 @@
-load("@root//rules/haskell:hackage.bzl", "hackage_package")
-load("@root//rules/haskell/cabal:defs.bzl", "cabal_package", "cabal_simple_library")
+load("@timbuktu//rules/haskell:hackage.bzl", "hackage_package")
+load("@timbuktu//rules/haskell/cabal:defs.bzl", "cabal_package", "cabal_simple_library")
 
 # happy-lib, straight from its sdist: a transcription of happy-lib.cabal.
 #

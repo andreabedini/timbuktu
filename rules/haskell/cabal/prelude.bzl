@@ -207,7 +207,7 @@ def prelude_unit_link_providers(
     arguments once does not go back to them for what a later library needs.
     Here they are given again, by the library that needs them.
 
-    This is the linking alone. See root//rules/haskell:unit.bzl for how the
+    This is the linking alone. See timbuktu//rules/haskell:unit.bzl for how the
     compiler gets to know about the unit.
 
     Args:

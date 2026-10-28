@@ -11,7 +11,7 @@ configure
   Query the compiler and resolve build-depends to units. The libraries that
   come with the compiler are only known by name during analysis: their version
   and unit-id come from the global package db (see toolchain.bzl and unit.bzl
-  in root//rules/haskell).
+  in timbuktu//rules/haskell).
 
 preprocess
   Find the source of each module in hs-source-dirs and run alex, happy and
@@ -77,9 +77,9 @@ load(":providers.bzl", "CabalPackageInfo")
 # package it is part of.
 _component_attrs = field_attrs(BUILD_INFO_FIELDS) | {
     "package": attrs.dep(providers = [CabalPackageInfo]),
-    "_find_modules": attrs.default_only(attrs.exec_dep(default = "root//rules/haskell/helpers:find_modules", providers = [RunInfo])),
-    "_register": attrs.default_only(attrs.exec_dep(default = "root//rules/haskell/helpers:register", providers = [RunInfo])),
-    "_run": attrs.default_only(attrs.source(default = "root//rules/haskell/cabal:run.sh")),
+    "_find_modules": attrs.default_only(attrs.exec_dep(default = "timbuktu//rules/haskell/helpers:find_modules", providers = [RunInfo])),
+    "_register": attrs.default_only(attrs.exec_dep(default = "timbuktu//rules/haskell/helpers:register", providers = [RunInfo])),
+    "_run": attrs.default_only(attrs.source(default = "timbuktu//rules/haskell/cabal:run.sh")),
 } | ghc_toolchain_attrs
 
 def _check_supported(ctx: AnalysisContext, fields: dict[str, struct]):
@@ -397,7 +397,7 @@ def _ipi_field(name: str, value: str) -> str:
     return "\n".join(["{}: {}".format(name, lines[0])] + ["    {}".format(l.strip() or ".") for l in lines[1:]])
 
 def _ipi_path(name: str, *path) -> cmd_args:
-    """A field that refers to artifacts, see root//rules/haskell/helpers:register"""
+    """A field that refers to artifacts, see timbuktu//rules/haskell/helpers:register"""
     return cmd_args(name + ":", [cmd_args("${projectroot}/", p, delimiter = "") for p in path], delimiter = " ")
 
 def _resolve_reexports(arg, deps: list[CabalUnitInfo]) -> dict[str, (str, str)]:

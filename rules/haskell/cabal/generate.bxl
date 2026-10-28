@@ -51,7 +51,7 @@ def _actions(ctx: bxl.Context) -> (AnalysisActions, RunInfo):
     (an exec dep): with the GHC of the tools, which need not be the one of
     the packages (see toolchains//:haskell). BXL allows one registry, which
     is where exec deps come from."""
-    target = ctx.unconfigured_sub_targets("root//rules/haskell/helpers:describe_package")
+    target = ctx.unconfigured_sub_targets("timbuktu//rules/haskell/helpers:describe_package")
     bxl_actions = ctx.bxl_actions(exec_deps = [target])
     return bxl_actions.actions, bxl_actions.exec_deps[target][RunInfo]
 
@@ -76,7 +76,7 @@ def _describe(ctx: bxl.Context, actions: AnalysisActions, helper: RunInfo) -> st
         name = node.label.name
         srcs = label_srcs(":" + name)
         sha256 = node.attrs_eager().sha256.value()
-        loads.append('load("@root//rules/haskell:hackage.bzl", "hackage_package")')
+        loads.append('load("@timbuktu//rules/haskell:hackage.bzl", "hackage_package")')
         preamble.append("hackage_package(\n    name = {},\n    sha256 = {},\n)\n".format(repr(name), repr(sha256)))
 
     description = describe_package(actions, helper, ghc, cabal, args.flags)
@@ -146,25 +146,26 @@ _DEFAULTS = {
     "type": "exitcode-stdio-1.0",
 }
 
-def _normal(package: str, name: str, value: typing.Any) -> typing.Any:
-    """A value as a string or a list of strings, labels absolute."""
+def _normal(cell: str, package: str, name: str, value: typing.Any) -> typing.Any:
+    """A value as a string or a list of strings, labels absolute (in
+    `cell`, the cell of the package)."""
     if type(value) == "list":
-        items = [_normal(package, name, v) for v in value]
+        items = [_normal(cell, package, name, v) for v in value]
         return sorted(items) if name == "build_depends" else items
     value = str(value)
     if value.startswith(":"):
-        return "root//{}{}".format(package, value)
+        return "{}//{}{}".format(cell, package, value)
     if value.startswith("//"):
-        return "root" + value
+        return cell + value
     return value
 
-def _value(package: str, name: str, value: typing.Any) -> typing.Any:
+def _value(cell: str, package: str, name: str, value: typing.Any) -> typing.Any:
     """A value to compare: None when it is the same as giving none."""
     if value in (None, [], "") or (name in _DEFAULTS and _DEFAULTS[name] == value):
         return None
-    return _normal(package, name, value)
+    return _normal(cell, package, name, value)
 
-def _differences(package: str, generated: struct, written: dict[str, struct]) -> list[str]:
+def _differences(cell: str, package: str, generated: struct, written: dict[str, struct]) -> list[str]:
     out = []
     names = {t.attrs[0][1]: t for t in generated.targets}
     for name, t in names.items():
@@ -175,12 +176,12 @@ def _differences(package: str, generated: struct, written: dict[str, struct]) ->
         if w.rule != t.rule:
             out.append("{}: a {} rather than a {}".format(name, w.rule, t.rule))
             continue
-        mine = {k: _value(package, k, v) for k, v in t.attrs}
+        mine = {k: _value(cell, package, k, v) for k, v in t.attrs}
         keys = {k: None for k in mine.keys() + [attr_name(f, spec) for f, spec in RULE_FIELDS[t.rule].items()]}
         for k in sorted(keys.keys()):
             if k in _IGNORED:
                 continue
-            theirs = _value(package, k, w.attrs.get(k))
+            theirs = _value(cell, package, k, w.attrs.get(k))
             if mine.get(k) != theirs:
                 out.append("{}: {} is {} rather than {}".format(name, k, repr(theirs), repr(mine.get(k))))
     for name, w in written.items():
@@ -196,7 +197,11 @@ def _check_impl(ctx: bxl.Context):
         fail("give --against PACKAGE")
     package = ctx.cli_args.against.removeprefix("root").removeprefix("//").rstrip(":")
     written = {}
+
+    # The name of the root cell, which need not be root.
+    cell = "root"
     for node in ctx.uquery().eval("root//{}:".format(package)):
+        cell = node.label.cell
         attrs = node.get_attrs()
         written[node.label.name] = struct(rule = node.rule_type.rpartition(":")[2], attrs = attrs)
 
@@ -211,7 +216,7 @@ def _check_impl(ctx: bxl.Context):
             d.srcs,
             **d.options
         )
-        differences = _differences(package, generated, written)
+        differences = _differences(cell, package, generated, written)
         if differences:
             fail("{}: the targets differ from what would be generated:\n  {}".format(package, "\n  ".join(differences)))
         ctx.bxl_actions().actions.write(outputs[out], "{}: the same as generated\n".format(package))

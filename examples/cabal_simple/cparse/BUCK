@@ -1,4 +1,4 @@
-load("@root//rules/haskell/cabal:defs.bzl", "cabal_package", "cabal_simple_executable")
+load("@timbuktu//rules/haskell/cabal:defs.bzl", "cabal_package", "cabal_simple_executable")
 
 # A transcription of cparse.cabal. It depends on language-c, which is built
 # from its sdist with alex and happy (see //examples/cabal_simple/language-c).

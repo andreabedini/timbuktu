@@ -8,7 +8,7 @@ def _cabal_toolchain_impl(ctx: AnalysisContext) -> list[Provider]:
     return ctx.attrs.distribution.providers
 
 cabal_toolchain = rule(
-    doc = "Use the cabal-install of a binary distribution, e.g. one from root//rules/haskell/ghcup.",
+    doc = "Use the cabal-install of a binary distribution, e.g. one from timbuktu//rules/haskell/ghcup.",
     impl = _cabal_toolchain_impl,
     attrs = {
         "distribution": attrs.exec_dep(providers = [CabalDistributionInfo]),

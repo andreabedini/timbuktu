@@ -17,5 +17,5 @@ def expected_test(name: str, actual: str, expected: str):
             "$(location :{}-expected)".format(name),
             "$(location {})".format(actual),
         ],
-        test = "root//rules/haskell/tests:compare.sh",
+        test = "timbuktu//rules/haskell/tests:compare.sh",
     )

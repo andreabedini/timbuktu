@@ -255,7 +255,7 @@ def _ghc_toolchain_impl(ctx: AnalysisContext) -> list[Provider]:
     )
 
 ghc_toolchain = rule(
-    doc = "Use an unpacked GHC binary distribution, e.g. a ghc_bindist of root//rules/haskell/ghcup.",
+    doc = "Use an unpacked GHC binary distribution, e.g. a ghc_bindist of timbuktu//rules/haskell/ghcup.",
     impl = _ghc_toolchain_impl,
     attrs = _c_tools_attrs | {
         "distribution": attrs.exec_dep(providers = [GhcDistributionInfo]),
@@ -263,8 +263,8 @@ ghc_toolchain = rule(
         # NOTE: they are targets, and as plain sources a toolchain built on
         # its own (`buck2 build toolchains//:haskell`) would have no platform
         # to give them.
-        "ghci_iserv_template": attrs.exec_dep(default = "root//rules/haskell:iserv_script"),
-        "ghci_script_template": attrs.exec_dep(default = "root//rules/haskell:ghci_script"),
+        "ghci_iserv_template": attrs.exec_dep(default = "timbuktu//rules/haskell:iserv_script"),
+        "ghci_script_template": attrs.exec_dep(default = "timbuktu//rules/haskell:ghci_script"),
         "_script_template_processor": attrs.default_only(attrs.exec_dep(
             providers = [RunInfo],
             default = "prelude//haskell/tools:script_template_processor",

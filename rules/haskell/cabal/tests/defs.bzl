@@ -36,7 +36,7 @@ described_package = rule(
         "flags": attrs.string(default = ""),
         "ghc_version": attrs.string(default = "9.12.2"),
         "platform": attrs.string(default = "x86_64-linux"),
-        "_describe_package": attrs.default_only(attrs.exec_dep(default = "root//rules/haskell/helpers:describe_package", providers = [RunInfo])),
+        "_describe_package": attrs.default_only(attrs.exec_dep(default = "timbuktu//rules/haskell/helpers:describe_package", providers = [RunInfo])),
     },
 )
 

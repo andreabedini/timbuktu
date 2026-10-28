@@ -3,7 +3,7 @@
 # pin again a version, run it with `--ghc VERSION` or `--cabal VERSION` and
 # copy the file it prints here; the versions here are kept.
 
-load("@root//rules/haskell/ghcup:defs.bzl", "cabal_bindist", "ghc_bindist")
+load("@timbuktu//rules/haskell/ghcup:defs.bzl", "cabal_bindist", "ghc_bindist")
 
 cabal_bindist(
     name = "cabal-3.14.2.0",

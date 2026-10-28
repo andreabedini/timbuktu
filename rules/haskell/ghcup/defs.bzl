@@ -44,10 +44,10 @@ def host_os() -> str:
 # The platforms a distribution can be pinned for: the configuration of each
 # (the config_settings of rules/haskell/ghcup/BUCK), and its arch and OS.
 PLATFORMS = {
-    "linux-aarch64": struct(setting = "root//rules/haskell/ghcup:linux-aarch64", arch = "aarch64", os = "linux"),
-    "linux-x86_64": struct(setting = "root//rules/haskell/ghcup:linux-x86_64", arch = "x86_64", os = "linux"),
-    "macos-aarch64": struct(setting = "root//rules/haskell/ghcup:macos-aarch64", arch = "aarch64", os = "macos"),
-    "macos-x86_64": struct(setting = "root//rules/haskell/ghcup:macos-x86_64", arch = "x86_64", os = "macos"),
+    "linux-aarch64": struct(setting = "timbuktu//rules/haskell/ghcup:linux-aarch64", arch = "aarch64", os = "linux"),
+    "linux-x86_64": struct(setting = "timbuktu//rules/haskell/ghcup:linux-x86_64", arch = "x86_64", os = "linux"),
+    "macos-aarch64": struct(setting = "timbuktu//rules/haskell/ghcup:macos-aarch64", arch = "aarch64", os = "macos"),
+    "macos-x86_64": struct(setting = "timbuktu//rules/haskell/ghcup:macos-x86_64", arch = "x86_64", os = "macos"),
 }
 
 def _per_platform(bindists: dict, value):

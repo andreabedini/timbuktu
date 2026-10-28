@@ -1,4 +1,4 @@
-load("@root//rules/haskell/cabal:defs.bzl", "cabal_package", "cabal_simple_library", "cabal_simple_test")
+load("@timbuktu//rules/haskell/cabal:defs.bzl", "cabal_package", "cabal_simple_library", "cabal_simple_test")
 
 # A.chs is a c2hs file: find_modules knows it from Cabal, the rules cannot run c2hs.
 cabal_package(name = "p", version = "1", srcs = ["A.chs"])

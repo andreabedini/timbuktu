@@ -25,7 +25,7 @@ _metadata_fields = [
 
 # The build types of Cabal 3.14. The rules build Simple; the others run code
 # of the package's own at build time, which only its Setup.hs can do (see
-# root//rules/haskell/cabal_install).
+# timbuktu//rules/haskell/cabal_install).
 _BUILD_TYPES = ["Simple", "Configure", "Custom", "Hooks"]
 
 def _attr_name(field: str) -> str:

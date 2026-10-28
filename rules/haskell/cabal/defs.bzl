@@ -20,7 +20,7 @@ Build rules that reproduce Cabal's `build-type: Simple`.
 
 `haskell_unit` is not one of these rules: it is for whatever is already in a
 package db, here a library that comes with the compiler. Load it from
-root//rules/haskell:defs.bzl.
+timbuktu//rules/haskell:defs.bzl.
 """
 
 load(":package.bzl", _cabal_package = "cabal_package")

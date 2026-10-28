@@ -103,10 +103,11 @@ def _local_packages(ctx: bxl.Context) -> list[struct]:
                 d = buck_dir + "/" + "/".join(parts[:n])
                 if ctx.fs.exists(d + "/BUCK"):
                     fail("{} has a BUCK file, which would keep the files below it from a glob in {}".format(d, buck_dir))
+        # The paths of the root cell, whatever it is called, without it.
         cabal_files = [
-            str(e).removeprefix("root//")
+            str(e).partition("//")[2]
             for e in ctx.fs.list(path)
-            if str(e).endswith(".cabal") and ctx.fs.is_file(str(e).removeprefix("root//"))
+            if str(e).endswith(".cabal") and ctx.fs.is_file(str(e).partition("//")[2])
         ]
         if len(cabal_files) != 1:
             fail("{} has {} .cabal files, not one".format(path, len(cabal_files)))
@@ -137,7 +138,7 @@ def _actions(ctx: bxl.Context) -> (AnalysisActions, RunInfo):
     (an exec dep): with the GHC of the tools, which need not be the one of
     the packages (see toolchains//:haskell). BXL allows one registry, which
     is where exec deps come from."""
-    target = ctx.unconfigured_sub_targets("root//rules/haskell/helpers:describe_package")
+    target = ctx.unconfigured_sub_targets("timbuktu//rules/haskell/helpers:describe_package")
     bxl_actions = ctx.bxl_actions(exec_deps = [target])
     return bxl_actions.actions, bxl_actions.exec_deps[target][RunInfo]
 
