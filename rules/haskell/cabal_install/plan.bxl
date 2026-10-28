@@ -150,7 +150,9 @@ def _plan(ctx: bxl.Context, actions: AnalysisActions, ghc: GhcToolchainInfo, loc
         index_state = args.index_state,
         constraints = args.constraint,
         flags = _flags(args.flag),
-        args = [],
+        # The C libraries given with --pkgconfig are the solver's pkg-config
+        # modules, of any version: their targets provide them.
+        args = ["--with-pkg-config-module=" + name for name in _pkgconfig(args.pkgconfig)],
         local_packages = local_packages,
     ))
     return plan, "the plan for " + " ".join(args.target + args.local_package)
@@ -171,6 +173,7 @@ def _generate_impl(ctx: bxl.Context):
     plan, where = _plan(ctx, actions, ghc, local_packages)
     helper = describer if local_packages else None
     command = _command(ctx.cli_args)
+    pkgconfig = _pkgconfig(ctx.cli_args.pkgconfig)
     out = actions.declare_output("BUCK")
 
     def write(ctx, artifacts, outputs):
@@ -204,7 +207,7 @@ def _generate_impl(ctx: bxl.Context):
 
         def write_buck(ctx, artifacts, outputs):
             local = {
-                pkg_id: struct(description = artifacts[d.json].read_json(), root = d.root, pkgconfig = _pkgconfig(ctx.cli_args.pkgconfig))
+                pkg_id: struct(description = artifacts[d.json].read_json(), root = d.root, pkgconfig = pkgconfig)
                 for pkg_id, d in described.items()
             }
             ctx.bxl_actions().actions.write(outputs[out], buck_file(decoded, command, where, local))
