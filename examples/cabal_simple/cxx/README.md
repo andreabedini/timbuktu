@@ -18,7 +18,10 @@ pkg-config is not run. With `cxx_deps`, the rules:
   links them after the library, into whatever uses it: the executable
   `twice` here;
 - link them into the shared object of the library, so that GHC can run the
-  C++ code in Template Haskell: the test suite does, in a splice.
+  C++ code in Template Haskell: the test suite does, in a splice;
+- pass their headers on to whatever uses the library, as Cabal registers
+  the include directories pkg-config gives a package: `test/Factor.hsc`
+  includes `twice.h`, though the test suite names only `uses-cxx`.
 
 ```bash
 $ buck2 run //examples/cabal_simple/cxx:exe

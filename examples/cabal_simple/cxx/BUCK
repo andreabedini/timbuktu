@@ -62,6 +62,7 @@ cabal_simple_test(
     type = "exitcode-stdio-1.0",
     main_is = "Main.hs",
     hs_source_dirs = ["test"],
+    other_modules = ["Factor"],
     default_language = "Haskell2010",
     build_depends = [
         ":base",

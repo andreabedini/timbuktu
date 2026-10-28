@@ -24,6 +24,7 @@ executable twice
 test-suite uses-cxx-test
     type:             exitcode-stdio-1.0
     main-is:          Main.hs
+    other-modules:    Factor
     hs-source-dirs:   test
     build-depends:    base, template-haskell, uses-cxx
     default-language: Haskell2010

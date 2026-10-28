@@ -454,8 +454,16 @@ archive in `buck-out` that the build uses.
   `lib<unit-id>-cxx<n>.a`, in topological order, plus their `-l` flags),
   so GHC links them after the library into whatever uses it. Their other
   linker flags go to `ld-options` when they are strings. The prelude
-  bridge gets them as deps. `examples/cabal_simple/cxx` runs the C++ code
-  from an executable and from a Template Haskell splice.
+  bridge gets them as deps. A `cabal_simple_library` passes their
+  `CPreprocessorInfo` on, with that of its `build_depends`
+  (`_cxx_preprocessor`), so a package can include the headers of a C
+  library a dependency wraps, as Cabal's registered include-dirs allow
+  (fb-util includes folly's through folly-clib). `examples/cabal_simple/cxx`
+  runs the C++ code from an executable and from a Template Haskell splice,
+  and its test suite's `Factor.hsc` includes `twice.h` through the library.
+  In plan.bxl, `--pkgconfig` also tells the solver each NAME is installed
+  (`--with-pkg-config-module`); without it the solver rejects a package
+  with `pkgconfig-depends`.
 - `rules/haskell/ghci/` — the two script templates `haskell_ghci` needs from
   the toolchain, exported by `rules/haskell/BUCK` and the default of
   `ghc_toolchain`. The prelude does not come with any. Their names

@@ -48,7 +48,7 @@ library itself. See _cxx_deps.
 
 load("@prelude//:paths.bzl", "paths")
 load("@prelude//cxx:cxx_toolchain_types.bzl", "CxxToolchainInfo")
-load("@prelude//cxx:preprocessor.bzl", "CPreprocessorInfo")
+load("@prelude//cxx:preprocessor.bzl", "CPreprocessorInfo", "cxx_merge_cpreprocessors")
 load("@prelude//linking:link_info.bzl", "ArchiveLinkable", "LinkInfosTSet", "LinkStrategy", "MergedLinkInfo", "get_link_info")
 load("@prelude//decls:toolchains_common.bzl", "toolchains_common")
 load(
@@ -191,12 +191,30 @@ def _component(
         ),
     ))
 
+def _cxx_preprocessor(ctx: AnalysisContext) -> CPreprocessorInfo:
+    """The headers of the C and C++ libraries of `cxx_deps`, and of those of
+    the libraries in `build_depends`.
+
+    Cabal registers the include directories pkg-config gives a library, and
+    GHC and hsc2hs use the include directories of every package a component
+    depends on, transitively: a package can include the headers of a C
+    library one of its dependencies wraps (as fb-util does folly's, through
+    folly-clib). A cabal_simple library passes these on as a C++ library
+    passes on its exported headers, flags and all.
+    """
+    return cxx_merge_cpreprocessors(
+        ctx.actions,
+        [],
+        [dep[CPreprocessorInfo] for dep in ctx.attrs.cxx_deps + ctx.attrs.build_depends if CPreprocessorInfo in dep],
+    )
+
 def _cxx_deps(ctx: AnalysisContext, unit_id: str) -> struct:
     """What the C and C++ libraries of `cxx_deps` take.
 
     Returns:
       struct(
-        cflags: what compiling against their headers takes,
+        cflags: what compiling against their headers takes, and those of
+          the libraries of `build_depends` (see _cxx_preprocessor),
         libs: what linking against them takes, in order (each library
           before the ones it depends on): their archives and their linker
           flags,
@@ -208,11 +226,8 @@ def _cxx_deps(ctx: AnalysisContext, unit_id: str) -> struct:
         inputs: what using the registration takes,
       )
     """
-    cflags = cmd_args()
-    for dep in ctx.attrs.cxx_deps:
-        if CPreprocessorInfo in dep:
-            pp = dep[CPreprocessorInfo].set
-            cflags.add(pp.project_as_args("args"), pp.project_as_args("include_dirs"))
+    pp = _cxx_preprocessor(ctx).set
+    cflags = cmd_args(pp.project_as_args("args"), pp.project_as_args("include_dirs"))
 
     children = [
         dep[MergedLinkInfo]._infos.get(LinkStrategy("static_pic"))
@@ -908,6 +923,7 @@ def _cabal_simple_library_impl(ctx: AnalysisContext) -> list[Provider]:
                 data_dir = _data_dir_env(pkg),
             )),
         ),
+        _cxx_preprocessor(ctx),
     ] + prelude_library_providers(
         ctx,
         name = _prelude_package_name(pkg.name, lib_name),
