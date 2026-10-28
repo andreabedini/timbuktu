@@ -44,15 +44,16 @@ remote_test_execution_toolchain(
 #
 #   buck2 build --config haskell.toolchain=toolchains//:ghc ...
 #
-# The tools the rules run (exec deps, like the helpers in
-# timbuktu//rules/haskell/helpers) are built with their own GHC, whatever the
-# packages are built with: the helpers need Cabal 3.12 or later. Buck2 puts
-# the exec platform marker in the configuration of every exec dep. To change
-# it: --config haskell.tools_toolchain=...
+# The helpers the rules run (timbuktu//rules/haskell/helpers) are built with
+# their own GHC, whatever the packages are built with: they need Cabal 3.12
+# or later. Their configuration has the constraint selected on here (see
+# timbuktu//rules/haskell/helpers:helper.bzl); everything else, the build
+# tools of a plan too, gets the GHC of the packages. To change it:
+# --config haskell.tools_toolchain=...
 toolchain_alias(
     name = "haskell",
     actual = select({
-        "prelude//cfg/exec_platform/marker:is_exec_platform[true]": read_root_config("haskell", "tools_toolchain", "toolchains//:ghc-9.12.2"),
+        "timbuktu//rules/haskell/helpers:yes": read_root_config("haskell", "tools_toolchain", "toolchains//:ghc-9.12.2"),
         "DEFAULT": read_root_config("haskell", "toolchain", "toolchains//:ghc-9.12.2"),
     }),
     visibility = ["PUBLIC"],

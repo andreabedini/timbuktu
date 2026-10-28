@@ -1,6 +1,19 @@
-load("//rules/haskell:defs.bzl", "haskell_binary")
+load(":helper.bzl", "haskell_helper")
 
-haskell_binary(
+# The constraint toolchains//:haskell selects the GHC of the tools on (see
+# helper.bzl).
+constraint_setting(
+    name = "helper",
+    visibility = ["PUBLIC"],
+)
+
+constraint_value(
+    name = "yes",
+    constraint_setting = ":helper",
+    visibility = ["PUBLIC"],
+)
+
+haskell_helper(
     name = "parse_fields",
     srcs = {
         "Main.hs": "parse_fields.hs",
@@ -14,7 +27,7 @@ haskell_binary(
 )
 
 # What generate.bxl in timbuktu//rules/haskell/cabal reads a .cabal file with.
-haskell_binary(
+haskell_helper(
     name = "describe_package",
     srcs = {
         "Main.hs": "describe_package.hs",
@@ -33,7 +46,7 @@ haskell_binary(
 
 # What the cabal_simple rules (timbuktu//rules/haskell/cabal) find the source of
 # a module with.
-haskell_binary(
+haskell_helper(
     name = "find_modules",
     srcs = {
         "Main.hs": "find_modules.hs",
@@ -51,7 +64,7 @@ haskell_binary(
 )
 
 # What the cabal_simple rules register a library with.
-haskell_binary(
+haskell_helper(
     name = "register",
     srcs = {
         "Main.hs": "register.hs",

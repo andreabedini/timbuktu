@@ -429,12 +429,16 @@ archive in `buck-out` that the build uses.
   `//examples/interop:count-test` and `//examples/cabal_simple/hello:hello-test`
   pass and `generate.bxl` describes hello (2026-10-28).
 - Tools and packages have their own GHC: `toolchains//:haskell` selects on
-  the exec platform marker (`prelude//cfg/exec_platform/marker`), which
-  Buck2 puts in the configuration of every exec dep. Tools (the helpers in
-  `rules/haskell/helpers`, which need Cabal 3.12 or later) get
-  `haskell.tools_toolchain`, packages `haskell.toolchain`; both default to
-  9.12.2. The BXL scripts take `describe_package` as an exec dep of their
-  one action registry, and `.buckconfig` gives `toolchains//...` a default
+  the constraint `timbuktu//rules/haskell/helpers:yes`, which the targets of
+  `haskell_helper` (`rules/haskell/helpers/helper.bzl`) put in the
+  configuration of their haskell_binary with a rule transition. The helpers
+  (which need Cabal 3.12 or later) get `haskell.tools_toolchain`, everything
+  else `haskell.toolchain`; both default to 9.12.2. It used to select on the
+  exec platform marker, but then the build tools of a plan (happy, alex,
+  hsc2hs: exec deps, and packages of the plan) got the GHC of the tools, and
+  the installed packages the plan names were not there (hsthrift's
+  fb-util, 2026-10-28). The BXL scripts take `describe_package` as an exec
+  dep of their one action registry, and `.buckconfig` gives `toolchains//...` a default
   platform so they can configure the alias. `setup_simple` is built with
   the packages' GHC (it is their `Setup.hs`); with a Cabal older than 3.12
   it is Cabal's plain Setup, without the `postConf` hook.
