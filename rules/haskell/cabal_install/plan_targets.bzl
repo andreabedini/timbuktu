@@ -216,7 +216,11 @@ def _local_targets(where: str, pkg_id: str, local: struct, plan: dict[str, typin
 
     root = local.root
     prefix = root + "/" if root else ""
-    exclude = ["BUCK", "dist-newstyle/**"] + [d + "/**" for d in local.generated]
+    # NOTE: the directories of `generated` stay in the glob: the components
+    # leave them out (see `generated` in simple.bzl). Buck2 matches exclude
+    # patterns regardless of case, and `compiler/thrift/**` would take
+    # hsthrift's compiler/Thrift away too.
+    exclude = ["BUCK", "dist-newstyle/**"]
     srcs = expr('glob(\n        ["{}**"],\n        exclude = [{}],\n    )'.format(prefix, ", ".join(['"{}{}"'.format(prefix, e) for e in exclude])))
     made = package_targets(
         desc,
