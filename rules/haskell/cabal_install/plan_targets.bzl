@@ -29,7 +29,8 @@ either.
 
 The units the plan was made for (its `targets`) get an alias too: the name
 of the package for the main library, `<package>-<name>` for a sublibrary,
-`<kind>-<name>` for another component (e.g. `exe-shake`).
+`<package>-test-<name>` for a test suite, `<kind>-<name>` for another
+component (e.g. `exe-shake`).
 
 `buck_file` writes them out; plan.bxl is how it is run.
 
@@ -62,10 +63,13 @@ def _alias_name(plan: dict[str, typing.Any], unit: dict[str, typing.Any]) -> str
     if kind == "lib" and not cname:
         return name_version(plan, unit)[0]
 
-    # Sublibraries are named after their package: packages often share their
-    # names (`test-lib`, say), more than they share those of executables.
+    # Sublibraries and test suites are named after their package: packages
+    # often share their names (`test-lib`, `server`, say), more than they
+    # share those of executables.
     if kind == "lib":
         return "{}-{}".format(name_version(plan, unit)[0], cname)
+    if kind == "test":
+        return "{}-test-{}".format(name_version(plan, unit)[0], cname)
     return "{}-{}".format(kind, cname)
 
 def _unit_targets(where: str, key: str, plan: dict[str, typing.Any], names: dict[str, str]) -> list[struct]:

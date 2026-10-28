@@ -31,7 +31,8 @@ Options:
   --buck-dir DIR        where the BUCK file goes; needed with local packages
   --index-state TIME    leave out what was uploaded after, e.g.
                         2026-06-01T00:00:00Z
-  --constraint C        as in cabal.project, e.g. 'aeson >= 2.2'
+  --constraint C        as in cabal.project, e.g. 'aeson >= 2.2'; 'PKG test'
+                        plans the test suites of PKG too
   --flag PKG:FLAGS      flags of a package, e.g. 'aeson:-ordered-keymap'
   --pkgconfig NAME=TARGET   the target of a C library of the pkgconfig-depends
                         of a local package, by its pkg-config name (it goes
