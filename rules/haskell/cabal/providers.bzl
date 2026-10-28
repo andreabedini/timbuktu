@@ -13,6 +13,10 @@ CabalPackageInfo = provider(
         # The root of the package's source tree. Every path in the package
         # description is relative to it.
         "srcdir": provider_field(Artifact),
+        # The files of the source tree, by their path in it, when `srcs` is
+        # a list of files: a component lays other directories over them (see
+        # `generated` in simple.bzl). None when `srcs` is a directory.
+        "files": provider_field(dict[str, Artifact] | None, default = None),
         "data_dir": provider_field(str),
         "data_files": provider_field(list[str]),
         # The fields that end up in the package registration (license,

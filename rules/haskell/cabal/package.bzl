@@ -41,6 +41,7 @@ def _cabal_package_impl(ctx: AnalysisContext) -> list[Provider]:
 
     srcs = ctx.attrs.srcs
     root = ctx.attrs.root
+    layout = None
     if isinstance(srcs, list):
         # Lay the files out the way they are in the package, the package
         # being `root` when it is a directory of the BUCK file's.
@@ -68,6 +69,7 @@ def _cabal_package_impl(ctx: AnalysisContext) -> list[Provider]:
             name = ctx.attrs.package_name or ctx.label.name,
             version = ctx.attrs.version,
             srcdir = srcdir,
+            files = layout,
             data_dir = ctx.attrs.data_dir,
             data_files = ctx.attrs.data_files,
             metadata = metadata,

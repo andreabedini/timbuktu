@@ -101,7 +101,8 @@ def package_targets(
         names: dict[(str, str | None), str] | None = None,
         pkgconfig: dict[str, str] = {},
         package_target: str | None = None,
-        root: str | None = None) -> struct:
+        root: str | None = None,
+        generated: dict[str, str] = {}) -> struct:
     """The cabal_simple targets for a package, as data.
 
     Args:
@@ -127,6 +128,9 @@ def package_targets(
         `srcs` lists files from above it (see cabal_package)
       pkgconfig: the target of each C library of pkgconfig-depends, by its
         pkg-config name
+      generated: the target of each directory of the package made by
+        another rule, by its path in the package: every component gets them
+        (see `generated` in simple.bzl)
     Returns:
       struct(targets, units, skipped): the targets, as struct(rule, attrs)
       with the attributes in order, the cabal_package first; the packages of
@@ -216,6 +220,7 @@ def package_targets(
             elif pkgconfig[pc_name] not in cxx_deps:
                 cxx_deps.append(pkgconfig[pc_name])
         attrs.append(("cxx_deps", cxx_deps or None))
+        attrs.append(("generated", generated or None))
 
         # What other packages can use: the libraries Cabal would let them, and
         # the executables.
@@ -239,6 +244,11 @@ def package_targets(
             if (field == "data-dir" and value in (".", "")) or (field == "license" and value == "NONE"):
                 continue
             package.append((attr_name(field, spec), value))
+
+    # The rules making the directories of `generated` may use the package,
+    # from another BUCK file.
+    if generated:
+        package.append(("visibility", ["PUBLIC"]))
 
     return struct(
         targets = [struct(rule = "cabal_package", attrs = package)] + targets,

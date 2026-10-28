@@ -36,6 +36,10 @@ Options:
   --pkgconfig NAME=TARGET   the target of a C library of the pkgconfig-depends
                         of a local package, by its pkg-config name (it goes
                         to cxx_deps; more than one: repeat it)
+  --generated DIR=TARGET    a directory of a local package that TARGET makes,
+                        e.g. Haskell from an IDL: its components see it in
+                        place of what the glob finds there (it goes to
+                        `generated`; more than one: repeat it)
   --plan-file PATH      a plan in the repository, rather than --target,
                         --index-state, --constraint and --flag
 """
@@ -59,6 +63,8 @@ def _command(args: typing.Any) -> str:
         words.extend(["--local-package", local])
     for p in args.pkgconfig:
         words.extend(["--pkgconfig", p])
+    for g in args.generated:
+        words.extend(["--generated", g])
     if args.buck_dir:
         words.extend(["--buck-dir", args.buck_dir])
     if args.plan_file:
@@ -104,6 +110,8 @@ def _local_packages(ctx: bxl.Context) -> list[struct]:
     are from the BUCK file."""
     args = ctx.cli_args
     if not args.local_package:
+        if args.generated:
+            fail("--generated is for a directory of a --local-package")
         return []
     if args.buck_dir == None:
         fail("--local-package needs --buck-dir, the directory the BUCK file goes to")
@@ -133,7 +141,19 @@ def _local_packages(ctx: bxl.Context) -> list[struct]:
         ]
         if len(cabal_files) != 1:
             fail("{} has {} .cabal files, not one".format(path, len(cabal_files)))
-        out.append(struct(path = path, root = root, cabal = ctx.fs.source(cabal_files[0])))
+        out.append(struct(path = path, root = root, cabal = ctx.fs.source(cabal_files[0]), generated = {}))
+
+    # Each directory of --generated goes to the local package it is in.
+    for item in args.generated:
+        dir, sep, target = item.partition("=")
+        dir = _normal_dir(dir)
+        if not sep or not dir or not target:
+            fail("--generated wants DIR=TARGET, not `{}`".format(item))
+        owners = [local for local in out if not local.path or dir.startswith(local.path + "/")]
+        if not owners:
+            fail("--generated {}: {} is not in a directory of --local-package".format(item, dir))
+        owner = sorted(owners, key = lambda local: len(local.path))[-1]
+        owner.generated[dir.removeprefix(owner.path).removeprefix("/")] = target
     return out
 
 def _plan(ctx: bxl.Context, actions: AnalysisActions, ghc: GhcToolchainInfo, local_packages: list[struct]) -> (Artifact, str):
@@ -195,6 +215,7 @@ def _generate_impl(ctx: bxl.Context):
             flags = flags[0] if flags else {}
             described[pkg_id] = struct(
                 root = local.root,
+                generated = local.generated,
                 json = describe_package(
                     actions,
                     helper,
@@ -207,7 +228,7 @@ def _generate_impl(ctx: bxl.Context):
 
         def write_buck(ctx, artifacts, outputs):
             local = {
-                pkg_id: struct(description = artifacts[d.json].read_json(), root = d.root, pkgconfig = pkgconfig)
+                pkg_id: struct(description = artifacts[d.json].read_json(), root = d.root, pkgconfig = pkgconfig, generated = d.generated)
                 for pkg_id, d in described.items()
             }
             ctx.bxl_actions().actions.write(outputs[out], buck_file(decoded, command, where, local))
@@ -231,6 +252,7 @@ generate = bxl_main(
         "buck-dir": cli_args.option(cli_args.string()),
         "constraint": cli_args.list(cli_args.string(), default = []),
         "flag": cli_args.list(cli_args.string(), default = []),
+        "generated": cli_args.list(cli_args.string(), default = []),
         "index-state": cli_args.option(cli_args.string()),
         "local-package": cli_args.list(cli_args.string(), default = []),
         "pkgconfig": cli_args.list(cli_args.string(), default = []),

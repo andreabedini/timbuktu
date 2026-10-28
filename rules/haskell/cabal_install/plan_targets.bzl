@@ -194,7 +194,9 @@ def _local_targets(where: str, pkg_id: str, local: struct, plan: dict[str, typin
         fail("{}: {} was described with the flags {}, the plan has {}".format(where, pkg_id, desc["flags"], plan_flags))
 
     root = local.root
-    srcs = expr('glob(\n        ["{0}**"],\n        exclude = ["{0}BUCK", "{0}dist-newstyle/**"],\n    )'.format(root + "/" if root else ""))
+    prefix = root + "/" if root else ""
+    exclude = ["BUCK", "dist-newstyle/**"] + [d + "/**" for d in local.generated]
+    srcs = expr('glob(\n        ["{}**"],\n        exclude = [{}],\n    )'.format(prefix, ", ".join(['"{}{}"'.format(prefix, e) for e in exclude])))
     made = package_targets(
         desc,
         [],
@@ -205,6 +207,7 @@ def _local_targets(where: str, pkg_id: str, local: struct, plan: dict[str, typin
         package_target = pkg_id + "-package",
         root = root,
         pkgconfig = local.pkgconfig,
+        generated = local.generated,
     )
     if made.units:
         fail("{}: {} needs units the plan does not have: {}".format(where, pkg_id, ", ".join(made.units)))
@@ -221,9 +224,12 @@ def plan_targets(where: str, plan: dict[str, typing.Any], local: dict[str, struc
       where: what the plan is, for messages
       plan: the plan, as decode_plan returns it
       local: for each local package of the plan, by its id, struct(description,
-        root): what describe_package printed for it, with the flags of the
-        plan, and its directory relative to the BUCK file (None for the
-        directory of the BUCK file)
+        root, pkgconfig, generated): what describe_package printed for it,
+        with the flags of the plan; its directory relative to the BUCK file
+        (None for the directory of the BUCK file); the targets of the C
+        libraries of pkgconfig-depends, by name; and the targets of the
+        directories made by other rules, by their path in the package (see
+        `generated` in package_targets)
     Returns:
       a list of struct(comment, targets): the aliases of the plan's targets,
       then a section for each package with its sources and its units, then

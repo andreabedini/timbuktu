@@ -88,6 +88,12 @@ _component_attrs = field_attrs(BUILD_INFO_FIELDS) | {
     # (prebuilt_cxx_library, cxx_library). Not a field: in a package
     # description they are pkgconfig-depends, by name.
     "cxx_deps": attrs.list(attrs.dep(), default = []),
+    # Directories of the package made by other rules (Haskell made from an
+    # IDL, say), by their path in the package: the component sees them
+    # there, in place of whatever the package has there. Not a field: Cabal
+    # expects them to be there already. A rule making one can use the
+    # package, as long as `generated` is not on the package itself.
+    "generated": attrs.dict(attrs.string(), attrs.source(allow_directory = True), default = {}),
     "package": attrs.dep(providers = [CabalPackageInfo]),
     "_find_modules": attrs.default_only(attrs.exec_dep(default = "timbuktu//rules/haskell/helpers:find_modules", providers = [RunInfo])),
     "_register": attrs.default_only(attrs.exec_dep(default = "timbuktu//rules/haskell/helpers:register", providers = [RunInfo])),
@@ -102,6 +108,33 @@ def _check_supported(ctx: AnalysisContext, fields: dict[str, struct]):
 ##
 ## Analysis: what is known from the package description alone
 ##
+
+def _package(ctx: AnalysisContext) -> CabalPackageInfo:
+    """The package of the component, with the directories of `generated`
+    in its source tree."""
+    pkg = ctx.attrs.package[CabalPackageInfo]
+    generated = ctx.attrs.generated
+    if not generated:
+        return pkg
+    if pkg.files == None:
+        fail("{}: `generated` needs a package whose `srcs` is a list of files, not a directory".format(ctx.label))
+    for path in generated:
+        if path in ("", ".") or path.startswith("/") or ".." in path.split("/"):
+            fail("{}: `{}` in `generated` is not a directory of the package".format(ctx.label, path))
+    files = {
+        path: f
+        for path, f in pkg.files.items()
+        if not [d for d in generated if path == d or path.startswith(d + "/")]
+    }
+    return CabalPackageInfo(
+        name = pkg.name,
+        version = pkg.version,
+        srcdir = ctx.actions.symlinked_dir("srcdir", files | generated),
+        files = files | generated,
+        data_dir = pkg.data_dir,
+        data_files = pkg.data_files,
+        metadata = pkg.metadata,
+    )
 
 def _find_modules(ctx: AnalysisContext, srcdir: Artifact, source_dirs: list[str], modules: list[str], main_is: str | None) -> Artifact:
     located = ctx.actions.declare_output("modules.json")
@@ -120,6 +153,7 @@ def _find_modules(ctx: AnalysisContext, srcdir: Artifact, source_dirs: list[str]
 
 def _component(
         ctx: AnalysisContext,
+        pkg: CabalPackageInfo,
         kind: str,
         unit_id: str,
         modules: list[str],
@@ -130,6 +164,7 @@ def _component(
 
     Args:
       ctx: the context of the component's rule
+      pkg: its package, see _package
       kind: "lib" or "exe"
       unit_id: Cabal makes one up for executables too
       modules: every module of the component
@@ -139,8 +174,6 @@ def _component(
     Returns:
       what resolves to the CabalUnitInfo of the component
     """
-    pkg = ctx.attrs.package[CabalPackageInfo]
-
     source_dirs = ctx.attrs.hs_source_dirs or ["."]
     located = _find_modules(ctx, pkg.srcdir, source_dirs, modules, kwargs.get("main_is"))
 
@@ -854,7 +887,7 @@ _build = dynamic_actions(
 def _cabal_simple_library_impl(ctx: AnalysisContext) -> list[Provider]:
     _check_supported(ctx, LIBRARY_FIELDS)
 
-    pkg = ctx.attrs.package[CabalPackageInfo]
+    pkg = _package(ctx)
     lib_name = ctx.attrs.library_name
 
     unit_id = ctx.attrs.unit_id or make_unit_id(ctx.label, pkg.name, pkg.version, lib_name)
@@ -890,6 +923,7 @@ def _cabal_simple_library_impl(ctx: AnalysisContext) -> list[Provider]:
 
     unit = _component(
         ctx,
+        pkg,
         kind = "lib",
         unit_id = unit_id,
         modules = modules,
@@ -967,11 +1001,12 @@ cabal_simple_library = rule(
 def _executable(ctx: AnalysisContext, exe_name: str, fields: dict[str, struct]) -> list[Provider]:
     _check_supported(ctx, fields)
 
-    pkg = ctx.attrs.package[CabalPackageInfo]
+    pkg = _package(ctx)
     exe = ctx.actions.declare_output("bin", exe_name)
 
     _component(
         ctx,
+        pkg,
         kind = "exe",
         unit_id = make_unit_id(ctx.label, pkg.name, pkg.version, exe_name),
         modules = _dedupe(ctx.attrs.other_modules),
