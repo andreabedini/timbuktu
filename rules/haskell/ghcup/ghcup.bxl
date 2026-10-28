@@ -73,7 +73,8 @@ def _bindists(tool: str, version: str, metadata: dict) -> dict[str, dict[str, st
 def _pinned(ctx: bxl.Context, package: str) -> dict[str, dict[str, struct]]:
     """The distributions pinned in `package`, by tool and version."""
     pinned = {tool: {} for tool in _TOOLS}
-    if not ctx.fs.exists(package.replace("//", "/", 1) + "/BUCK"):
+    # A cell path: the package's cell need not be in a directory of its name.
+    if not ctx.fs.exists(package.rstrip(":") + "/BUCK"):
         return pinned
     for node in ctx.uquery().eval("kind('_distribution$', {}:)".format(package)):
         rule = node.rule_type.rpartition(":")[2]
