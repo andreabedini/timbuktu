@@ -48,7 +48,7 @@ library itself. See _cxx_deps.
 
 load("@prelude//:paths.bzl", "paths")
 load("@prelude//cxx:cxx_toolchain_types.bzl", "CxxToolchainInfo")
-load("@prelude//cxx:preprocessor.bzl", "CPreprocessorInfo", "cxx_merge_cpreprocessors")
+load("@prelude//cxx:preprocessor.bzl", "CPreprocessor", "CPreprocessorArgs", "CPreprocessorInfo", "cxx_merge_cpreprocessors")
 load("@prelude//linking:link_info.bzl", "ArchiveLinkable", "LinkInfosTSet", "LinkStrategy", "MergedLinkInfo", "get_link_info")
 load("@prelude//decls:toolchains_common.bzl", "toolchains_common")
 load(
@@ -224,7 +224,7 @@ def _component(
         ),
     ))
 
-def _cxx_preprocessor(ctx: AnalysisContext) -> CPreprocessorInfo:
+def _cxx_preprocessor(ctx: AnalysisContext, pkg: CabalPackageInfo | None = None) -> CPreprocessorInfo:
     """The headers of the C and C++ libraries of `cxx_deps`, and of those of
     the libraries in `build_depends`.
 
@@ -234,10 +234,21 @@ def _cxx_preprocessor(ctx: AnalysisContext) -> CPreprocessorInfo:
     library one of its dependencies wraps (as fb-util does folly's, through
     folly-clib). A cabal_simple library passes these on as a C++ library
     passes on its exported headers, flags and all.
+
+    Args:
+      ctx: the context of the component
+      pkg: for a library, its package: its own include-dirs go with the
+        rest, as its registration has them (GHC reads that, hsc2hs does not)
     """
+    own = []
+    if pkg and ctx.attrs.include_dirs:
+        own.append(CPreprocessor(args = CPreprocessorArgs(args = [
+            "-I" + d if paths.is_absolute(d) else cmd_args(cmd_args(pkg.srcdir, "/", d, delimiter = ""), format = "-I{}")
+            for d in ctx.attrs.include_dirs
+        ])))
     return cxx_merge_cpreprocessors(
         ctx.actions,
-        [],
+        own,
         [dep[CPreprocessorInfo] for dep in ctx.attrs.cxx_deps + ctx.attrs.build_depends if CPreprocessorInfo in dep],
     )
 
@@ -997,7 +1008,7 @@ def _cabal_simple_library_impl(ctx: AnalysisContext) -> list[Provider]:
                 data_dir = _data_dir_env(pkg),
             )),
         ),
-        _cxx_preprocessor(ctx),
+        _cxx_preprocessor(ctx, pkg),
         CabalCxxLinkInfo(libs = _cxx_transitive(ctx)),
     ] + prelude_library_providers(
         ctx,
