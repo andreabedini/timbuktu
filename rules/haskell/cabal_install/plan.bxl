@@ -77,6 +77,14 @@ def _flags(items: list[str]) -> dict[str, str]:
         out[pkg] = (out[pkg] + " " + flags) if pkg in out else flags
     return out
 
+def _normal_dir(path: str) -> str:
+    """A directory of the repository as buck2 wants it: no `./`, no trailing
+    `/`, and "" for the root."""
+    return "/".join([part for part in path.split("/") if part not in ("", ".")])
+
+def _join(dir: str, rest: str) -> str:
+    return dir + "/" + rest if dir else rest
+
 def _local_packages(ctx: bxl.Context) -> list[struct]:
     """The local packages: their directories, .cabal files, and where they
     are from the BUCK file."""
@@ -85,24 +93,24 @@ def _local_packages(ctx: bxl.Context) -> list[struct]:
         return []
     if args.buck_dir == None:
         fail("--local-package needs --buck-dir, the directory the BUCK file goes to")
-    buck_dir = args.buck_dir.rstrip("/")
+    buck_dir = _normal_dir(args.buck_dir)
 
     # NOTE: buck2 only makes an artifact of a file in a package: the
     # .cabal files are inputs of the solver and of describe_package.
-    if not ctx.fs.exists(buck_dir + "/BUCK"):
-        fail("{} has no BUCK file yet: create an empty one, the generated file goes there".format(buck_dir))
+    if not ctx.fs.exists(_join(buck_dir, "BUCK")):
+        fail("{} has no BUCK file yet: create an empty one, the generated file goes there".format(buck_dir or "the root"))
     out = []
     for path in args.local_package:
-        path = path.rstrip("/")
-        if path != buck_dir and not path.startswith(buck_dir + "/"):
+        path = _normal_dir(path)
+        if buck_dir and path != buck_dir and not path.startswith(buck_dir + "/"):
             fail("{} is not in {}: a BUCK file there cannot glob its files".format(path, buck_dir))
         root = path.removeprefix(buck_dir).removeprefix("/") or None
         if root:
             parts = root.split("/")
             for n in range(1, len(parts) + 1):
-                d = buck_dir + "/" + "/".join(parts[:n])
+                d = _join(buck_dir, "/".join(parts[:n]))
                 if ctx.fs.exists(d + "/BUCK"):
-                    fail("{} has a BUCK file, which would keep the files below it from a glob in {}".format(d, buck_dir))
+                    fail("{} has a BUCK file, which would keep the files below it from a glob in {}".format(d, buck_dir or "the root"))
         # The paths of the root cell, whatever it is called, without it.
         cabal_files = [
             str(e).partition("//")[2]
