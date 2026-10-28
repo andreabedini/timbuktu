@@ -2,3 +2,5 @@
 buck2 = { version = "latest", prerelease = true }
 buildifier = "latest"
 lefthook = "latest"
+# For rules/haskell/ghcup/ghcup.bxl.
+yq = "4"

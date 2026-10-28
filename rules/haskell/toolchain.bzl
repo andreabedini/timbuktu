@@ -229,7 +229,7 @@ system_ghc_toolchain = rule(
     is_toolchain_rule = True,
 )
 
-def _bindist_ghc_toolchain_impl(ctx: AnalysisContext) -> list[Provider]:
+def _ghc_toolchain_impl(ctx: AnalysisContext) -> list[Provider]:
     bindist = ctx.attrs.distribution[DefaultInfo].default_outputs[0]
     info = ctx.attrs.distribution[GhcDistributionInfo]
     return ghc_toolchain_providers(
@@ -254,9 +254,9 @@ def _bindist_ghc_toolchain_impl(ctx: AnalysisContext) -> list[Provider]:
         },
     )
 
-bindist_ghc_toolchain = rule(
-    doc = "Use an unpacked GHC binary distribution, e.g. one from root//rules/haskell/ghcup.",
-    impl = _bindist_ghc_toolchain_impl,
+ghc_toolchain = rule(
+    doc = "Use an unpacked GHC binary distribution, e.g. a ghc_bindist of root//rules/haskell/ghcup.",
+    impl = _ghc_toolchain_impl,
     attrs = _c_tools_attrs | {
         "distribution": attrs.exec_dep(providers = [GhcDistributionInfo]),
         # The scripts haskell_ghci makes its own from.

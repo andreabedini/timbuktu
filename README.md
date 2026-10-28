@@ -58,9 +58,10 @@ Not everything works and I keep reworking the code significantly.
 
 ## Getting started
 
-GHC 9.12.2 and cabal-install 3.14.2.0 are downloaded by buck2, using GHCup's
-metadata. The tools I use (buck2 itself, buildifier, lefthook) can be installed
-with [mise](https://mise.jdx.dev):
+GHC 9.12.2 and cabal-install 3.14.2.0 are downloaded by buck2, from the
+binary distributions pinned in [`toolchains/ghcup/BUCK`](toolchains/ghcup/BUCK).
+The tools I use (buck2 itself, buildifier, lefthook, yq) can be installed with
+[mise](https://mise.jdx.dev):
 
 ```bash
 $ mise install
@@ -69,6 +70,10 @@ $ mise install
 You also need:
 
 - a C compiler and a linker, since buck2 uses the ones on your system;
+- `curl` and [yq](https://github.com/mikefarah/yq) (mikefarah's, version 4,
+  not the Python wrapper of jq of the same name), only to pin another GHC or
+  cabal-install with `rules/haskell/ghcup/ghcup.bxl`: GHCup publishes its
+  metadata in YAML only;
 - cabal-solver-plan and a Hackage index downloaded with `cabal update`, only
   to make a build plan (see [`examples/plan`](examples/plan) for how, and
   how to tell buck2 where they are). Without them `buck2 build //...` fails
@@ -93,8 +98,8 @@ are made for the downloaded one and will not build.
 - `rules/haskell/` — the rules: `toolchain.bzl` (the GHC toolchain every rule
   set uses), `defs.bzl` (wrappers around the prelude rules, `haskell_unit`),
   `unit.bzl` (`haskell_unit`, a unit that is already in a package db),
-  `hackage.bzl` (fetch an sdist), `ghcup/` (pick a GHC or cabal-install
-  bindist), `helpers/` (the programs the rules run, in Haskell:
+  `hackage.bzl` (fetch an sdist), `ghcup/` (pin GHC and cabal-install
+  bindists from GHCup's metadata, and download them), `helpers/` (the programs the rules run, in Haskell:
   `describe_package`, `find_modules`, `register`, and `parse_fields`, which
   prints the fields of a `.cabal` file as JSON), `tests/` (that the rules
   refuse what they do not support, run by hand with `refusals.sh`), and the

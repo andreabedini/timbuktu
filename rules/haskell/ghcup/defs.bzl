@@ -1,6 +1,19 @@
-load("@prelude//paths.bzl", "paths")
+"""
+Binary distributions of GHC and cabal-install, as GHCup has them.
+
+The distributions are pinned in a package of their own, written by
+ghcup.bxl (toolchains/ghcup/BUCK here): one `ghc_bindist` or
+`cabal_bindist` for each version, with the URL, sha256 and top directory
+of its archive for each platform in PLATFORMS. Toolchains are made from
+those targets by hand (see toolchains/BUCK):
+
+    ghc_toolchain(
+        name = "ghc-9.6.7",
+        distribution = "//ghcup:ghc-9.6.7",
+    )
+"""
+
 load("@prelude//rules.bzl", "http_archive")
-load("metadata.bzl", "metadata")
 
 def host_arch() -> str:
     arch = host_info().arch
@@ -28,59 +41,38 @@ def host_os() -> str:
     else:
         fail("Unsupported host os.")
 
-_metadata_arch_map = {
-    "x86_64": "A_64",
-    "i386": "A_32",
-    "aarch64": "A_ARM64",
-    "arm": "A_ARM",
+# The platforms a distribution can be pinned for: the configuration of each
+# (the config_settings of rules/haskell/ghcup/BUCK), and its arch and OS.
+PLATFORMS = {
+    "linux-aarch64": struct(setting = "root//rules/haskell/ghcup:linux-aarch64", arch = "aarch64", os = "linux"),
+    "linux-x86_64": struct(setting = "root//rules/haskell/ghcup:linux-x86_64", arch = "x86_64", os = "linux"),
+    "macos-aarch64": struct(setting = "root//rules/haskell/ghcup:macos-aarch64", arch = "aarch64", os = "macos"),
+    "macos-x86_64": struct(setting = "root//rules/haskell/ghcup:macos-x86_64", arch = "x86_64", os = "macos"),
 }
 
-_metadata_os_map = {
-    "linux": "Linux",
-    "windows": "Windows",
-    "macos": "Darwin",
-}
+def _per_platform(bindists: dict, value):
+    """A select() of `value(platform, bindist)` over the platforms of
+    `bindists`. There is no default: on another platform it fails."""
+    return select({PLATFORMS[p].setting: value(p, b) for p, b in bindists.items()})
 
-def _get_distribution(
-        tool: str,
-        version: str,
-        arch: str,
-        os: str,
-        os_version: [str, None] = None) -> struct:
-    if not tool in metadata:
-        fail("Unknown tool '{}'. Available tools: {}".format(tool, ", ".join(metadata.keys())))
-    t = metadata[tool]
-
-    if not version in t:
-        fail("Unknown version '{}'. Available versions: {}".format(version, ", ".join(t.keys())))
-    v = t[version]
-
-    archs = v["viArch"]
-
-    arch_ = _metadata_arch_map[arch]
-    if arch_ not in archs:
-        fail("Unsupported arch '{}'. Supported architectures: {}".format(arch, ", ".join(archs.keys())))
-    a = archs[arch_]
-
-    os_ = _metadata_os_map[os]
-    if os_ == "Linux":
-        os_ += "_UnknownLinux"
-
-    if not os_ in a:
-        fail("Unsupported os '{}'. Supported operating systems: {}".format(os, ", ".join(a.keys())))
-    o = a[os_]
-
-    os_version = os_version or "unknown_versioning"
-
-    if not os_version in o:
-        fail("Unsupported os version '{}'. Supported version: {}".format(os_version, ", ".join(o.keys())))
-    d = o[os_version]
-
-    return struct(
-        url = d["dlUri"],
-        sha256 = d["dlHash"],
-        subdir = d.get("dlSubdir"),
+def _archive(name: str, bindists: dict, **kwargs):
+    http_archive(
+        name = name,
+        urls = _per_platform(bindists, lambda _p, b: [b["url"]]),
+        sha256 = _per_platform(bindists, lambda _p, b: b["sha256"]),
+        strip_prefix = _per_platform(bindists, lambda _p, b: b.get("strip_prefix")),
+        **kwargs
     )
+
+# What ghcup.bxl reads back from a distribution it wrote.
+_PINNED_ATTRS = {
+    "bindists": attrs.dict(
+        attrs.string(),
+        attrs.dict(attrs.string(), attrs.string()),
+        default = {},
+        doc = "Platform name to the url, sha256 and strip_prefix of its archive, as pinned by ghcup.bxl.",
+    ),
+}
 
 ##
 ## GHC
@@ -94,32 +86,31 @@ GHC_DISTRIBUTION_SUB_TARGETS = [
     "lib",
 ]
 
-# Older binary distributions (9.6, for one) cannot be used where they are
-# unpacked: `lib/settings` and the package db cache are written by their
-# `./configure && make install`. With `configure = True` the archive is
-# copied, and those two are made in the copy, which is then used in place
-# like a newer distribution. 9.12 has them already.
-def download_ghc_distribution(
+def ghc_bindist(
         name: str,
         version: str,
-        arch: [None, str] = None,
-        os: [None, str] = None,
-        os_version: [None, str] = None,
-        configure: bool = False):
-    if not arch:
-        arch = host_arch()
+        bindists: dict[str, dict[str, str]],
+        configure: bool = False,
+        visibility: list[str] = ["PUBLIC"]):
+    """A GHC binary distribution, unpacked and usable where it is.
 
-    if not os:
-        os = host_os()
+    Older distributions (9.6, for one) cannot be used where they are
+    unpacked: `lib/settings` and the package db cache are written by their
+    `./configure && make install`. With `configure = True` the archive is
+    copied, and those two are made in the copy.
 
-    archive_name = name + "-archive"
-    bindist = _get_distribution("GHC", version, arch, os, os_version)
-
-    http_archive(
-        name = archive_name,
-        urls = [bindist.url],
-        sha256 = bindist.sha256,
-        strip_prefix = bindist.subdir,
+    Args:
+        name: the target, a ghc_distribution.
+        version: the version of GHC.
+        bindists: platform name (in PLATFORMS) to the url, sha256 and
+            strip_prefix of its archive.
+        configure: whether the archive needs ./configure.
+        visibility: of the ghc_distribution.
+    """
+    archive = name + "-archive"
+    _archive(
+        name = archive,
+        bindists = bindists,
         # What haskell_ghci wants as targets of their own.
         sub_targets = GHC_DISTRIBUTION_SUB_TARGETS,
     )
@@ -127,17 +118,19 @@ def download_ghc_distribution(
     if configure:
         configure_ghc_distribution(
             name = name + "-configured",
-            archive = ":" + archive_name,
+            archive = ":" + archive,
         )
-        archive_name = name + "-configured"
+        archive = name + "-configured"
 
     ghc_distribution(
         name = name,
-        archive = ":" + archive_name,
+        archive = ":" + archive,
         version = version,
-        arch = arch,
-        os = os,
-        os_version = os_version,
+        arch = _per_platform(bindists, lambda p, _b: PLATFORMS[p].arch),
+        os = _per_platform(bindists, lambda p, _b: PLATFORMS[p].os),
+        bindists = bindists,
+        configure = configure,
+        visibility = visibility,
     )
 
 def _configure_ghc_distribution_impl(ctx: AnalysisContext) -> list[Provider]:
@@ -180,7 +173,6 @@ GhcDistributionInfo = provider(
         "version": provider_field(typing.Any, default = None),
         "arch": provider_field(typing.Any, default = None),
         "os": provider_field(typing.Any, default = None),
-        "os_version": provider_field(typing.Any, default = None),
     },
 )
 
@@ -191,7 +183,6 @@ def _ghc_distribution_impl(ctx: AnalysisContext) -> list[Provider]:
             version = ctx.attrs.version,
             arch = ctx.attrs.arch,
             os = ctx.attrs.os,
-            os_version = ctx.attrs.os_version,
         ),
     ]
 
@@ -202,43 +193,42 @@ ghc_distribution = rule(
         "version": attrs.string(),
         "arch": attrs.option(attrs.string()),
         "os": attrs.option(attrs.string()),
-        "os_version": attrs.option(attrs.string(), default = None),
-    },
+        "configure": attrs.bool(default = False, doc = "Whether `archive` is the configured copy, see ghc_bindist."),
+    } | _PINNED_ATTRS,
 )
 
 ##
 ## Cabal
 ##
 
-def download_cabal_distribution(
+def cabal_bindist(
         name: str,
         version: str,
-        arch: [None, str] = None,
-        os: [None, str] = None,
-        os_version: [None, str] = None):
-    if not arch:
-        arch = host_arch()
+        bindists: dict[str, dict[str, str]],
+        visibility: list[str] = ["PUBLIC"]):
+    """A cabal-install binary distribution.
 
-    if not os:
-        os = host_os()
-
-    archive_name = name + "-archive"
-    bindist = _get_distribution("Cabal", version, arch, os, os_version)
-
-    http_archive(
-        name = archive_name,
-        urls = [bindist.url],
-        sha256 = bindist.sha256,
-        strip_prefix = bindist.subdir,
+    Args:
+        name: the target, a cabal_distribution.
+        version: the version of cabal-install.
+        bindists: platform name (in PLATFORMS) to the url, sha256 and
+            strip_prefix of its archive.
+        visibility: of the cabal_distribution.
+    """
+    archive = name + "-archive"
+    _archive(
+        name = archive,
+        bindists = bindists,
     )
 
     cabal_distribution(
         name = name,
-        archive = ":" + archive_name,
+        archive = ":" + archive,
         version = version,
-        arch = arch,
-        os = os,
-        os_version = os_version,
+        arch = _per_platform(bindists, lambda p, _b: PLATFORMS[p].arch),
+        os = _per_platform(bindists, lambda p, _b: PLATFORMS[p].os),
+        bindists = bindists,
+        visibility = visibility,
     )
 
 CabalDistributionInfo = provider(
@@ -246,7 +236,6 @@ CabalDistributionInfo = provider(
         "version": provider_field(str),
         "arch": provider_field(str),
         "os": provider_field(str),
-        "os_version": provider_field(typing.Any, default = None),
     },
 )
 
@@ -260,7 +249,6 @@ def _cabal_distribution_impl(ctx: AnalysisContext) -> list[Provider]:
             version = ctx.attrs.version,
             arch = ctx.attrs.arch,
             os = ctx.attrs.os,
-            os_version = ctx.attrs.os_version,
         ),
     ]
 
@@ -271,6 +259,5 @@ cabal_distribution = rule(
         "version": attrs.string(),
         "arch": attrs.string(),
         "os": attrs.string(),
-        "os_version": attrs.option(attrs.string(), default = None),
-    },
+    } | _PINNED_ATTRS,
 )

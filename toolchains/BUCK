@@ -3,10 +3,9 @@ load("@prelude//toolchains:cxx.bzl", "system_cxx_toolchain")
 load("@prelude//toolchains:genrule.bzl", "system_genrule_toolchain")
 load("@prelude//toolchains:python.bzl", "system_python_bootstrap_toolchain", "system_python_toolchain")
 load("@prelude//toolchains:remote_test_execution.bzl", "remote_test_execution_toolchain")
-load("@root//rules/haskell:toolchain.bzl", "bindist_ghc_toolchain", "system_ghc_toolchain")
+load("@root//rules/haskell:toolchain.bzl", "ghc_toolchain", "system_ghc_toolchain")
 load("@root//rules/haskell/cabal_install:cabal_toolchain.bzl", "cabal_toolchain")
 load("@root//rules/haskell/cabal_install:solver_toolchain.bzl", "cabal_solver_plan_toolchain")
-load("@root//rules/haskell/ghcup:defs.bzl", "download_cabal_distribution", "download_ghc_distribution")
 
 system_cxx_toolchain(
     name = "cxx",
@@ -39,11 +38,6 @@ remote_test_execution_toolchain(
     visibility = ["PUBLIC"],
 )
 
-download_ghc_distribution(
-    name = "ghc-9.12.2",
-    version = "9.12.2",
-)
-
 # The GHC of every Haskell rule: the ones of the prelude, the plan interpreter
 # and the cabal_simple rules (see root//rules/haskell:toolchain.bzl).
 # The default is the binary distribution. To use the GHC in PATH instead:
@@ -58,30 +52,31 @@ download_ghc_distribution(
 toolchain_alias(
     name = "haskell",
     actual = select({
-        "prelude//cfg/exec_platform/marker:is_exec_platform[true]": read_root_config("haskell", "tools_toolchain", "toolchains//:ghc-9.12.2-bindist"),
-        "DEFAULT": read_root_config("haskell", "toolchain", "toolchains//:ghc-9.12.2-bindist"),
+        "prelude//cfg/exec_platform/marker:is_exec_platform[true]": read_root_config("haskell", "tools_toolchain", "toolchains//:ghc-9.12.2"),
+        "DEFAULT": read_root_config("haskell", "toolchain", "toolchains//:ghc-9.12.2"),
     }),
     visibility = ["PUBLIC"],
 )
 
-bindist_ghc_toolchain(
-    name = "ghc-9.12.2-bindist",
-    distribution = ":ghc-9.12.2",
+# The binary distributions of GHC and cabal-install are pinned in
+# toolchains//ghcup, a package made by root//rules/haskell/ghcup/ghcup.bxl
+# from GHCup's metadata. To pin another one:
+#
+#   buck2 bxl //rules/haskell/ghcup/ghcup.bxl:pin -- --ghc 9.8.4
+#
+# and copy the file it prints to toolchains/ghcup/BUCK.
+ghc_toolchain(
+    name = "ghc-9.12.2",
+    distribution = "//ghcup:ghc-9.12.2",
     visibility = ["PUBLIC"],
 )
 
 # For projects that do not build with 9.12 yet (hsthrift: ghc < 9.9):
 #
-#   buck2 build --config haskell.toolchain=toolchains//:ghc-9.6.7-bindist ...
-download_ghc_distribution(
+#   buck2 build --config haskell.toolchain=toolchains//:ghc-9.6.7 ...
+ghc_toolchain(
     name = "ghc-9.6.7",
-    version = "9.6.7",
-    configure = True,
-)
-
-bindist_ghc_toolchain(
-    name = "ghc-9.6.7-bindist",
-    distribution = ":ghc-9.6.7",
+    distribution = "//ghcup:ghc-9.6.7",
     visibility = ["PUBLIC"],
 )
 
@@ -91,14 +86,9 @@ system_ghc_toolchain(
     visibility = ["PUBLIC"],
 )
 
-download_cabal_distribution(
-    name = "cabal-3.14.2.0",
-    version = "3.14.2.0",
-)
-
 cabal_toolchain(
     name = "cabal",
-    distribution = ":cabal-3.14.2.0",
+    distribution = "//ghcup:cabal-3.14.2.0",
     visibility = ["PUBLIC"],
 )
 

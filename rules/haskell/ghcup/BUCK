@@ -1,0 +1,38 @@
+# The platforms a binary distribution is pinned for, see PLATFORMS in
+# defs.bzl.
+
+config_setting(
+    name = "linux-aarch64",
+    constraint_values = [
+        "config//cpu/constraints:cpu[arm64]",
+        "config//os/constraints:os[linux]",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+config_setting(
+    name = "linux-x86_64",
+    constraint_values = [
+        "config//cpu/constraints:cpu[x86_64]",
+        "config//os/constraints:os[linux]",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+config_setting(
+    name = "macos-aarch64",
+    constraint_values = [
+        "config//cpu/constraints:cpu[arm64]",
+        "config//os/constraints:os[macos]",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+config_setting(
+    name = "macos-x86_64",
+    constraint_values = [
+        "config//cpu/constraints:cpu[x86_64]",
+        "config//os/constraints:os[macos]",
+    ],
+    visibility = ["PUBLIC"],
+)
