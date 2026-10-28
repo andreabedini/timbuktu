@@ -46,14 +46,22 @@ def _pairs(items: list[str], option: str) -> dict[str, str]:
         out[key] = value
     return out
 
-def _describe(ctx: bxl.Context, actions: AnalysisActions) -> struct:
+def _actions(ctx: bxl.Context) -> (AnalysisActions, RunInfo):
+    """The action registry, and the describe_package helper built as a tool
+    (an exec dep): with the GHC of the tools, which need not be the one of
+    the packages (see toolchains//:haskell). BXL allows one registry, which
+    is where exec deps come from."""
+    target = ctx.unconfigured_sub_targets("root//rules/haskell/helpers:describe_package")
+    bxl_actions = ctx.bxl_actions(exec_deps = [target])
+    return bxl_actions.actions, bxl_actions.exec_deps[target][RunInfo]
+
+def _describe(ctx: bxl.Context, actions: AnalysisActions, helper: RunInfo) -> struct:
     """Run describe_package and list the packages of the compiler."""
     args = ctx.cli_args
     if bool(args.cabal_file) == bool(args.sdist):
         fail("give either --cabal-file or --sdist")
 
     ghc = ctx.analysis(ctx.configured_targets("toolchains//:haskell")).providers()[GhcToolchainInfo]
-    helper = ctx.analysis(ctx.configured_targets("root//rules/haskell/helpers:describe_package")).providers()[RunInfo]
 
     loads = []
     preamble = []
@@ -94,8 +102,8 @@ def _describe(ctx: bxl.Context, actions: AnalysisActions) -> struct:
     )
 
 def _generate_impl(ctx: bxl.Context):
-    actions = ctx.bxl_actions().actions
-    d = _describe(ctx, actions)
+    actions, helper = _actions(ctx)
+    d = _describe(ctx, actions, helper)
     out = actions.declare_output("BUCK")
 
     def write(ctx, artifacts, outputs):
@@ -192,8 +200,8 @@ def _check_impl(ctx: bxl.Context):
         attrs = node.get_attrs()
         written[node.label.name] = struct(rule = node.rule_type.rpartition(":")[2], attrs = attrs)
 
-    actions = ctx.bxl_actions().actions
-    d = _describe(ctx, actions)
+    actions, helper = _actions(ctx)
+    d = _describe(ctx, actions, helper)
     out = actions.declare_output("check")
 
     def check(ctx, artifacts, outputs):

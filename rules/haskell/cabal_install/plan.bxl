@@ -132,12 +132,21 @@ def _plan(ctx: bxl.Context, actions: AnalysisActions, ghc: GhcToolchainInfo, loc
     ))
     return plan, "the plan for " + " ".join(args.target + args.local_package)
 
+def _actions(ctx: bxl.Context) -> (AnalysisActions, RunInfo):
+    """The action registry, and the describe_package helper built as a tool
+    (an exec dep): with the GHC of the tools, which need not be the one of
+    the packages (see toolchains//:haskell). BXL allows one registry, which
+    is where exec deps come from."""
+    target = ctx.unconfigured_sub_targets("root//rules/haskell/helpers:describe_package")
+    bxl_actions = ctx.bxl_actions(exec_deps = [target])
+    return bxl_actions.actions, bxl_actions.exec_deps[target][RunInfo]
+
 def _generate_impl(ctx: bxl.Context):
-    actions = ctx.bxl_actions().actions
+    actions, describe_package = _actions(ctx)
     ghc = ctx.analysis(ctx.configured_targets("toolchains//:haskell")).providers()[GhcToolchainInfo]
     local_packages = _local_packages(ctx)
     plan, where = _plan(ctx, actions, ghc, local_packages)
-    helper = ctx.analysis(ctx.configured_targets("root//rules/haskell/helpers:describe_package")).providers()[RunInfo] if local_packages else None
+    helper = describe_package if local_packages else None
     command = _command(ctx.cli_args)
     out = actions.declare_output("BUCK")
 

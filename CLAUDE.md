@@ -405,9 +405,20 @@ archive in `buck-out` that the build uses.
   in `defs.bzl`. Older GHC bindists (9.6) have no `lib/settings` and no
   package db cache until `./configure && make install`; with
   `configure = True` (`toolchains//:ghc-9.6.7`) a copy of the archive gets
-  both and is used in place. 9.6.7 runs `//examples/interop:count`, but the
-  helpers in `rules/haskell/helpers` and `setup_simple` need Cabal 3.12 or
-  later and do not compile with its Cabal 3.10.3 (2026-10-28).
+  both and is used in place. With
+  `--config haskell.toolchain=toolchains//:ghc-9.6.7-bindist`,
+  `//examples/interop:count-test` and `//examples/cabal_simple/hello:hello-test`
+  pass and `generate.bxl` describes hello (2026-10-28).
+- Tools and packages have their own GHC: `toolchains//:haskell` selects on
+  the exec platform marker (`prelude//cfg/exec_platform/marker`), which
+  Buck2 puts in the configuration of every exec dep. Tools (the helpers in
+  `rules/haskell/helpers`, which need Cabal 3.12 or later) get
+  `haskell.tools_toolchain`, packages `haskell.toolchain`; both default to
+  9.12.2. The BXL scripts take `describe_package` as an exec dep of their
+  one action registry, and `.buckconfig` gives `toolchains//...` a default
+  platform so they can configure the alias. `setup_simple` is built with
+  the packages' GHC (it is their `Setup.hs`); with a Cabal older than 3.12
+  it is Cabal's plain Setup, without the `postConf` hook.
 - `rules/haskell/ghci/` — the two script templates `haskell_ghci` needs from
   the toolchain, exported by `rules/haskell/BUCK` and the default of
   `bindist_ghc_toolchain`. The prelude does not come with any. Their names

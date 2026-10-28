@@ -1,6 +1,13 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE ImportQualifiedPost #-}
 {-# OPTIONS_GHC -Wall #-}
+
+-- This Setup is built with the GHC of the packages it builds, and its Cabal.
+-- The postConf hook needs Cabal 3.12 or later; before that it is Cabal's
+-- plain Setup. The hook only writes local-build-info.json, which nothing
+-- reads yet.
+#if MIN_VERSION_Cabal(3,12,0)
 
 import Data.ByteString.Lazy qualified as LBS
 import Data.Map qualified as Map
@@ -133,3 +140,12 @@ compilerArgs lbi bi clbi
 
 displayJ :: (Pretty a) => a -> Json
 displayJ = JsonString . display
+
+#else
+
+import Distribution.Simple (defaultMain)
+
+main :: IO ()
+main = defaultMain
+
+#endif
