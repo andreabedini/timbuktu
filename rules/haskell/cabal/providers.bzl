@@ -4,6 +4,16 @@ its dependents is in timbuktu//rules/haskell:providers.bzl, shared with the othe
 rule sets.
 """
 
+CabalCxxLinkInfo = provider(
+    doc = """What linking against the C and C++ libraries of a library takes:
+    those of its cxx_deps, and those of the libraries it depends on. Cabal
+    passes them to hsc2hs, from the registrations of the dependencies.""",
+    fields = {
+        # A LinkInfosTSet, of the static_pic link infos.
+        "libs": provider_field(typing.Any),
+    },
+)
+
 CabalPackageInfo = provider(
     doc = "The package-level part of a package description.",
     # @unsorted-dict-items

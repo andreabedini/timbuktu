@@ -75,7 +75,7 @@ load(
 load(":macros.bzl", "CabalMacroContext", "Versioned", "cabal_macros_gen")
 load(":paths.bzl", "PathsModuleCtx", "mk_package_info_module", "mk_paths_module")
 load(":prelude.bzl", "prelude_library_attrs", "prelude_library_providers")
-load(":providers.bzl", "CabalPackageInfo")
+load(":providers.bzl", "CabalCxxLinkInfo", "CabalPackageInfo")
 
 ##
 ## Attributes
@@ -241,6 +241,22 @@ def _cxx_preprocessor(ctx: AnalysisContext) -> CPreprocessorInfo:
         [dep[CPreprocessorInfo] for dep in ctx.attrs.cxx_deps + ctx.attrs.build_depends if CPreprocessorInfo in dep],
     )
 
+def _cxx_link_infos(ctx: AnalysisContext) -> list[LinkInfosTSet]:
+    return filter(None, [
+        dep[MergedLinkInfo]._infos.get(LinkStrategy("static_pic"))
+        for dep in ctx.attrs.cxx_deps
+        if MergedLinkInfo in dep
+    ])
+
+def _cxx_transitive(ctx: AnalysisContext) -> LinkInfosTSet:
+    """The C and C++ libraries of cxx_deps and of the libraries of
+    build_depends, transitively (see CabalCxxLinkInfo)."""
+    return ctx.actions.tset(LinkInfosTSet, children = _cxx_link_infos(ctx) + [
+        dep[CabalCxxLinkInfo].libs
+        for dep in ctx.attrs.build_depends
+        if CabalCxxLinkInfo in dep
+    ])
+
 def _cxx_deps(ctx: AnalysisContext, unit_id: str) -> struct:
     """What the C and C++ libraries of `cxx_deps` take.
 
@@ -257,16 +273,13 @@ def _cxx_deps(ctx: AnalysisContext, unit_id: str) -> struct:
           archives' and those of their `-l` flags,
         ld_options: their other linker flags,
         inputs: what using the registration takes,
+        transitive_libs: what linking against them and the C and C++
+          libraries of build_depends takes, in order (see _cxx_transitive),
       )
     """
     pp = _cxx_preprocessor(ctx).set
     cflags = cmd_args(pp.project_as_args("args"), pp.project_as_args("include_dirs"))
 
-    children = [
-        dep[MergedLinkInfo]._infos.get(LinkStrategy("static_pic"))
-        for dep in ctx.attrs.cxx_deps
-        if MergedLinkInfo in dep
-    ]
     libs = cmd_args()
     archives = {}
     extra_libraries = []
@@ -279,7 +292,7 @@ def _cxx_deps(ctx: AnalysisContext, unit_id: str) -> struct:
         else:
             ld_options.append(f)
 
-    tset = ctx.actions.tset(LinkInfosTSet, children = filter(None, children))
+    tset = ctx.actions.tset(LinkInfosTSet, children = _cxx_link_infos(ctx))
     for infos in tset.traverse(ordering = "topological"):
         info = get_link_info(infos)
         for f in info.pre_flags:
@@ -294,6 +307,14 @@ def _cxx_deps(ctx: AnalysisContext, unit_id: str) -> struct:
             flag(f)
 
     lib_dir = ctx.actions.symlinked_dir("cxx-libs", archives) if archives else None
+
+    transitive_libs = cmd_args()
+    for infos in _cxx_transitive(ctx).traverse(ordering = "topological"):
+        info = get_link_info(infos)
+        transitive_libs.add(info.pre_flags)
+        transitive_libs.add([linkable.archive.artifact for linkable in info.linkables if isinstance(linkable, ArchiveLinkable)])
+        transitive_libs.add(info.post_flags)
+
     return struct(
         cflags = cflags,
         libs = libs,
@@ -301,6 +322,7 @@ def _cxx_deps(ctx: AnalysisContext, unit_id: str) -> struct:
         extra_libraries = extra_libraries,
         ld_options = ld_options,
         inputs = ([lib_dir] if lib_dir else []) + archives.values(),
+        transitive_libs = transitive_libs,
     )
 
 def _dep_units(ctx: AnalysisContext, value: CabalUnit | None = None) -> CabalUnitTSet:
@@ -465,6 +487,10 @@ def _hsc2hs_args(arg, deps: list[typing.Any], autogen, ghc_info: GhcDynamicInfo)
         ["-L" + d for d in bi.extra_lib_dirs],
         ["-l" + l for l in bi.extra_libraries],
         bi.ld_options,
+        # Where Cabal passes what pkg-config says to link, and the
+        # extra-libraries of the dependencies: the program hsc2hs makes has
+        # the inline code of their headers.
+        arg.cxx.transitive_libs,
     )
     return cmd_args(
         cmd_args(cflags, format = "--cflag={}"),
@@ -966,6 +992,7 @@ def _cabal_simple_library_impl(ctx: AnalysisContext) -> list[Provider]:
             )),
         ),
         _cxx_preprocessor(ctx),
+        CabalCxxLinkInfo(libs = _cxx_transitive(ctx)),
     ] + prelude_library_providers(
         ctx,
         name = _prelude_package_name(pkg.name, lib_name),
