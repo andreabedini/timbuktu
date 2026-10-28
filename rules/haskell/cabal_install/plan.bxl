@@ -143,11 +143,11 @@ def _actions(ctx: bxl.Context) -> (AnalysisActions, RunInfo):
     return bxl_actions.actions, bxl_actions.exec_deps[target][RunInfo]
 
 def _generate_impl(ctx: bxl.Context):
-    actions, describe_package = _actions(ctx)
+    actions, describer = _actions(ctx)
     ghc = ctx.analysis(ctx.configured_targets("toolchains//:haskell")).providers()[GhcToolchainInfo]
     local_packages = _local_packages(ctx)
     plan, where = _plan(ctx, actions, ghc, local_packages)
-    helper = describe_package if local_packages else None
+    helper = describer if local_packages else None
     command = _command(ctx.cli_args)
     out = actions.declare_output("BUCK")
 
