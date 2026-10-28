@@ -204,6 +204,7 @@ def _local_targets(where: str, pkg_id: str, local: struct, plan: dict[str, typin
         names = targets,
         package_target = pkg_id + "-package",
         root = root,
+        pkgconfig = local.pkgconfig,
     )
     if made.units:
         fail("{}: {} needs units the plan does not have: {}".format(where, pkg_id, ", ".join(made.units)))

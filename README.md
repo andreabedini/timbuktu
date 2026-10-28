@@ -50,6 +50,7 @@ Not everything works and I keep reworking the code significantly.
 | [`plan/network`](examples/plan/network) | network (`build-type: Configure`) from a build plan, used by a prelude binary and by a `cabal_simple` executable |
 | [`plan/dynamic`](examples/plan/dynamic) | the same two plans, made and built at build time by one target each |
 | [`cabal_simple/hello`](examples/cabal_simple/hello) | a local package: sublibrary, C sources, hsc2hs, Template Haskell, data files, a test suite |
+| [`cabal_simple/cxx`](examples/cabal_simple/cxx) | a local package that uses a C++ library target (`pkgconfig-depends`, `cxx_deps`), also from Template Haskell |
 | [`cabal_simple/lexer`](examples/cabal_simple/lexer) | `build-tool-depends` on alex |
 | [`cabal_simple/cparse`](examples/cabal_simple/cparse) | a local package depending on a library from Hackage |
 | [`cabal_simple/alex`](examples/cabal_simple/alex), [`happy`](examples/cabal_simple/happy), [`happy-lib`](examples/cabal_simple/happy-lib), [`language-c`](examples/cabal_simple/language-c) | packages from Hackage, transcribed |

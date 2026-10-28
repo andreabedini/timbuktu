@@ -33,6 +33,9 @@ Options:
                         2026-06-01T00:00:00Z
   --constraint C        as in cabal.project, e.g. 'aeson >= 2.2'
   --flag PKG:FLAGS      flags of a package, e.g. 'aeson:-ordered-keymap'
+  --pkgconfig NAME=TARGET   the target of a C library of the pkgconfig-depends
+                        of a local package, by its pkg-config name (it goes
+                        to cxx_deps; more than one: repeat it)
   --plan-file PATH      a plan in the repository, rather than --target,
                         --index-state, --constraint and --flag
 """
@@ -51,9 +54,11 @@ def _quote(arg: str) -> str:
     return arg
 
 def _command(args: typing.Any) -> str:
-    words = ["buck2", "bxl", "//rules/haskell/cabal_install/plan.bxl:generate", "--"]
+    words = ["buck2", "bxl", "timbuktu//rules/haskell/cabal_install/plan.bxl:generate", "--"]
     for local in args.local_package:
         words.extend(["--local-package", local])
+    for p in args.pkgconfig:
+        words.extend(["--pkgconfig", p])
     if args.buck_dir:
         words.extend(["--buck-dir", args.buck_dir])
     if args.plan_file:
@@ -75,6 +80,15 @@ def _flags(items: list[str]) -> dict[str, str]:
         if not sep or not pkg:
             fail("--flag wants PKG:FLAGS, not `{}`".format(item))
         out[pkg] = (out[pkg] + " " + flags) if pkg in out else flags
+    return out
+
+def _pkgconfig(items: list[str]) -> dict[str, str]:
+    out = {}
+    for item in items:
+        name, sep, target = item.partition("=")
+        if not sep or not name or not target:
+            fail("--pkgconfig wants NAME=TARGET, not `{}`".format(item))
+        out[name] = target
     return out
 
 def _normal_dir(path: str) -> str:
@@ -190,7 +204,7 @@ def _generate_impl(ctx: bxl.Context):
 
         def write_buck(ctx, artifacts, outputs):
             local = {
-                pkg_id: struct(description = artifacts[d.json].read_json(), root = d.root)
+                pkg_id: struct(description = artifacts[d.json].read_json(), root = d.root, pkgconfig = _pkgconfig(ctx.cli_args.pkgconfig))
                 for pkg_id, d in described.items()
             }
             ctx.bxl_actions().actions.write(outputs[out], buck_file(decoded, command, where, local))
@@ -216,6 +230,7 @@ generate = bxl_main(
         "flag": cli_args.list(cli_args.string(), default = []),
         "index-state": cli_args.option(cli_args.string()),
         "local-package": cli_args.list(cli_args.string(), default = []),
+        "pkgconfig": cli_args.list(cli_args.string(), default = []),
         "plan-file": cli_args.option(cli_args.string()),
         "target": cli_args.list(cli_args.string(), default = []),
     },

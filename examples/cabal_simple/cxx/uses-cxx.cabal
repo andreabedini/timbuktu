@@ -1,0 +1,29 @@
+cabal-version:      3.0
+name:               uses-cxx
+version:            0.1.0.0
+synopsis:           An example of a package that uses a C++ library
+license:            BSD-3-Clause
+build-type:         Simple
+
+library
+    exposed-modules:  Twice
+    hs-source-dirs:   src
+    build-depends:    base
+    cxx-sources:      cbits/wrap.cpp
+    -- The C++ library: a Buck2 target, see BUCK.
+    pkgconfig-depends: twice
+    extra-libraries:  stdc++
+    default-language: Haskell2010
+
+executable twice
+    main-is:          Main.hs
+    hs-source-dirs:   app
+    build-depends:    base, uses-cxx
+    default-language: Haskell2010
+
+test-suite uses-cxx-test
+    type:             exitcode-stdio-1.0
+    main-is:          Main.hs
+    hs-source-dirs:   test
+    build-depends:    base, template-haskell, uses-cxx
+    default-language: Haskell2010

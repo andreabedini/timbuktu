@@ -138,7 +138,10 @@ BUILD_INFO_FIELDS = {
     "extra-dynamic-library-flavours": _refused(_strings()),
     "frameworks": _refused(_strings()),
     "extra-framework-dirs": _refused(_strings()),
-    "pkgconfig-depends": _refused(_strings()),
+    # What the C libraries are called. The libraries themselves are the
+    # targets of `cxx_deps` (see simple.bzl), which the generators fill
+    # in from --pkgconfig: pkg-config is not run.
+    "pkgconfig-depends": _honoured(_strings()),
     "mixins": _refused(_strings()),
 }
 

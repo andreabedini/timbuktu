@@ -18,7 +18,7 @@ def _generated_plan_buck_file_impl(ctx: AnalysisContext) -> list[Provider]:
 
     def write(ctx, artifacts, outputs):
         local = {
-            pkg_id: struct(description = artifacts[d].read_json(), root = roots.get(pkg_id))
+            pkg_id: struct(description = artifacts[d].read_json(), root = roots.get(pkg_id), pkgconfig = {})
             for pkg_id, d in descriptions.items()
         }
         ctx.actions.write(outputs[out], buck_file(decode_plan(where, artifacts[plan].read_string()), command, where, local))

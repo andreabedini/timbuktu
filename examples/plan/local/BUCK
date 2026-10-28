@@ -2,7 +2,7 @@
 # cabal-solver-plan made for ghc-9.12.2 on x86_64-linux, with the index
 # of hackage.haskell.org as of 2026-05-31T23:08:56Z. Make it again with
 #
-#   buck2 bxl //rules/haskell/cabal_install/plan.bxl:generate -- --local-package examples/plan/local/dice --buck-dir examples/plan/local --index-state 2026-06-01T00:00:00Z
+#   buck2 bxl timbuktu//rules/haskell/cabal_install/plan.bxl:generate -- --local-package examples/plan/local/dice --buck-dir examples/plan/local --index-state 2026-06-01T00:00:00Z
 
 load("@timbuktu//rules/haskell:defs.bzl", "haskell_unit")
 load("@timbuktu//rules/haskell/cabal:defs.bzl", "cabal_package", "cabal_simple_executable", "cabal_simple_library")

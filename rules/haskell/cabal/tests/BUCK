@@ -27,6 +27,7 @@ generated_buck_file(
     ],
     compiler_prefix = "//compiler:",
     description = ":everything",
+    pkgconfig = {"zlib": "//c:zlib"},
     tools = {"alex:alex": "//tools:alex"},
 )
 

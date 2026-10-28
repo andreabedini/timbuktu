@@ -47,6 +47,7 @@ def _generated_buck_file_impl(ctx: AnalysisContext) -> list[Provider]:
         compiler_packages = ctx.attrs.compiler_packages,
         deps = ctx.attrs.deps,
         tools = ctx.attrs.tools,
+        pkgconfig = ctx.attrs.pkgconfig,
         compiler_prefix = ctx.attrs.compiler_prefix,
         tests = ctx.attrs.test_suites,
     )
@@ -65,6 +66,7 @@ generated_buck_file = rule(
         "compiler_prefix": attrs.option(attrs.string(), default = None),
         "deps": attrs.dict(attrs.string(), attrs.string(), default = {}),
         "description": attrs.source(),
+        "pkgconfig": attrs.dict(attrs.string(), attrs.string(), default = {}),
         "test_suites": attrs.bool(default = True),
         "tools": attrs.dict(attrs.string(), attrs.string(), default = {}),
     },

@@ -38,10 +38,18 @@ package author expects.
 
 A library can also be a dependency of the Haskell rules of the prelude, which
 have a different idea of what a library is: see prelude.bzl.
+
+C and C++ libraries (what pkgconfig-depends names, for Cabal) are Buck2
+targets, in `cxx_deps`: their headers are there for c-sources, cxx-sources
+and hsc2hs, and their archives and linker flags go into the registration of a
+library, which is how GHC links them into whatever uses it, after the
+library itself. See _cxx_deps.
 """
 
 load("@prelude//:paths.bzl", "paths")
 load("@prelude//cxx:cxx_toolchain_types.bzl", "CxxToolchainInfo")
+load("@prelude//cxx:preprocessor.bzl", "CPreprocessorInfo")
+load("@prelude//linking:link_info.bzl", "ArchiveLinkable", "LinkInfosTSet", "LinkStrategy", "MergedLinkInfo", "get_link_info")
 load("@prelude//decls:toolchains_common.bzl", "toolchains_common")
 load(
     "//rules/haskell:providers.bzl",
@@ -76,6 +84,10 @@ load(":providers.bzl", "CabalPackageInfo")
 # What every component has: the BuildInfo fields (see fields.bzl), and the
 # package it is part of.
 _component_attrs = field_attrs(BUILD_INFO_FIELDS) | {
+    # The C and C++ libraries the component uses: C/C++ library targets
+    # (prebuilt_cxx_library, cxx_library). Not a field: in a package
+    # description they are pkgconfig-depends, by name.
+    "cxx_deps": attrs.list(attrs.dep(), default = []),
     "package": attrs.dep(providers = [CabalPackageInfo]),
     "_find_modules": attrs.default_only(attrs.exec_dep(default = "timbuktu//rules/haskell/helpers:find_modules", providers = [RunInfo])),
     "_register": attrs.default_only(attrs.exec_dep(default = "timbuktu//rules/haskell/helpers:register", providers = [RunInfo])),
@@ -112,6 +124,7 @@ def _component(
         unit_id: str,
         modules: list[str],
         outputs: dict[str, Artifact],
+        cxx: struct,
         **kwargs) -> DynamicValue:
     """Start the build of a component.
 
@@ -121,6 +134,7 @@ def _component(
       unit_id: Cabal makes one up for executables too
       modules: every module of the component
       outputs: the artifacts the dynamic action has to produce, by role
+      cxx: what its C and C++ libraries take, see _cxx_deps
       **kwargs: what else is specific to the kind of component
     Returns:
       what resolves to the CabalUnitInfo of the component
@@ -172,9 +186,74 @@ def _component(
             toolchain = ctx.attrs._ghc[GhcToolchainInfo],
             run = ctx.attrs._run,
             register = ctx.attrs._register[RunInfo],
+            cxx = cxx,
             **kwargs
         ),
     ))
+
+def _cxx_deps(ctx: AnalysisContext, unit_id: str) -> struct:
+    """What the C and C++ libraries of `cxx_deps` take.
+
+    Returns:
+      struct(
+        cflags: what compiling against their headers takes,
+        libs: what linking against them takes, in order (each library
+          before the ones it depends on): their archives and their linker
+          flags,
+        lib_dir: a directory of the archives, as lib<unit_id>-cxx<n>.a, for
+          the registration,
+        extra_libraries: their names for the registration, in order: the
+          archives' and those of their `-l` flags,
+        ld_options: their other linker flags,
+        inputs: what using the registration takes,
+      )
+    """
+    cflags = cmd_args()
+    for dep in ctx.attrs.cxx_deps:
+        if CPreprocessorInfo in dep:
+            pp = dep[CPreprocessorInfo].set
+            cflags.add(pp.project_as_args("args"), pp.project_as_args("include_dirs"))
+
+    children = [
+        dep[MergedLinkInfo]._infos.get(LinkStrategy("static_pic"))
+        for dep in ctx.attrs.cxx_deps
+        if MergedLinkInfo in dep
+    ]
+    libs = cmd_args()
+    archives = {}
+    extra_libraries = []
+    ld_options = []
+
+    def flag(f):
+        libs.add(f)
+        if type(f) == "string" and f.startswith("-l"):
+            extra_libraries.append(f.removeprefix("-l"))
+        else:
+            ld_options.append(f)
+
+    tset = ctx.actions.tset(LinkInfosTSet, children = filter(None, children))
+    for infos in tset.traverse(ordering = "topological"):
+        info = get_link_info(infos)
+        for f in info.pre_flags:
+            flag(f)
+        for linkable in info.linkables:
+            if isinstance(linkable, ArchiveLinkable):
+                name = "{}-cxx{}".format(unit_id, len(archives))
+                archives["lib{}.a".format(name)] = linkable.archive.artifact
+                extra_libraries.append(name)
+                libs.add(linkable.archive.artifact)
+        for f in info.post_flags:
+            flag(f)
+
+    lib_dir = ctx.actions.symlinked_dir("cxx-libs", archives) if archives else None
+    return struct(
+        cflags = cflags,
+        libs = libs,
+        lib_dir = lib_dir,
+        extra_libraries = extra_libraries,
+        ld_options = ld_options,
+        inputs = ([lib_dir] if lib_dir else []) + archives.values(),
+    )
 
 def _dep_units(ctx: AnalysisContext, value: CabalUnit | None = None) -> CabalUnitTSet:
     children = [dep[CabalLibraryInfo].units for dep in ctx.attrs.build_depends]
@@ -298,6 +377,7 @@ def _ghc_args(arg, deps: list[typing.Any], autogen, pp_dir: Artifact | None, cpp
         args.add(["-optP" + o for o in bi.cpp_options])
     args.add(["-optc" + o for o in bi.cc_options])
     args.add(["-optcxx" + o for o in bi.cxx_options])
+    args.add(cmd_args(arg.cxx.cflags, format = "-optc{}"), cmd_args(arg.cxx.cflags, format = "-optcxx{}"))
     args.add(["-opta" + o for o in bi.asm_options])
     args.add(bi.ghc_options)
     args.add(bi.cmm_options)
@@ -329,6 +409,7 @@ def _hsc2hs_args(arg, deps: list[typing.Any], autogen, ghc_info: GhcDynamicInfo)
         ["-I" + d for d in _dedupe([d for dep in deps for d in dep.global_include_dirs])],
         bi.cpp_options,
         bi.cc_options,
+        arg.cxx.cflags,
         "-include",
         autogen.macros_h,
     )
@@ -505,22 +586,25 @@ def _registration(arg, deps: list[CabalUnitInfo], exposed: dict[str, (str, str)]
             for name, (unit_id, original) in exposed.items()
         ])),
         ("hidden-modules", " ".join(bi.other_modules)),
-        ("extra-libraries", " ".join(bi.extra_libraries)),
+        ("extra-libraries", " ".join(bi.extra_libraries + arg.cxx.extra_libraries)),
         ("includes", " ".join(bi.includes)),
         ("depends", " ".join([d.id for d in deps])),
         ("cc-options", " ".join(bi.cc_options)),
-        ("ld-options", " ".join(bi.ld_options)),
+        ("ld-options", " ".join(bi.ld_options + [o for o in arg.cxx.ld_options if type(o) == "string"])),
     ]
     lines = [_ipi_field(name, value) for name, value in fields if value]
 
     if arg.modules:
         lines.append(_ipi_path("import-dirs", artifacts["hi"]))
+    library_dirs = []
     if "static_lib" in artifacts:
-        lines += [
-            "hs-libraries: HS" + arg.unit_id,
-            _ipi_path("library-dirs", cmd_args(artifacts["static_lib"], parent = 1)),
-            _ipi_path("dynamic-library-dirs", artifacts["dynlib"]),
-        ]
+        lines.append("hs-libraries: HS" + arg.unit_id)
+        library_dirs.append(cmd_args(artifacts["static_lib"], parent = 1))
+        lines.append(_ipi_path("dynamic-library-dirs", artifacts["dynlib"]))
+    if arg.cxx.lib_dir:
+        library_dirs.append(arg.cxx.lib_dir)
+    if library_dirs:
+        lines.append(_ipi_path("library-dirs", *library_dirs))
     if bi.include_dirs:
         lines.append(_ipi_path("include-dirs", *[cmd_args(pkg.srcdir, "/", d, delimiter = "") for d in bi.include_dirs]))
     return cmd_args(lines)
@@ -576,6 +660,9 @@ def _build_library(actions: AnalysisActions, arg, outputs: dict[str, OutputArtif
                 _link_args(arg),
                 [cmd_args(objs, format = "{}/" + o + ".dyn_o") for o in module_objs],
                 extra_objs,
+                # So that loading it (for Template Haskell) brings the C++
+                # code along.
+                cmd_args(arg.cxx.libs, format = "-optl{}"),
                 "-o",
                 cmd_args(dynlib, format = "{{}}/libHS{}-ghc{}.so".format(arg.unit_id, ghc_info.version)),
             ),
@@ -651,6 +738,7 @@ def _build_executable(actions: AnalysisActions, arg, outputs: dict[str, OutputAr
             main,
             arg.bi.other_modules,
             extra_objs,
+            cmd_args(arg.cxx.libs, format = "-optl{}"),
         ),
         category = "cabal_build",
         identifier = "ghc --make",
@@ -762,6 +850,8 @@ def _cabal_simple_library_impl(ctx: AnalysisContext) -> list[Provider]:
     artifacts = [hi]
     if ctx.attrs.include_dirs:
         artifacts.append(pkg.srcdir)
+    cxx = _cxx_deps(ctx, unit_id)
+    artifacts += cxx.inputs
 
     # Without code there is no library to speak of, only a registration.
     if modules or ctx.attrs.c_sources or ctx.attrs.cxx_sources or ctx.attrs.asm_sources or ctx.attrs.cmm_sources:
@@ -781,6 +871,7 @@ def _cabal_simple_library_impl(ctx: AnalysisContext) -> list[Provider]:
         unit_id = unit_id,
         modules = modules,
         outputs = outputs,
+        cxx = cxx,
         lib_name = lib_name,
         # The archiver is the one the C and C++ rules use, and the Haskell
         # rules of the prelude with them.
@@ -831,7 +922,7 @@ def _cabal_simple_library_impl(ctx: AnalysisContext) -> list[Provider]:
             ctx.attrs.ld_options +
             [cmd_args("-L", d if paths.is_absolute(d) else cmd_args(pkg.srcdir, "/", d, delimiter = ""), delimiter = "") for d in ctx.attrs.extra_lib_dirs] +
             ["-l" + lib for lib in ctx.attrs.extra_libraries],
-        deps = ctx.attrs.build_depends,
+        deps = ctx.attrs.build_depends + ctx.attrs.cxx_deps,
     )
 
 cabal_simple_library = rule(
@@ -861,6 +952,7 @@ def _executable(ctx: AnalysisContext, exe_name: str, fields: dict[str, struct]) 
         unit_id = make_unit_id(ctx.label, pkg.name, pkg.version, exe_name),
         modules = _dedupe(ctx.attrs.other_modules),
         outputs = {"exe": exe},
+        cxx = _cxx_deps(ctx, make_unit_id(ctx.label, pkg.name, pkg.version, exe_name)),
         main_is = ctx.attrs.main_is,
     )
 

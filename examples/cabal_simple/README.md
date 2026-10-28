@@ -14,13 +14,14 @@ its own.
 | a field, `hs-source-dirs` | the attribute of the same name with underscores, `hs_source_dirs` (`visibility` of a library is `library_visibility`) |
 | `build-depends` | targets: another component, a `haskell_unit` for a package that comes with the compiler, or a library unit of a [build plan](../plan) |
 | `build-tool-depends` | targets of executables, of these rules or of a build plan |
+| `pkgconfig-depends` | kept as it is; the C and C++ libraries it names are targets in `cxx_deps` (see [`cxx`](cxx)) |
 | `if flag(...)`, `if os(...)` | `select`, or resolved by hand |
 
 The rules are in [`rules/haskell/cabal`](../../rules/haskell/cabal); the
 docstring of `simple.bzl` describes the steps.
 [`fields.bzl`](../../rules/haskell/cabal/fields.bzl) lists every field of
 Cabal 3.14 and what the rules make of it: a field they know but do not honour
-(`mixins`, `pkgconfig-depends`, …) fails the build rather than being ignored,
+(`mixins`, …) fails the build rather than being ignored,
 and so does a `cabal-version` newer than 3.14.
 
 ## Generating the targets

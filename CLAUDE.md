@@ -438,6 +438,20 @@ archive in `buck-out` that the build uses.
   platform so they can configure the alias. `setup_simple` is built with
   the packages' GHC (it is their `Setup.hs`); with a Cabal older than 3.12
   it is Cabal's plain Setup, without the `postConf` hook.
+- C and C++ libraries of a `cabal_simple` component are Buck2 targets in
+  `cxx_deps` (2026-10-28, the user's decision; hsthrift's fb-util needs
+  folly, glog, ...). `pkgconfig-depends` is honoured as a list of names
+  only; pkg-config is not run, and the generators (`generate.bxl`,
+  `plan.bxl`) fill `cxx_deps` from `--pkgconfig NAME=TARGET`, failing on a
+  name without one. `_cxx_deps` in `simple.bzl` gives the libraries'
+  preprocessor flags to c/cxx-sources and hsc2hs, links them into the
+  shared object, and puts them in the registration as `extra-libraries`
+  (their archives through a directory of symlinks named
+  `lib<unit-id>-cxx<n>.a`, in topological order, plus their `-l` flags),
+  so GHC links them after the library into whatever uses it. Their other
+  linker flags go to `ld-options` when they are strings. The prelude
+  bridge gets them as deps. `examples/cabal_simple/cxx` runs the C++ code
+  from an executable and from a Template Haskell splice.
 - `rules/haskell/ghci/` — the two script templates `haskell_ghci` needs from
   the toolchain, exported by `rules/haskell/BUCK` and the default of
   `ghc_toolchain`. The prelude does not come with any. Their names

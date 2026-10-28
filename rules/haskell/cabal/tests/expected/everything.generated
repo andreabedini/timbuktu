@@ -93,6 +93,7 @@ cabal_simple_library(
         ":internal",
     ],
     build_tool_depends = ["//tools:alex"],
+    cxx_deps = ["//c:zlib"],
     visibility = ["PUBLIC"],
 )
 

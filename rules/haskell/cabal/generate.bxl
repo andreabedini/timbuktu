@@ -26,6 +26,8 @@ Options:
   --tests false       no targets for the test suites
   --dep PKG[:LIB]=TARGET    the target of a library of another package
   --tool PKG:EXE=TARGET     the target of an executable of another package
+  --pkgconfig NAME=TARGET   the target of a C library of pkgconfig-depends,
+                            by its pkg-config name (it goes to cxx_deps)
   --compiler-prefix LABEL   e.g. //examples/cabal_simple/ghc: to use those
                             targets for the packages of the compiler, rather
                             than haskell_unit targets of its own
@@ -96,6 +98,7 @@ def _describe(ctx: bxl.Context, actions: AnalysisActions, helper: RunInfo) -> st
         options = dict(
             deps = _pairs(args.dep, "dep"),
             tools = _pairs(args.tool, "tool"),
+            pkgconfig = _pairs(args.pkgconfig, "pkgconfig"),
             compiler_prefix = args.compiler_prefix,
             tests = args.tests,
         ),
@@ -229,6 +232,7 @@ _CLI_ARGS = {
     "compiler-prefix": cli_args.option(cli_args.string()),
     "dep": cli_args.list(cli_args.string(), default = []),
     "flags": cli_args.string(default = ""),
+    "pkgconfig": cli_args.list(cli_args.string(), default = []),
     "tests": cli_args.bool(default = True),
     "sdist": cli_args.option(cli_args.string()),
     "tool": cli_args.list(cli_args.string(), default = []),

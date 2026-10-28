@@ -26,6 +26,7 @@ check() {
 }
 
 check hello --cabal-file examples/cabal_simple/hello/hello.cabal
+check cxx --cabal-file examples/cabal_simple/cxx/uses-cxx.cabal --pkgconfig twice=:twice
 check lexer --cabal-file examples/cabal_simple/lexer/lexer.cabal --tool alex:alex=//examples/cabal_simple/alex:exe
 check cparse --cabal-file examples/cabal_simple/cparse/cparse.cabal "$ghc" --dep language-c=//examples/cabal_simple/language-c:lib
 check alex --sdist //examples/cabal_simple/alex:alex-3.5.1.0 --tests false
