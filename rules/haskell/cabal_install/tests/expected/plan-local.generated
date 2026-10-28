@@ -18,14 +18,14 @@ alias(
 )
 
 alias(
-    name = "lib-internal",
-    actual = ":lp-1.0-lib-internal",
+    name = "lp",
+    actual = ":lp-1.0",
     visibility = ["PUBLIC"],
 )
 
 alias(
-    name = "lp",
-    actual = ":lp-1.0",
+    name = "lp-internal",
+    actual = ":lp-1.0-lib-internal",
     visibility = ["PUBLIC"],
 )
 
