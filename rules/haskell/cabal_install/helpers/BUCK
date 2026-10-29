@@ -7,3 +7,8 @@ haskell_binary(
     toolchain_libs = ["base", "bytestring", "containers", "filepath", "Cabal", "Cabal-syntax"],
     visibility = ["PUBLIC"],
 )
+
+export_file(
+    name = "setup_default.hs",
+    visibility = ["PUBLIC"],
+)

@@ -108,9 +108,15 @@ def _unit_targets(where: str, key: str, plan: dict[str, typing.Any], names: dict
     return [
         struct(rule = "haskell_binary", attrs = [
             ("name", setup),
-            ("srcs", {"Main.hs": ":{}[Setup.hs]".format(_src(unit["package"]))}),
+            # A package of build-type Simple gets Cabal's own Setup: its sdist
+            # need not have one.
+            ("srcs", {"Main.hs": "timbuktu//rules/haskell/cabal_install/helpers:setup_default.hs" if package["build-type"] == "Simple" else ":{}[Setup.hs]".format(_src(unit["package"]))}),
             ("toolchain_libs", [units[d]["name"] for d in setup_depends if units[d]["type"] == "pre-existing"] if setup_depends else ["base", "Cabal"]),
             ("deps", [target(d) for d in setup_depends if units[d]["type"] != "pre-existing"] or None),
+            # Linked statically: shared, it would need the libraries of the
+            # compiler (Cabal's, say) at run time, where its rpath does not
+            # point.
+            ("link_style", "static"),
         ]),
         struct(rule = "build_legacy", attrs = [("name", name)] + common + [("setup", ":" + setup)] + rest),
     ]
