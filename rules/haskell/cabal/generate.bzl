@@ -92,6 +92,37 @@ def _target_names(components: list[dict[str, typing.Any]]) -> dict[(str, str | N
             names[(kind, name)] = name
     return names
 
+def _inside(path: str, dir: str) -> bool:
+    return path == dir or path.startswith(dir + "/")
+
+def _paths(c: dict[str, typing.Any]) -> list[str]:
+    """What a component takes from its package's directory, as far as the
+    description says: its modules in each of its hs-source-dirs, its
+    sources and headers, and its include-dirs."""
+    source_dirs = [d.removeprefix("./") for d in c.get("hs-source-dirs") or ["."]]
+    source_dirs = ["" if d == "." else d.rstrip("/") for d in source_dirs]
+    # A module is a file in a directory: Lp.hs, not the directory Lp.
+    files = [m.replace(".", "/") + ".hs" for f in ("exposed-modules", "other-modules") for m in c.get(f, [])]
+    if c.get("main-is"):
+        files.append(c["main-is"])
+    out = [d + "/" + f if d else f for d in source_dirs for f in files]
+    include_dirs = ["" if d == "." else d.removeprefix("./").rstrip("/") for d in c.get("include-dirs", [])]
+    for f in c.get("includes", []) + c.get("install-includes", []):
+        out.extend([d + "/" + f if d else f for d in include_dirs + [""]])
+    for field in ("c-sources", "cxx-sources", "asm-sources", "cmm-sources"):
+        out.extend(c.get(field, []))
+    return out + [d for d in source_dirs + include_dirs if d]
+
+def _generated_for(c: dict[str, typing.Any], generated: dict[str, str], components: list[dict[str, typing.Any]]) -> dict[str, str]:
+    """The directories of `generated` that component `c` gets (see
+    package_targets)."""
+    out = {}
+    for dir, target in generated.items():
+        users = [c2 for c2 in components if [p for p in _paths(c2) if _inside(p, dir)]]
+        if not users or c in users:
+            out[dir] = target
+    return out
+
 def package_targets(
         desc: dict[str, typing.Any],
         compiler_packages: list[str],
@@ -105,7 +136,9 @@ def package_targets(
         package_target: str | None = None,
         root: str | None = None,
         generated: dict[str, str] = {},
-        extra_libraries: dict[str, str] = {}) -> struct:
+        extra_libraries: dict[str, str] = {},
+        package_label: str | None = None,
+        public_package: bool = False) -> struct:
     """The cabal_simple targets for a package, as data.
 
     Args:
@@ -132,11 +165,18 @@ def package_targets(
       pkgconfig: the target of each C library of pkgconfig-depends, by its
         pkg-config name
       generated: the target of each directory of the package made by
-        another rule, by its path in the package: every component gets them
-        (see `generated` in simple.bzl)
+        another rule, by its path in the package (see `generated` in
+        simple.bzl): a component gets the ones its modules, sources,
+        headers or include-dirs are in, and a directory that none of them
+        is in goes to every component. So a rule making one can use another
+        component of the package, an executable say, without a cycle
       extra_libraries: the target of a library of extra-libraries, by its
         name (as `-l` takes it): several names can be the one target, e.g.
         the archives of a project that it builds as one
+      package_label: the cabal_package target of the components, when it is
+        not in the same BUCK file (another cell's, say): then there is no
+        cabal_package target
+      public_package: whether the cabal_package target is PUBLIC anyway
     Returns:
       struct(targets, units, skipped): the targets, as struct(rule, attrs)
       with the attributes in order, the cabal_package first; the packages of
@@ -199,7 +239,7 @@ def package_targets(
 
     targets = []
     for c in components:
-        attrs = [("name", names[(c["kind"], c["name"])]), ("package", ":" + package_target)]
+        attrs = [("name", names[(c["kind"], c["name"])]), ("package", package_label or ":" + package_target)]
         if c["kind"] == "lib" and c["name"]:
             attrs.append(("library_name", c["name"]))
         if c["kind"] == "exe" and names[("exe", c["name"])] != c["name"]:
@@ -232,7 +272,7 @@ def package_targets(
             if lib in extra_libraries and extra_libraries[lib] not in cxx_deps:
                 cxx_deps.append(extra_libraries[lib])
         attrs.append(("cxx_deps", cxx_deps or None))
-        attrs.append(("generated", generated or None))
+        attrs.append(("generated", _generated_for(c, generated, components) or None))
 
         # What other packages can use: the libraries Cabal would let them, and
         # the executables.
@@ -246,6 +286,13 @@ def package_targets(
             "\n  ".join({m: None for m in missing}.keys()),
         ))
 
+    if package_label:
+        return struct(
+            targets = targets,
+            units = sorted(units.keys()),
+            skipped = [c for c in skipped if tests or c["kind"] != "test"],
+        )
+
     package = [("name", package_target)]
     if package_target != name:
         package.append(("package_name", name))
@@ -258,9 +305,10 @@ def package_targets(
             package.append((attr_name(field, spec), value))
 
     # The rules making the directories of `generated` may use the package,
-    # from another BUCK file; and a package with nothing to build is there
-    # for other rules only.
-    if generated or not targets:
+    # from another BUCK file; a package with nothing to build is there for
+    # other rules only; and the components of another plan may use a
+    # package of a plan (see `package_label`).
+    if generated or not targets or public_package:
         package.append(("visibility", ["PUBLIC"]))
 
     return struct(

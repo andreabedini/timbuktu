@@ -47,7 +47,7 @@ def solve(
         ["--constraint='{}'".format(c) for c in attrs.constraints],
         ["--flag='{}:{}'".format(pkg, flags) for pkg, flags in attrs.flags.items()],
         attrs.args,
-        ["--local-package {}".format(local.path) for local in local_packages],
+        ["--local-package {}".format(local.path or ".") for local in local_packages],
         attrs.targets,
         ">",
         out.as_output(),

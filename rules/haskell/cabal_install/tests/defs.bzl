@@ -15,10 +15,12 @@ def _generated_plan_buck_file_impl(ctx: AnalysisContext) -> list[Provider]:
     where = str(ctx.label.raw_target())
     descriptions = ctx.attrs.local
     roots = ctx.attrs.roots
+    generated = ctx.attrs.generated
+    package_targets = ctx.attrs.package_targets
 
     def write(ctx, artifacts, outputs):
         local = {
-            pkg_id: struct(description = artifacts[d].read_json(), root = roots.get(pkg_id), pkgconfig = {}, generated = {}, extra_libraries = {})
+            pkg_id: struct(description = artifacts[d].read_json(), root = roots.get(pkg_id), pkgconfig = {}, generated = generated.get(pkg_id, {}), extra_libraries = {}, package_target = package_targets.get(pkg_id))
             for pkg_id, d in descriptions.items()
         }
         ctx.actions.write(outputs[out], buck_file(decode_plan(where, artifacts[plan].read_string()), command, where, local))
@@ -31,8 +33,14 @@ generated_plan_buck_file = rule(
     impl = _generated_plan_buck_file_impl,
     attrs = {
         "command": attrs.string(default = "buck2 bxl //rules/haskell/cabal_install/plan.bxl:generate -- ..."),
+        # The directories of each local package made by other targets, by
+        # its id (see `generated` in package_targets).
+        "generated": attrs.dict(attrs.string(), attrs.dict(attrs.string(), attrs.string()), default = {}),
         # What describe_package prints for each local package, by its id.
         "local": attrs.dict(attrs.string(), attrs.source(), default = {}),
+        # The cabal_package target of a local package of another cell, by
+        # its id.
+        "package_targets": attrs.dict(attrs.string(), attrs.string(), default = {}),
         "plan": attrs.source(),
         # The directory of each local package, relative to the BUCK file.
         "roots": attrs.dict(attrs.string(), attrs.string(), default = {}),

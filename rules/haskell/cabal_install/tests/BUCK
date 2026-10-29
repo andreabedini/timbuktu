@@ -44,3 +44,25 @@ expected_test(
     actual = ":plan-local",
     expected = "expected/plan-local.generated",
 )
+
+# The same plan, with lp a package of another cell, whose cabal_package is
+# a target there, and with two directories made by other targets: Lp, where
+# the module of the sublibrary is (only it gets the directory), and data,
+# where no component has anything (every one gets it). Update the expected
+# file as above, with :plan-other-cell.
+generated_plan_buck_file(
+    name = "plan-other-cell",
+    generated = {"lp-1.0": {
+        "Lp": "//gen:lp",
+        "data": "//gen:data",
+    }},
+    local = {"lp-1.0": ":lp-description"},
+    package_targets = {"lp-1.0": "other//lp:lp-1.0-package"},
+    plan = "plan-local.json",
+)
+
+expected_test(
+    name = "plan-other-cell-test",
+    actual = ":plan-other-cell",
+    expected = "expected/plan-other-cell.generated",
+)

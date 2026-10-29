@@ -42,6 +42,7 @@ cabal_package(
     root = "lp",
     cabal_version = "3.0",
     build_type = "Simple",
+    visibility = ["PUBLIC"],
 )
 
 cabal_simple_library(

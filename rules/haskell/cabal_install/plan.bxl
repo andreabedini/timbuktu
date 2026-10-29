@@ -24,10 +24,16 @@ already (an empty one the first time), for buck2 to read the .cabal files.
 
 writes out a plan made before instead, without the solver.
 
+A local package can also be one of another cell, whose BUCK files are not
+this one's: `--local-package CELL//DIR=TARGET`, where TARGET is its
+cabal_package target there (the plan of that cell has one for each of its
+local packages). Its components here use TARGET rather than a glob.
+
 Options:
   --target PKG          a package to plan for (more than one: repeat it)
   --local-package DIR   a package in the repository, always planned for
-                        (more than one: repeat it)
+                        (more than one: repeat it); CELL//DIR=TARGET for
+                        one of another cell, with its cabal_package TARGET
   --buck-dir DIR        where the BUCK file goes; needed with local packages
   --index-state TIME    leave out what was uploaded after, e.g.
                         2026-06-01T00:00:00Z
@@ -42,9 +48,10 @@ Options:
                         goes to cxx_deps rather than being linked with -l
                         (more than one: repeat it)
   --generated DIR=TARGET    a directory of a local package that TARGET makes,
-                        e.g. Haskell from an IDL: its components see it in
-                        place of what the glob finds there (it goes to
-                        `generated`; more than one: repeat it)
+                        e.g. Haskell from an IDL: the components that use it
+                        see it in place of what the glob finds there (it
+                        goes to `generated`, see generate.bzl; more than
+                        one: repeat it); CELL//DIR in another cell
   --plan-file PATH      a plan in the repository, rather than --target,
                         --index-state, --constraint and --flag
 """
@@ -116,49 +123,72 @@ def _join(dir: str, rest: str) -> str:
     return dir + "/" + rest if dir else rest
 
 def _local_packages(ctx: bxl.Context) -> list[struct]:
-    """The local packages: their directories, .cabal files, and where they
-    are from the BUCK file."""
+    """The local packages: their directories, relative to the root of the
+    project, .cabal files, and where they are from the BUCK file (or their
+    cabal_package target, for one of another cell)."""
     args = ctx.cli_args
     if not args.local_package:
         if args.generated:
             fail("--generated is for a directory of a --local-package")
         return []
-    if args.buck_dir == None:
-        fail("--local-package needs --buck-dir, the directory the BUCK file goes to")
-    buck_dir = _normal_dir(args.buck_dir)
+    here = [p for p in args.local_package if "=" not in p]
+    buck_dir = None
+    if here:
+        if args.buck_dir == None:
+            fail("--local-package needs --buck-dir, the directory the BUCK file goes to")
+        buck_dir = _normal_dir(args.buck_dir)
 
-    # NOTE: buck2 only makes an artifact of a file in a package: the
-    # .cabal files are inputs of the solver and of describe_package.
-    if not ctx.fs.exists(_join(buck_dir, "BUCK")):
-        fail("{} has no BUCK file yet: create an empty one, the generated file goes there".format(buck_dir or "the root"))
+        # NOTE: buck2 only makes an artifact of a file in a package: the
+        # .cabal files are inputs of the solver and of describe_package.
+        if not ctx.fs.exists(_join(buck_dir, "BUCK")):
+            fail("{} has no BUCK file yet: create an empty one, the generated file goes there".format(buck_dir or "the root"))
     out = []
-    for path in args.local_package:
-        path = _normal_dir(path)
-        if buck_dir and path != buck_dir and not path.startswith(buck_dir + "/"):
-            fail("{} is not in {}: a BUCK file there cannot glob its files".format(path, buck_dir))
-        root = path.removeprefix(buck_dir).removeprefix("/") or None
-        if root:
-            parts = root.split("/")
-            for n in range(1, len(parts) + 1):
-                d = _join(buck_dir, "/".join(parts[:n]))
-                if ctx.fs.exists(d + "/BUCK"):
-                    fail("{} has a BUCK file, which would keep the files below it from a glob in {}".format(d, buck_dir or "the root"))
-        # The paths of the root cell, whatever it is called, without it.
+    for item in args.local_package:
+        path, sep, package_target = item.partition("=")
+        if sep:
+            # A package of another cell, with its cabal_package there.
+            if "//" not in path or not package_target:
+                fail("--local-package {}: one of another cell is CELL//DIR=TARGET".format(item))
+            cell, _, dir = path.partition("//")
+            cell_path = cell + "//" + _normal_dir(dir)
+            root = None
+        else:
+            path = _normal_dir(path)
+            if buck_dir and path != buck_dir and not path.startswith(buck_dir + "/"):
+                fail("{} is not in {}: a BUCK file there cannot glob its files".format(path, buck_dir))
+            root = path.removeprefix(buck_dir).removeprefix("/") or None
+            if root:
+                parts = root.split("/")
+                for n in range(1, len(parts) + 1):
+                    d = _join(buck_dir, "/".join(parts[:n]))
+                    if ctx.fs.exists(d + "/BUCK"):
+                        fail("{} has a BUCK file, which would keep the files below it from a glob in {}".format(d, buck_dir or "the root"))
+            cell_path = path
+            package_target = None
+        # The paths of the root cell without it, whatever it is called:
+        # `root//` would be this cell's own root.
         cabal_files = [
-            str(e).partition("//")[2]
-            for e in ctx.fs.list(path)
-            if str(e).endswith(".cabal") and ctx.fs.is_file(str(e).partition("//")[2])
+            str(e) if sep else str(e).partition("//")[2]
+            for e in ctx.fs.list(cell_path)
+            if str(e).endswith(".cabal")
         ]
+        cabal_files = [f for f in cabal_files if ctx.fs.is_file(f)]
         if len(cabal_files) != 1:
             fail("{} has {} .cabal files, not one".format(path, len(cabal_files)))
-        out.append(struct(path = path, root = root, cabal = ctx.fs.source(cabal_files[0]), generated = {}))
+        out.append(struct(
+            path = _normal_dir(str(ctx.fs.project_rel_path(cell_path))) if cell_path else "",
+            root = root,
+            cabal = ctx.fs.source(cabal_files[0]),
+            generated = {},
+            package_target = package_target,
+        ))
 
     # Each directory of --generated goes to the local package it is in.
     for item in args.generated:
         dir, sep, target = item.partition("=")
-        dir = _normal_dir(dir)
         if not sep or not dir or not target:
             fail("--generated wants DIR=TARGET, not `{}`".format(item))
+        dir = _normal_dir(str(ctx.fs.project_rel_path(dir if "//" in dir else _normal_dir(dir))))
         owners = [local for local in out if not local.path or dir.startswith(local.path + "/")]
         if not owners:
             fail("--generated {}: {} is not in a directory of --local-package".format(item, dir))
@@ -219,7 +249,7 @@ def _generate_impl(ctx: bxl.Context):
         for pkg_id, package in decoded["packages"].items():
             if package["src"]["type"] != "local":
                 continue
-            local = by_path.get(package["src"]["path"].rstrip("/"))
+            local = by_path.get(_normal_dir(package["src"]["path"]))
             if not local:
                 fail("{}: {} is a local package of the plan, at {}, which is not one given with --local-package".format(where, pkg_id, package["src"]["path"]))
             flags = [u["flags"] for u in decoded["units"].values() if u.get("package") == pkg_id]
@@ -227,6 +257,7 @@ def _generate_impl(ctx: bxl.Context):
             described[pkg_id] = struct(
                 root = local.root,
                 generated = local.generated,
+                package_target = local.package_target,
                 json = describe_package(
                     actions,
                     helper,
@@ -239,7 +270,7 @@ def _generate_impl(ctx: bxl.Context):
 
         def write_buck(ctx, artifacts, outputs):
             local = {
-                pkg_id: struct(description = artifacts[d.json].read_json(), root = d.root, pkgconfig = pkgconfig, generated = d.generated, extra_libraries = extra_libraries)
+                pkg_id: struct(description = artifacts[d.json].read_json(), root = d.root, pkgconfig = pkgconfig, generated = d.generated, extra_libraries = extra_libraries, package_target = d.package_target)
                 for pkg_id, d in described.items()
             }
             ctx.bxl_actions().actions.write(outputs[out], buck_file(decoded, command, where, local))
