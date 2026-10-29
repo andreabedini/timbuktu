@@ -52,6 +52,10 @@ Options:
                         see it in place of what the glob finds there (it
                         goes to `generated`, see generate.bzl; more than
                         one: repeat it); CELL//DIR in another cell
+  --as-simple PKG       a local package of another build type whose Setup.hs
+                        only finds C or C++ libraries, which --pkgconfig or
+                        --extra-library targets provide instead: it is built
+                        as Simple (more than one: repeat it)
   --plan-file PATH      a plan in the repository, rather than --target,
                         --index-state, --constraint and --flag
 """
@@ -79,6 +83,8 @@ def _command(args: typing.Any) -> str:
         words.extend(["--extra-library", e])
     for g in args.generated:
         words.extend(["--generated", g])
+    for p in args.as_simple:
+        words.extend(["--as-simple", p])
     if args.buck_dir:
         words.extend(["--buck-dir", args.buck_dir])
     if args.plan_file:
@@ -235,6 +241,7 @@ def _generate_impl(ctx: bxl.Context):
     command = _command(ctx.cli_args)
     pkgconfig = _pkgconfig(ctx.cli_args.pkgconfig)
     extra_libraries = _targets("--extra-library", ctx.cli_args.extra_library)
+    as_simple = ctx.cli_args.as_simple
     out = actions.declare_output("BUCK")
 
     def write(ctx, artifacts, outputs):
@@ -258,6 +265,7 @@ def _generate_impl(ctx: bxl.Context):
                 root = local.root,
                 generated = local.generated,
                 package_target = local.package_target,
+                as_simple = package["name"] in as_simple,
                 json = describe_package(
                     actions,
                     helper,
@@ -270,7 +278,7 @@ def _generate_impl(ctx: bxl.Context):
 
         def write_buck(ctx, artifacts, outputs):
             local = {
-                pkg_id: struct(description = artifacts[d.json].read_json(), root = d.root, pkgconfig = pkgconfig, generated = d.generated, extra_libraries = extra_libraries, package_target = d.package_target)
+                pkg_id: struct(description = artifacts[d.json].read_json(), root = d.root, pkgconfig = pkgconfig, generated = d.generated, extra_libraries = extra_libraries, package_target = d.package_target, as_simple = d.as_simple)
                 for pkg_id, d in described.items()
             }
             ctx.bxl_actions().actions.write(outputs[out], buck_file(decoded, command, where, local))
@@ -291,6 +299,7 @@ def _generate_impl(ctx: bxl.Context):
 generate = bxl_main(
     impl = _generate_impl,
     cli_args = {
+        "as-simple": cli_args.list(cli_args.string(), default = []),
         "buck-dir": cli_args.option(cli_args.string()),
         "constraint": cli_args.list(cli_args.string(), default = []),
         "extra-library": cli_args.list(cli_args.string(), default = []),

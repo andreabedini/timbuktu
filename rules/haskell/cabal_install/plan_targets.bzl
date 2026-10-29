@@ -19,7 +19,12 @@ docs/plan-format.md of cabal-solver-plan), decoded by `decode_plan`.
   describe_package prints for it, `<name>-<version>-package` and one
   target for each of its units, with their dependencies taken from the
   plan. What describe_package finds a component depends on has to be what
-  the plan says, or making the targets fails. Only build-type Simple.
+  the plan says, or making the targets fails. Only build-type Simple, but
+  for a package taken as Simple (`as_simple`, plan.bxl's --as-simple): one
+  whose Setup.hs only finds C or C++ libraries that targets provide. The
+  solver plans it as a whole; it gets a target for each library and
+  executable, named as if they were units of their own, and depending on
+  what the whole package does.
 
 Units are named by `unit_names` (plan_format.bzl), and their unit-ids are
 made up by the rules (unit_id.bzl): the ids the plan gives its units only
@@ -147,12 +152,30 @@ def _tool_key(plan: dict[str, typing.Any], unit: dict[str, typing.Any]) -> str:
     """How generate.bzl keys a build tool: `<package>:<executable>`."""
     return "{}:{}".format(name_version(plan, unit)[0], component(unit["component"])[1])
 
+def _as_simple(local: struct) -> bool:
+    return getattr(local, "as_simple", False)
+
+def _component_names(name: str, desc: dict[str, typing.Any]) -> dict[(str, str | None), str]:
+    """The targets of the libraries and executables of a package taken as
+    Simple, whose whole-package unit is called `name`: as unit_names would
+    call them if they were units."""
+    return {
+        (c["kind"], c["name"]): name + ("-{}-{}".format(c["kind"], c["name"]) if c["name"] else "")
+        for c in desc["components"]
+        if c["kind"] in ("lib", "exe") and c["buildable"]
+    }
+
 def _local_targets(where: str, pkg_id: str, local: struct, plan: dict[str, typing.Any], names: dict[str, str]) -> list[struct]:
     """The cabal_simple targets of a local package of a plan."""
     package = plan["packages"][pkg_id]
-    if package["build-type"] != "Simple":
-        fail("{}: the local package {} has build-type {}; only Simple ones are supported, as cabal_simple targets".format(where, pkg_id, package["build-type"]))
     desc = local.description
+    if package["build-type"] != "Simple":
+        if not _as_simple(local):
+            fail("{}: the local package {} has build-type {}; only Simple ones are supported, as cabal_simple targets (or one whose Setup.hs only finds C libraries that targets provide: --as-simple {})".format(where, pkg_id, package["build-type"], package["name"]))
+
+        # The rules build it as Simple.
+        desc = dict(desc)
+        desc["build-type"] = "Simple"
     if desc["name"] != package["name"] or desc["version"] != package["version"]:
         fail("{}: the description of {} is of {}-{}".format(where, pkg_id, desc["name"], desc["version"]))
     plan_flags = None
@@ -175,6 +198,14 @@ def _local_targets(where: str, pkg_id: str, local: struct, plan: dict[str, typin
         if plan_flags != None and u["flags"] != plan_flags:
             fail("{}: the units of {} have different flags".format(where, pkg_id))
         plan_flags = u["flags"]
+        if "component" not in u and package["build-type"] != "Simple":
+            # A package taken as Simple: what the whole package depends on.
+            targets.update(_component_names(names[key], desc))
+            for d in u["depends"]:
+                set_target(deps, _dep_key(plan, units[d]), d)
+            for e in u["exe-depends"]:
+                set_target(tools, _tool_key(plan, units[e]), e)
+            continue
         if "component" not in u:
             # The solver plans a package with nothing to build (test suites
             # only, say) as a whole: it gets its cabal_package and nothing
@@ -279,19 +310,27 @@ def plan_targets(where: str, plan: dict[str, typing.Any], local: dict[str, struc
     aliases = {}
     for i in sorted(plan["targets"], key = lambda i: names[i]):
         # A local package with nothing to build has no target (see
-        # _local_targets).
-        if "component" not in units[i] and plan["packages"][units[i]["package"]]["src"]["type"] == "local":
+        # _local_targets); one taken as Simple has one for each library and
+        # executable.
+        package = plan["packages"][units[i].get("package", "")] if units[i]["type"] == "configured" else None
+        if "component" not in units[i] and package and package["src"]["type"] == "local":
+            if package["build-type"] != "Simple" and _as_simple(local.get(units[i]["package"], struct())):
+                for (kind, cname), target in _component_names(names[i], local[units[i]["package"]].description).items():
+                    alias_name = package["name"] if kind == "lib" and not cname else ("{}-{}".format(package["name"], cname) if kind == "lib" else "{}-{}".format(kind, cname))
+                    if alias_name in aliases:
+                        fail("{}: the targets {} and {} would both be called `{}`".format(where, aliases[alias_name], target, alias_name))
+                    aliases[alias_name] = target
             continue
         alias_name = _alias_name(plan, units[i])
         if alias_name in aliases:
-            fail("{}: the targets {} and {} would both be called `{}`".format(where, names[aliases[alias_name]], names[i], alias_name))
-        aliases[alias_name] = i
+            fail("{}: the targets {} and {} would both be called `{}`".format(where, aliases[alias_name], names[i], alias_name))
+        aliases[alias_name] = names[i]
 
     sections = [struct(
         comment = "What the plan was made for",
         targets = [
-            struct(rule = "alias", attrs = [("name", alias_name), ("actual", ":" + names[i]), ("visibility", ["PUBLIC"])])
-            for alias_name, i in sorted(aliases.items())
+            struct(rule = "alias", attrs = [("name", alias_name), ("actual", ":" + target), ("visibility", ["PUBLIC"])])
+            for alias_name, target in sorted(aliases.items())
         ],
     )]
 

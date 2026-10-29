@@ -1,0 +1,103 @@
+{
+  "format": 3,
+  "compiler-id": "ghc-9.12.2",
+  "os": "linux",
+  "arch": "x86_64",
+  "index-state": {
+    "hackage.haskell.org": "2026-05-31T23:08:56Z"
+  },
+  "targets": [
+    "3"
+  ],
+  "packages": {
+    "tool-0.1": {
+      "name": "tool",
+      "version": "0.1",
+      "build-type": "Simple",
+      "src": {
+        "type": "repo-tar",
+        "repo": "https://hackage.haskell.org/",
+        "sha256": "1111111111111111111111111111111111111111111111111111111111111111",
+        "size": 100
+      },
+      "cabal-file": {
+        "revision": 2,
+        "sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+        "size": 10
+      }
+    },
+    "lp-1.0": {
+      "name": "lp",
+      "version": "1.0",
+      "build-type": "Custom",
+      "src": {
+        "type": "local",
+        "path": "rules/haskell/cabal_install/tests/lp"
+      },
+      "cabal-file": null
+    }
+  },
+  "units": {
+    "0": {
+      "type": "pre-existing",
+      "name": "rts",
+      "version": "1.0.2",
+      "qualified-names": [
+        "rts"
+      ],
+      "component": "lib",
+      "db": "global",
+      "unit-id": "rts-1.0.2",
+      "depends": []
+    },
+    "1": {
+      "type": "pre-existing",
+      "name": "base",
+      "version": "4.21.0.0",
+      "qualified-names": [
+        "base"
+      ],
+      "component": "lib",
+      "db": "global",
+      "unit-id": "base-4.21.0.0-b7a5",
+      "depends": [
+        "0"
+      ]
+    },
+    "2": {
+      "type": "configured",
+      "package": "tool-0.1",
+      "build-style": "per-component",
+      "qualified-names": [
+        "lp:tool:exe.tool"
+      ],
+      "component": "exe:tool",
+      "flags": {},
+      "depends": [
+        "1"
+      ],
+      "exe-depends": [],
+      "setup-depends": []
+    },
+    "3": {
+      "type": "configured",
+      "package": "lp-1.0",
+      "build-style": "whole-package",
+      "qualified-names": [
+        "lp"
+      ],
+      "flags": {
+        "fast": true
+      },
+      "depends": [
+        "1"
+      ],
+      "exe-depends": [
+        "2"
+      ],
+      "setup-depends": [
+        "1"
+      ]
+    }
+  }
+}

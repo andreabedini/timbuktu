@@ -66,3 +66,22 @@ expected_test(
     actual = ":plan-other-cell",
     expected = "expected/plan-other-cell.generated",
 )
+
+# The same package as lp-1.0 of plan-local.json, but of build-type Custom,
+# which the solver plans as a whole (plan-as-simple.json): taken as Simple
+# (--as-simple), it gets a target for each library and executable, with
+# what the whole package depends on, and aliases for them: the same file as
+# plan-local's. Update the expected file as above, with :plan-as-simple.
+generated_plan_buck_file(
+    name = "plan-as-simple",
+    as_simple = ["lp-1.0"],
+    local = {"lp-1.0": ":lp-description"},
+    plan = "plan-as-simple.json",
+    roots = {"lp-1.0": "lp"},
+)
+
+expected_test(
+    name = "plan-as-simple-test",
+    actual = ":plan-as-simple",
+    expected = "expected/plan-as-simple.generated",
+)
