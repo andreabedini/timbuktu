@@ -194,7 +194,7 @@ def _local_targets(where: str, pkg_id: str, local: struct, plan: dict[str, typin
         for dep in c.get("build-depends", []):
             if not dep["internal"]:
                 for lib in dep["libraries"]:
-                    described[dep["package"] if lib == "lib" else "{}:{}".format(dep["package"], lib)] = None
+                    described[dep["package"] if lib == None else "{}:{}".format(dep["package"], lib)] = None
         planned_tools = {}
         for e in u["exe-depends"]:
             if units[e].get("package") != pkg_id:

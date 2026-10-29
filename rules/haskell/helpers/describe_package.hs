@@ -67,7 +67,7 @@ import System.IO (hPutStrLn, stderr)
 -- | The version of what this program prints. Change it whenever a field
 -- changes its meaning or its shape, not when one is added.
 format :: Int
-format = 1
+format = 2
 
 data Options = Options
     { optInput :: FilePath
@@ -385,7 +385,7 @@ buildInfoFields pd =
         JsonObject
             [ "package" .= JsonString (unPackageName (depPkgName d))
             , "internal" .= JsonBool (depPkgName d == pkgname)
-            , "libraries" .= JsonArray [JsonString (libraryName l) | l <- NES.toList (depLibraries d)]
+            , "libraries" .= JsonArray [libraryName l | l <- NES.toList (depLibraries d)]
             , "version" .= JsonString (prettyShow (depVerRange d))
             ]
 
@@ -397,9 +397,10 @@ buildInfoFields pd =
             , "version" .= JsonString (prettyShow range)
             ]
 
+    -- The main library is null: a sublibrary can be called "lib".
     libraryName = \case
-        LMainLibName -> "lib"
-        LSubLibName n -> unUnqualComponentName n
+        LMainLibName -> JsonNull
+        LSubLibName n -> JsonString (unUnqualComponentName n)
 
 str :: String -> Maybe Json
 str "" = Nothing

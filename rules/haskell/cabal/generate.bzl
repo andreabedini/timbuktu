@@ -41,7 +41,7 @@ load(
 )
 
 # The format of what describe_package prints that this file reads.
-_DESCRIPTION_FORMAT = 1
+_DESCRIPTION_FORMAT = 2
 
 # What describe_package prints besides the fields of the package.
 _DESCRIPTION_KEYS = ["format", "cabal-library", "ghc-version", "platform", "flags", "name", "version", "components"]
@@ -216,11 +216,11 @@ def package_targets(
 
     def library_target(dep, lib):
         if dep["internal"]:
-            return ":" + names[("lib", None if lib == "lib" else lib)]
-        key = dep["package"] if lib == "lib" else "{}:{}".format(dep["package"], lib)
+            return ":" + names[("lib", lib)]
+        key = dep["package"] if lib == None else "{}:{}".format(dep["package"], lib)
         if key in deps:
             return deps[key]
-        if lib == "lib" and dep["package"] in compiler_packages:
+        if lib == None and dep["package"] in compiler_packages:
             if compiler_prefix:
                 return compiler_prefix + dep["package"]
             units[dep["package"]] = None

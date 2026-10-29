@@ -1,5 +1,5 @@
 {
-  "format": 1,
+  "format": 2,
   "cabal-library": "3.14.1.0",
   "ghc-version": "9.12.2",
   "platform": "x86_64-linux",
@@ -81,7 +81,7 @@
           "package": "base",
           "internal": false,
           "libraries": [
-            "lib"
+            null
           ],
           "version": ">=0"
         },
@@ -89,7 +89,7 @@
           "package": "containers",
           "internal": false,
           "libraries": [
-            "lib"
+            null
           ],
           "version": ">=0"
         },
@@ -229,7 +229,7 @@
           "package": "base",
           "internal": false,
           "libraries": [
-            "lib"
+            null
           ],
           "version": ">=0"
         }
@@ -250,7 +250,7 @@
           "package": "base",
           "internal": false,
           "libraries": [
-            "lib"
+            null
           ],
           "version": ">=0"
         },
@@ -258,7 +258,7 @@
           "package": "everything",
           "internal": true,
           "libraries": [
-            "lib"
+            null
           ],
           "version": ">=0"
         }
@@ -285,7 +285,7 @@
           "package": "base",
           "internal": false,
           "libraries": [
-            "lib"
+            null
           ],
           "version": ">=0"
         }
@@ -306,7 +306,7 @@
           "package": "Cabal",
           "internal": false,
           "libraries": [
-            "lib"
+            null
           ],
           "version": ">=0"
         },
@@ -314,7 +314,7 @@
           "package": "base",
           "internal": false,
           "libraries": [
-            "lib"
+            null
           ],
           "version": ">=0"
         }
@@ -335,7 +335,7 @@
           "package": "base",
           "internal": false,
           "libraries": [
-            "lib"
+            null
           ],
           "version": ">=0"
         }
@@ -366,7 +366,7 @@
           "package": "base",
           "internal": false,
           "libraries": [
-            "lib"
+            null
           ],
           "version": ">=0"
         }
